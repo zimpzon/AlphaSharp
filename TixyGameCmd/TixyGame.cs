@@ -13,6 +13,14 @@ namespace TixyGameCmd
 
         private static class Pieces
         {
+            public static byte FlipPlayer(byte b)
+            {
+                if (b == 0)
+                    return 0;
+
+                return b > 200 ? (byte)(b - 100) : (byte)(b + 100);
+            }
+
             public static class P1
             {
                 public const byte T = 101;
@@ -102,12 +110,17 @@ namespace TixyGameCmd
 
         public byte[] FlipStateToOtherPlayer(byte[] state)
         {
-            // rotate 180 and flip 1-4, 101-104
+            // Currently in-place!
+            Array.Reverse(state);
+            for (int i = 0; i < state.Length; ++i)
+                state[i] = Pieces.FlipPlayer(state[i]);
+
             return state;
         }
 
         public byte[] GetNextState(byte[] state, int action)
         {
+            // Currently in-place!
             throw new NotImplementedException();
         }
 
