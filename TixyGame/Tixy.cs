@@ -1,5 +1,5 @@
 ﻿using AlphaSharp;
-using static TixyGame.Tixy;
+using System.Diagnostics;
 
 namespace TixyGame
 {
@@ -156,7 +156,23 @@ namespace TixyGame
 
         public void GetNextState(byte[] state, int action)
         {
-            throw new NotImplementedException();
+            int planeId = action / (W * H);
+            Util.PlaneIdxToDeltas(planeId, out int dx, out int dy);
+
+            int idxInLayer = action % (W * H);
+            byte piece = state[idxInLayer];
+            if (piece == 0)
+                throw new ArgumentException("Invalid action, piece is 0");
+
+            int dstIdxInLayer = idxInLayer + dx + dy * W;
+            int dstPiece = state[dstIdxInLayer];
+
+            // piece captured
+            if (Pieces.IsPlayer2(dstPiece))
+                Debug.WriteLine($"capture: {dstPiece}");
+
+            state[dstIdxInLayer] = piece;
+            state[idxInLayer] = 0;
         }
 
         public List<byte[]> GetStateSymmetries(byte[] state)

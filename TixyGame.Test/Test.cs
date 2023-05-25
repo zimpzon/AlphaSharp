@@ -1,4 +1,4 @@
-using System.Diagnostics;
+using Microsoft.VisualStudio.TestPlatform.Utilities;
 using Xunit;
 
 namespace TixyGame.Test
@@ -51,6 +51,22 @@ namespace TixyGame.Test
 
             game.GetValidActions(state, validActions);
             validCount = validActions.Count(a => a > 0);
+
+            // move P1 T up-right
+            Assert.Equal(Tixy.Pieces.P1.T, game.Get(state, 1, 6));
+
+            // verify that moving south east with piece at 0,0 is valid
+            int northEastPlaneIdx = Util.DeltasToPlaneIdx(1, -1); // 1, -1 is north east
+            int planeSize = game.W * game.H;
+            int action = northEastPlaneIdx * planeSize + 6 * game.W + 1;
+
+            // verify the action was set to 1 when calling GetValidActions
+            Assert.Equal(1, validActions[action]);
+
+            // execute the action and verify the piece was moved
+            game.GetNextState(state, action);
+            Assert.Equal(0, game.Get(state, 1, 6));
+            Assert.Equal(Tixy.Pieces.P1.T, game.Get(state, 2, 5));
         }
     }
 }

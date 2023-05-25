@@ -2,7 +2,7 @@
 
 namespace TixyGame
 {
-    internal static class Util
+    public static class Util
     {
         public static readonly ConcurrentDictionary<int, List<ValueTuple<int, int>>> PieceMoves = new()
         {
@@ -17,9 +17,9 @@ namespace TixyGame
             [Tixy.Pieces.P2.Y] = new List<ValueTuple<int, int>>() { (-1, 1), (1, 1), (0, -1) },
         };
 
-        public static void PlaneIdxToDeltas(int number, out int dx, out int dy)
+        public static void PlaneIdxToDeltas(int planeIdx, out int dx, out int dy)
         {
-            switch (number)
+            switch (planeIdx)
             {
                 case 0: dx = 0; dy = -1; return;
                 case 1: dx = 1; dy = -1; return;
@@ -31,7 +31,7 @@ namespace TixyGame
                 case 7: dx = -1; dy = -1; return;
             }
 
-            throw new ArgumentOutOfRangeException(number.ToString());
+            throw new ArgumentOutOfRangeException(planeIdx.ToString());
         }
 
         public static int DeltasToPlaneIdx(int dx, int dy)
