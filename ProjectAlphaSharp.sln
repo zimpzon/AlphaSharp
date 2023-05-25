@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.6.33717.318
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AlphaSharp", "AlphaSharp\AlphaSharp.csproj", "{D69C0B17-5DC4-44DB-9A4A-2C0D9BEDB2B5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AlphaSharp.Test", "AlphaSharp.Test\AlphaSharp.Test.csproj", "{CE1F042A-FCDD-494F-A5C5-4ABC32A39397}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D69C0B17-5DC4-44DB-9A4A-2C0D9BEDB2B5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D69C0B17-5DC4-44DB-9A4A-2C0D9BEDB2B5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D69C0B17-5DC4-44DB-9A4A-2C0D9BEDB2B5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D69C0B17-5DC4-44DB-9A4A-2C0D9BEDB2B5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CE1F042A-FCDD-494F-A5C5-4ABC32A39397}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CE1F042A-FCDD-494F-A5C5-4ABC32A39397}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CE1F042A-FCDD-494F-A5C5-4ABC32A39397}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CE1F042A-FCDD-494F-A5C5-4ABC32A39397}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {8227C336-4C60-491C-8D29-3F30908097AD}
+	EndGlobalSection
+EndGlobal
