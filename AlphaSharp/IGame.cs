@@ -8,10 +8,10 @@ namespace AlphaSharp
         int H { get; }
         byte[] GetStartingState();
         int ActionCount { get; }
-        byte[] GetNextState(byte[] state, int action);
-        byte[] GetValidActions(byte[] state);
+        void GetValidActions(byte[] state, byte[] validActions);
         int GetGameEnded(byte[] state);
-        byte[] FlipStateToOtherPlayer(byte[] state);
+        void GetNextState(byte[] state, int action);
+        void FlipStateToNextPlayer(byte[] state);
         List<byte[]> GetStateSymmetries(byte[] state);
     }
 }

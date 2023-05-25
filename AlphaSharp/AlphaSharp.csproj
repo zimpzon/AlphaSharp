@@ -6,9 +6,4 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="TorchSharp" Version="0.100.0" />
-    <PackageReference Include="TorchSharp-cpu" Version="0.100.0" />
-  </ItemGroup>
-
 </Project>
