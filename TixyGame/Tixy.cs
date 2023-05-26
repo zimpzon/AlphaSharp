@@ -1,5 +1,6 @@
 ﻿using AlphaSharp;
 using System.Diagnostics;
+using System.Text;
 
 namespace TixyGame
 {
@@ -10,51 +11,17 @@ namespace TixyGame
         public int ActionCount => W * H * MoveDirections;
 
         private const int MoveDirections = 8;
-        private readonly byte[] _startingState;
-
-        public static class Pieces
-        {
-            public static byte FlipPlayer(byte b)
-            {
-                if (b == 0)
-                    return 0;
-
-                return b > 200 ? (byte)(b - 100) : (byte)(b + 100);
-            }
-
-            public static bool IsPlayer2(int piece)
-                => piece > 200;
-
-            public static class P1
-            {
-                public const byte T = 101;
-                public const byte I = 102;
-                public const byte X = 103;
-                public const byte Y = 104;
-            }
-
-            public static class P2
-            {
-                public const byte T = 201;
-                public const byte I = 202;
-                public const byte X = 203;
-                public const byte Y = 204;
-            }
-        }
 
         public Tixy(int w, int h)
         {
             W = w;
             H = h;
-
-            _startingState = new byte[W * H];
-            SetStartingPieces(_startingState);
         }
 
-        public void ClearState()
+        public static void ClearPieces(byte[] state)
         {
-            for (int i = 0; i < _startingState.Length; i++)
-                _startingState[i] = 0;
+            for (int i = 0; i < state.Length; i++)
+                state[i] = 0;
         }
 
         public void Set(byte[] state, int x, int y, byte value)
@@ -63,23 +30,26 @@ namespace TixyGame
         public byte Get(byte[] state, int x, int y)
             => state[y * W + x];
 
-        private void SetStartingPieces(byte[] state)
-        {
-            Set(state, 0, 0, Pieces.P2.T);
-            Set(state, 1, 0, Pieces.P2.I);
-            Set(state, 2, 0, Pieces.P2.X);
-            Set(state, 3, 0, Pieces.P2.Y);
+        public byte[] CreateEmptyState() =>
+            new byte[W * H];
 
-            Set(state, 0, H - 1, Pieces.P1.T);
-            Set(state, 1, H - 1, Pieces.P1.I);
-            Set(state, 2, H - 1, Pieces.P1.X);
-            Set(state, 3, H - 1, Pieces.P1.Y);
+        public byte[] CreateEmptyActions() =>
+            new byte[ActionCount];
+
+        public void SetStartingState(byte[] state)
+        {
+            Set(state, 0, 0, TixyPieces.P2.T);
+            Set(state, 1, 0, TixyPieces.P2.I);
+            Set(state, 2, 0, TixyPieces.P2.X);
+            Set(state, 3, 0, TixyPieces.P2.Y);
+
+            Set(state, 0, H - 1, TixyPieces.P1.T);
+            Set(state, 1, H - 1, TixyPieces.P1.I);
+            Set(state, 2, H - 1, TixyPieces.P1.X);
+            Set(state, 3, H - 1, TixyPieces.P1.Y);
         }
 
-        public byte[] GetStartingState()
-            => _startingState;
-
-        public int GetGameEnded(byte[] state)
+        public int GetGameStatus(byte[] state)
         {
             int countQueenP1AtTop = 0;
             int countQueenP2AtBottom = 0;
@@ -92,8 +62,8 @@ namespace TixyGame
                 {
                     byte piece = Get(state, x, y);
 
-                    bool isQueenP1 = piece == Pieces.P1.I;
-                    bool isQueenP2 = piece == Pieces.P2.I;
+                    bool isQueenP1 = piece == TixyPieces.P1.I;
+                    bool isQueenP2 = piece == TixyPieces.P2.I;
 
                     countQueenP1AtTop += isQueenP1 && y == 0 ? 1 : 0;
                     countQueenP2AtBottom += isQueenP2 && y == H - 1 ? 1 : 0;
@@ -115,10 +85,12 @@ namespace TixyGame
 
         public void GetValidActions(byte[] state, byte[] validActions)
         {
+            Array.Clear(validActions);
+
             for (int i = 0; i < W * H; i++)
             {
                 int piece = state[i];
-                if (piece == 0)
+                if (piece == 0 || TixyPieces.IsPlayer2(piece))
                     continue;
 
                 int x = i % W;
@@ -126,7 +98,7 @@ namespace TixyGame
                 int planeSize = W * H;
                 int idxInPlane = i % planeSize;
 
-                var pieceMoves = Util.PieceMoves[piece];
+                var pieceMoves = TixyPieces.PieceMoves[piece];
                 foreach (var move in pieceMoves)
                 {
                     int dx = move.Item1;
@@ -135,10 +107,11 @@ namespace TixyGame
                     if (x + dx >= 0 && x + dx < W && y + dy >= 0 && y + dy < H)
                     {
                         int pieceAtTargetLocation = state[(y + dy) * W + x + dx];
-                        bool isLegalTarget = pieceAtTargetLocation == 0 || Pieces.IsPlayer2(pieceAtTargetLocation);
+
+                        bool isLegalTarget = pieceAtTargetLocation == 0 || TixyPieces.IsPlayer2(pieceAtTargetLocation);
                         if (isLegalTarget)
                         {
-                            int planeIdx = Util.DeltasToPlaneIdx(dx, dy);
+                            int planeIdx = TixyPieces.DeltasToPlaneIdx(dx, dy);
                             validActions[planeSize * planeIdx + idxInPlane] = 1;
                         }
                     }
@@ -151,13 +124,13 @@ namespace TixyGame
             Util.Rotate180(state, W, H);
 
             for (int i = 0; i < state.Length; ++i)
-                state[i] = Pieces.FlipPlayer(state[i]);
+                state[i] = TixyPieces.FlipPlayer(state[i]);
         }
 
-        public void GetNextState(byte[] state, int action)
+        public void ExecutePlayerAction(byte[] state, int action)
         {
             int planeId = action / (W * H);
-            Util.PlaneIdxToDeltas(planeId, out int dx, out int dy);
+            TixyPieces.PlaneIdxToDeltas(planeId, out int dx, out int dy);
 
             int idxInLayer = action % (W * H);
             byte piece = state[idxInLayer];
@@ -168,7 +141,7 @@ namespace TixyGame
             int dstPiece = state[dstIdxInLayer];
 
             // piece captured
-            if (Pieces.IsPlayer2(dstPiece))
+            if (TixyPieces.IsPlayer2(dstPiece))
                 Debug.WriteLine($"capture: {dstPiece}");
 
             state[dstIdxInLayer] = piece;
@@ -180,38 +153,52 @@ namespace TixyGame
             return new List<byte[]> { state };
         }
 
-        public static void Print(IGame game, byte[] state, Action<string> print)
+        public void PrintDisplayTextForAction(int action, Action<string> print)
         {
-            // Define the mapping from numbers to characters
-            var mapping = new Dictionary<int, char>
-            {
-                {0, '.'}, {101, 'T'}, {102, 'I'}, {103, 'X'}, {104, 'Y'}, {201, 't'}, {202, 'i'}, {203, 'x'}, {204, 'y'}
-            };
+            int planeSize = W * H;
+            int planeId = action / planeSize;
+            TixyPieces.PlaneIdxToDeltas(planeId, out int dx, out int dy);
+            int idxInPlane = action % planeSize;
 
-            // Define the column labels
-            char[] col_labels = new char[] { 'A', 'B', 'C', 'D', 'E', 'F', 'G' };
+            int x1 = idxInPlane % W;
+            int y1 = idxInPlane / W;
+            int x2 = x1 + dx;
+            int y2 = y1 + dy;
 
-            // Print the column labels
-            print("\n\n    " + string.Join(" ", col_labels.Take(game.W)));
+            char fromLetter = (char)('A' + x1);
+            char fromNumber = (char)('1' + y1);
+            char toLetter = (char)('A' + x2);
+            char toNumber = (char)('1' + y2);
+
+            print($"moving {fromLetter}{fromNumber} to {toLetter}{toNumber}\n");
+        }
+
+        public void PrintState(byte[] state, Action<string> print)
+        {
+            string letterRow = string.Join(" ", Enumerable.Range(0, W).Select(i => $"{(char)('A' + i)}"));
+
+            print($"\n    {letterRow}");
+
             print("  +" + new string('-', 13) + "+");
 
-            // Print each row with row number and border
-            for (int y = 0; y < game.H; y++)
+            var sb = new StringBuilder();
+
+            for (int y = 0; y < H; y++)
             {
-                string row = (y + 1).ToString() + " | ";
-                for (int x = 0; x < game.W; x++)
+                sb.Clear();
+                sb.Append($"{y + 1} | ");
+                for (int x = 0; x < W; x++)
                 {
-                    int idx = y * game.W + x;
-                    row += mapping[state[idx]] + " ";
+                    int idx = y * W + x;
+                    sb.Append($"{TixyPieces.PieceToChar[state[idx]]} ");
                 }
-                row += "| " + (y + 1).ToString();
-                print(row);
+                sb.Append($"| {y + 1}");
+                print(sb.ToString());
             }
 
             // Print the bottom border
             print("  +" + new string('-', 13) + "+");
-            print("    " + string.Join(" ", col_labels.Take(game.W)));
-            print("\n");
+            print($"    {letterRow}");
         }
     }
 }

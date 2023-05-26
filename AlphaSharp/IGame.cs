@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace AlphaSharp
 {
@@ -6,12 +7,17 @@ namespace AlphaSharp
     {
         int W { get; }
         int H { get; }
-        byte[] GetStartingState();
+        byte[] CreateEmptyState();
+        byte[] CreateEmptyActions();
+        void SetStartingState(byte[] state);
         int ActionCount { get; }
         void GetValidActions(byte[] state, byte[] validActions);
-        int GetGameEnded(byte[] state);
-        void GetNextState(byte[] state, int action);
+        int GetGameStatus(byte[] state);
+        void ExecutePlayerAction(byte[] state, int action);
         void FlipStateToNextPlayer(byte[] state);
         List<byte[]> GetStateSymmetries(byte[] state);
+
+        void PrintState(byte[] state, Action<string> print);
+        void PrintDisplayTextForAction(int action, Action<string> print);
     }
 }
