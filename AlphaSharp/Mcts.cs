@@ -14,8 +14,8 @@ namespace MCTSExample
             public float Q;
             public int VisitCount;
             public int ChildIndex;
-            public float IsValidMove;
-            public float ActionValue;
+            public byte IsValidMove;
+            public float ActionProbability;
         }
 
         struct StateNode
@@ -31,6 +31,7 @@ namespace MCTSExample
             public int VisitCount;
             public int GameOver;
             public int ParentIndex;
+            public float V;
             public Action[] Actions;
         }
 
@@ -55,6 +56,7 @@ namespace MCTSExample
         private object _createStateNodeLock = new();
         private SimStats _simStats = new ();
         private int _stateNodeCount = 0;
+        private const float _cpuct = 1;
 
         private Dictionary<byte[], int> _stateNodeLookup = new(new ByteArrayComparer());
 
@@ -92,11 +94,12 @@ namespace MCTSExample
         {
             int parentIndex = -1;
 
-            var state = new float[startingState.Length];
+            var state = new byte[startingState.Length];
             Array.Copy(startingState, state, state.Length);
 
-            var actionProbs = new float[_game.ActionCount];
+            var actionProbsTemp = new float[_game.ActionCount];
             var noiseTemp = new float[_game.ActionCount];
+            var validActionsTemp = new byte[_game.ActionCount];
 
             while (true)
             {
@@ -128,14 +131,71 @@ namespace MCTSExample
                     // not game over
                     if (wasCreated)
                     {
+                        // leaf node, get and save suggestions from Skynet, then backtrack to root using suggested V.
                         var sw = Stopwatch.StartNew();
-                        _skynet.Suggest(state, actionProbs, out float v);
+                        {
+                            // TODO: Skynet needs the 1-hot encoded state. It could just convert but we want a resuable array.
+                            _skynet.Suggest(state, actionProbsTemp, out stateNode.V);
+                        }
                         _simStats.MsInSkynet += sw.ElapsedMilliseconds;
-                        Noise.AddDirichlet(actionProbs, noiseTemp, 0.8f);
+
+                        _game.GetValidActions(state, validActionsTemp);
+
+                        // save action probs and valid moves for state
+                        for (int i = 0; i < stateNode.Actions.Length; ++i)
+                        {
+                            stateNode.Actions[i].ActionProbability = actionProbsTemp[i];
+                            stateNode.Actions[i].IsValidMove = validActionsTemp[i];
+                        }
+
+                        bool isFirstMove = moveCount == 0;
+                        if (isFirstMove && isTraining)
+                            Noise.AddDirichlet(actionProbsTemp, noiseTemp, 0.8f);
+
+                        // exclude invalid action suggestions
+                        ArrayUtil.FilterProbsByValidActions(actionProbsTemp, validActionsTemp);
+
+                        // normalize so sum of probs is 1
+                        ArrayUtil.Normalize(actionProbsTemp);
+
+                        BacktrackAndUpdate(ref stateNode, gameResult: stateNode.V);
+
+                        // TODO: where do we go from here?
+                        throw new NotImplementedException();
                     }
                     else
                     {
-                        // 
+                        // revisited node, pick the action with the highest upper confidence bound
+                        stateNode.VisitCount++;
+
+                        float bestUpperConfidence = float.NegativeInfinity;
+                        int bestAction = -1;
+
+                        for (int i = 0; i < stateNode.Actions.Length; i++)
+                        {
+                            ref Action action = ref stateNode.Actions[i];
+                            if (action.IsValidMove != 0)
+                            {
+                                // if no Q value yet calc confidence without Q
+                                float upperConfidence = action.Q == 0 ?
+                                    _cpuct * action.ActionProbability * (float)Math.Sqrt(stateNode.VisitCount + float.Epsilon) :
+                                    action.Q + _cpuct * action.ActionProbability * (float)Math.Sqrt(stateNode.VisitCount) / (1.0f + action.VisitCount);
+
+                                if (upperConfidence > bestUpperConfidence)
+                                {
+                                    bestUpperConfidence = upperConfidence;
+                                    bestAction = i;
+                                }
+                            }
+                        }
+
+                        // an action was selected
+                        stateNode.Actions[bestAction].VisitCount++;
+
+                        // whoops, state should be bytes?
+                        _game.ExecutePlayerAction(state, bestAction);
+                        // flip board
+
                     }
                 }
                 SimpleLock.ReleaseLock(ref stateNode.Lock);
@@ -147,8 +207,9 @@ namespace MCTSExample
             // if gameEnded this return gameEnded
         }
 
-        private void BacktrackAndUpdate(ref StateNode fromNode, int gameResult)
+        private void BacktrackAndUpdate(ref StateNode fromNode, float gameResult)
         {
+            // gameResult is for current player (fromNode)
             ref StateNode currentNode = ref fromNode;
             while (currentNode.ParentIndex > 0)
             {
@@ -158,6 +219,7 @@ namespace MCTSExample
 
         public double[] GetActionProbs(byte[] state, bool is_training, int numberOfSim, int simMaxMoves)
         {
+            // NB NB NB: TorchSharp is threadsafe but not tasksafe! Do manual threading.
             for (int i = 0; i < numberOfSim; i++)
                 ExploreGameTree(state, 0, simMaxMoves);
 

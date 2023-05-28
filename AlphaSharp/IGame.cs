@@ -11,7 +11,7 @@ namespace AlphaSharp
         byte[] CreateEmptyActions();
         void SetStartingState(byte[] state);
         int ActionCount { get; }
-        void GetValidActions(byte[] state, byte[] validActions);
+        void GetValidActions(float[] state, byte[] validActions);
         int GetGameEnded(byte[] state);
         void ExecutePlayerAction(byte[] state, int action);
         void FlipStateToNextPlayer(byte[] state);

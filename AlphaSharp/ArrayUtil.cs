@@ -6,6 +6,16 @@ namespace AlphaSharp
 {
     public static class ArrayUtil
     {
+        public static void Normalize(float[] values)
+        {
+            float sum = values.Sum();
+            if (sum == 0)
+                throw new ArgumentException("cannot normalize, sum of array is 0");
+
+            for (int i = 0; i < values.Length; i++)
+                values[i] /= sum;
+        }
+
         public static void FilterProbsByValidActions(float[] probs, byte[] validActions)
         {
             for (int i = 0; i < probs.Length; i++)

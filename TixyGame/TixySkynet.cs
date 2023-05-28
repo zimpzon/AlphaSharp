@@ -1,12 +1,16 @@
 ﻿using AlphaSharp;
+using TorchSharp;
 
 namespace TixyGame
 {
     internal class TixySkynet : ISkynet
     {
-        public void Suggest(byte[] currentState, byte[] suggestedActions, out float stateValue)
+        public void Suggest(float[] currentState, float[] actionsProbs, out float v)
         {
-            stateValue = 0.5f;
+            // here state will be converted to 1-hot encoded. write directly to a tensor, if possible
+            // or we need to create an array in this call, OR pass in a temp array to avoid miltithreading conflicts.
+            var t = torch.tensor(currentState, );
+            v = 0;
         }
     }
 }
