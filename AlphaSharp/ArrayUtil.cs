@@ -1,21 +1,19 @@
 ﻿using System;
+using System.Linq;
 using System.Numerics;
 
 namespace AlphaSharp
 {
     public static class ArrayUtil
     {
-        public static int CountNonZero<T>(T[] arr) where T : INumber<T>
+        public static void FilterProbsByValidActions(float[] probs, byte[] validActions)
         {
-            int result = 0;
-            for (int i = 0; i < arr.Length; i++)
-            {
-                if (!T.IsZero(arr[i]))
-                    result++;
-            }
-
-            return result;
+            for (int i = 0; i < probs.Length; i++)
+                probs[i] *= validActions[i];
         }
+
+        public static int CountNonZero<T>(T[] arr) where T : INumber<T>
+            => arr.Count(v => !T.IsZero(v));
 
         /// <summary>
         /// n is 1-based, result is 0-based

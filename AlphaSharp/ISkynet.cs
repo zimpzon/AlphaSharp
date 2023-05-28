@@ -2,7 +2,6 @@
 {
     public interface ISkynet
     {
-        // predict
-        // train
+        void Suggest(float[] currentState, float[] actionsProbs, out float v);
     }
 }

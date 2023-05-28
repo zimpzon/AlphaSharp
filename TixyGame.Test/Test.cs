@@ -76,7 +76,11 @@ namespace TixyGame.Test
 
             var game = new Tixy(5, 7);
             var pit = new OneVsOne(game, player1, player2);
-            int result = pit.Run(1000);
+
+            var state = game.CreateEmptyState();
+            var actions = game.CreateEmptyActions();
+
+            int result = pit.Run(1000, state, actions);
             Assert.InRange(result, -1, 1);
         }
     }

@@ -12,7 +12,7 @@ namespace AlphaSharp
         void SetStartingState(byte[] state);
         int ActionCount { get; }
         void GetValidActions(byte[] state, byte[] validActions);
-        int GetGameStatus(byte[] state);
+        int GetGameEnded(byte[] state);
         void ExecutePlayerAction(byte[] state, int action);
         void FlipStateToNextPlayer(byte[] state);
         List<byte[]> GetStateSymmetries(byte[] state);

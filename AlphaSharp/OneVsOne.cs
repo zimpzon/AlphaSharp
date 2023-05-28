@@ -15,12 +15,9 @@ namespace AlphaSharp
             _player2 = player2;
         }
 
-        public int Run(int maxMoves)
+        public int Run(int maxMoves, byte[] state, byte[] actions)
         {
-            var state = _game.CreateEmptyState();
             _game.SetStartingState(state);
-
-            var validActions = _game.CreateEmptyActions();
 
             var currentPlayer = _player1;
 
@@ -30,14 +27,14 @@ namespace AlphaSharp
                 if (moves++ >= maxMoves)
                     return 0;
 
-                _game.GetValidActions(state, validActions);
-                int selectedAction = currentPlayer.PickAction(state, validActions);
+                _game.GetValidActions(state, actions);
+                int selectedAction = currentPlayer.PickAction(state, actions);
 
-                _game.PrintState(state, (s) => Debug.WriteLine(s));
-                _game.PrintDisplayTextForAction(selectedAction, (s) => Debug.WriteLine(s));
+                //_game.PrintState(state, (s) => Debug.WriteLine(s));
+                //_game.PrintDisplayTextForAction(selectedAction, (s) => Debug.WriteLine(s));
 
                 _game.ExecutePlayerAction(state, selectedAction);
-                int gameResult = _game.GetGameStatus(state);
+                int gameResult = _game.GetGameEnded(state);
                 if (gameResult != 0)
                     return currentPlayer == _player1 ? 1 : -1;
 

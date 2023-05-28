@@ -1,5 +1,4 @@
 ﻿using AlphaSharp;
-using System.Diagnostics;
 using System.Text;
 
 namespace TixyGame
@@ -19,10 +18,7 @@ namespace TixyGame
         }
 
         public static void ClearPieces(byte[] state)
-        {
-            for (int i = 0; i < state.Length; i++)
-                state[i] = 0;
-        }
+            => Array.Clear(state, 0, state.Length);
 
         public void Set(byte[] state, int x, int y, byte value)
             => state[y * W + x] = value;
@@ -38,6 +34,8 @@ namespace TixyGame
 
         public void SetStartingState(byte[] state)
         {
+            ClearPieces(state);
+
             Set(state, 0, 0, TixyPieces.P2.T);
             Set(state, 1, 0, TixyPieces.P2.I);
             Set(state, 2, 0, TixyPieces.P2.X);
@@ -49,7 +47,7 @@ namespace TixyGame
             Set(state, 3, H - 1, TixyPieces.P1.Y);
         }
 
-        public int GetGameStatus(byte[] state)
+        public int GetGameEnded(byte[] state)
         {
             int countQueenP1AtTop = 0;
             int countQueenP2AtBottom = 0;
@@ -140,9 +138,8 @@ namespace TixyGame
             int dstIdxInLayer = idxInLayer + dx + dy * W;
             int dstPiece = state[dstIdxInLayer];
 
-            // piece captured
-            if (TixyPieces.IsPlayer2(dstPiece))
-                Debug.WriteLine($"capture: {dstPiece}");
+            //if (TixyPieces.IsPlayer2(dstPiece))
+            //    Debug.WriteLine($"capture: {dstPiece}");
 
             state[dstIdxInLayer] = piece;
             state[idxInLayer] = 0;
@@ -196,7 +193,6 @@ namespace TixyGame
                 print(sb.ToString());
             }
 
-            // Print the bottom border
             print("  +" + new string('-', 13) + "+");
             print($"    {letterRow}");
         }

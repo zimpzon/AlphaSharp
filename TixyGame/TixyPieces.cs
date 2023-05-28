@@ -1,6 +1,4 @@
-﻿using System.Collections.Concurrent;
-
-namespace TixyGame
+﻿namespace TixyGame
 {
     public static class TixyPieces
     {
@@ -15,7 +13,7 @@ namespace TixyGame
         public static bool IsPlayer2(int piece)
             => piece > 200;
 
-        public static ConcurrentDictionary<int, char> PieceToChar => new()
+        public static Dictionary<int, char> PieceToChar => new()
         {
             [0] = '.',
             [101] = 'T',
@@ -44,7 +42,7 @@ namespace TixyGame
             public const byte Y = 204;
         }
 
-        public static ConcurrentDictionary<int, List<ValueTuple<int, int>>> PieceMoves => new()
+        public static Dictionary<int, List<ValueTuple<int, int>>> PieceMoves => new()
         {
             [P1.T] = new List<ValueTuple<int, int>>() { (-1, -1), (0, -1), (1, -1), (0, 1) },
             [P1.I] = new List<ValueTuple<int, int>>() { (0, -1), (0, 1) },

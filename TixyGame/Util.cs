@@ -2,7 +2,7 @@
 {
     public static class Util
     {
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0180:Use tuple to swap values", Justification = "<Pending>")]
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0180:Use tuple to swap values", Justification = "meh, I like my temp variable")]
         public static void Rotate180(byte[] arr, int w, int h)
         {
             // mirror x-axis in the middle of the arr

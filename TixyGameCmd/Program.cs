@@ -1,4 +1,5 @@
 ﻿using AlphaSharp;
+using System.Xml.Linq;
 using TixyGame;
 
 namespace TixyGameCmd
@@ -22,10 +23,14 @@ namespace TixyGameCmd
             int win1 = 0;
             int win2 = 0;
             int draw = 0;
+
+            var state = game.CreateEmptyState();
+            var actions = game.CreateEmptyActions();
+
             for (int i = 0; i < 1000; ++i)
             {
                 var pit = new OneVsOne(game, player1, player2);
-                int gameResult = pit.Run(50);
+                int gameResult = pit.Run(50, state, actions);
                 if (gameResult == 1)
                     ++win1;
                 else if (gameResult == -1)
