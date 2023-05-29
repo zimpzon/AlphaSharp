@@ -16,10 +16,10 @@ namespace AlphaSharp.Test
             Assert.Equal(9, ArrayUtil.FindNthNonZeroIndex(arr, 2));
 
             arr[0] = 0;
-            Assert.Equal(9, ActionUtil.PickRandomAction(arr));
+            Assert.Equal(9, ActionUtil.PickRandomNonZeroAction(arr));
             arr[0] = 1;
             arr[9] = 0;
-            Assert.Equal(0, ActionUtil.PickRandomAction(arr));
+            Assert.Equal(0, ActionUtil.PickRandomNonZeroAction(arr));
         }
     }
 }

@@ -1,4 +1,6 @@
-﻿namespace AlphaSharp
+﻿using AlphaSharp.Interfaces;
+
+namespace AlphaSharp
 {
     public class Coach
     {

@@ -1,4 +1,4 @@
-﻿using AlphaSharp;
+﻿using AlphaSharp.Interfaces;
 using System.Text;
 
 namespace TixyGame
@@ -136,8 +136,8 @@ namespace TixyGame
                 throw new ArgumentException("Invalid action, piece is 0");
 
             int dstIdxInLayer = idxInLayer + dx + dy * W;
-            int dstPiece = state[dstIdxInLayer];
 
+            //int dstPiece = state[dstIdxInLayer];
             //if (TixyPieces.IsPlayer2(dstPiece))
             //    Debug.WriteLine($"capture: {dstPiece}");
 

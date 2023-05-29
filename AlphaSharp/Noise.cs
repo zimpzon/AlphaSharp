@@ -4,14 +4,8 @@ namespace AlphaSharp
 {
     internal static class Noise
     {
-        public static void AddDirichlet(float[]? values, float[]? noiseTempArray, float amount)
+        public static void AddDirichlet(float[] values, float[] noiseTempArray, float amount)
         {
-            if (values == null)
-                throw new ArgumentNullException(nameof(values));
-
-            if (noiseTempArray == null)
-                throw new ArgumentNullException(nameof(noiseTempArray));
-
             // ]0..1[ for this implementation
             amount = Math.Min(amount, 0.9999f);
             amount = Math.Max(amount, 0.0001f);
@@ -72,6 +66,11 @@ namespace AlphaSharp
             double r = Math.Sqrt(-2.0 * Math.Log(u1));
             double theta = 2.0 * Math.PI * u2;
             return r * Math.Sin(theta);
+        }
+
+        internal static void AddDirichlet(float[] actionProbsTemp, float[] noiseTemp, object dirichletAmount)
+        {
+            throw new NotImplementedException();
         }
     }
 }
