@@ -4,7 +4,7 @@ namespace AlphaSharp
 {
     internal static class Noise
     {
-        public static void AddDirichlet(float[] values, float[] noiseTempArray, float amount)
+        public static void CreateDirichlet(float[] noiseTempArray, float amount)
         {
             // ]0..1[ for this implementation
             amount = Math.Min(amount, 0.9999f);
@@ -14,17 +14,14 @@ namespace AlphaSharp
 
             float noiseSum = 0;
 
-            for (int i = 0; i < values.Length; i++)
+            for (int i = 0; i < noiseTempArray.Length; i++)
             {
                 noiseTempArray[i] = SampleGamma(random, amount, 1);
                 noiseSum += noiseTempArray[i];
             }
 
-            for (int i = 0; i < values.Length; i++)
-            {
+            for (int i = 0; i < noiseTempArray.Length; i++)
                 noiseTempArray[i] /= noiseSum;  // Normalize noise to make it Dirichlet-distributed.
-                values[i] = (1 - amount) * values[i] + amount * noiseTempArray[i];
-            }
         }
 
         public static float SampleGamma(Random random, float shape, float scale)

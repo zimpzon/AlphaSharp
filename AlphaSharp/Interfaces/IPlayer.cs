@@ -2,6 +2,6 @@
 {
     public interface IPlayer
     {
-        int PickAction(byte[] state, byte[] validActions);
+        int PickAction(byte[] state);
     }
 }

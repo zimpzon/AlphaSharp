@@ -1,6 +1,3 @@
-using AlphaSharp.Interfaces;
-using System;
-using System.Collections.Generic;
 using TixyGame;
 using Xunit;
 
@@ -14,11 +11,11 @@ namespace AlphaSharp.Test
             var game = new Tixy(5, 5);
             var skynet = new TixySkynet();
 
-            var mcts = new Mcts(game, skynet, new Args { cpuct = 1.0f, maxMCTSDepth = 100, numMCTSSims = 1000 });
-            var state = game.CreateEmptyState();
-            game.SetStartingState(state);
+            var player1 = new MctsPlayer(game, skynet, new Args());
+            var player2 = new RandomPlayer(game);
+            var oneVsOne = new OneVsOne(game, player1, player2);
 
-            mcts.GetActionProbs(state, isTraining: true, numberOfSim: 100, simMaxMoves: 100);
+            oneVsOne.Run(maxMoves: 100);
         }
     }
 }

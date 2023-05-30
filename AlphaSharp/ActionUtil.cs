@@ -16,8 +16,19 @@ namespace AlphaSharp
         {
             var rnd = new Random();
             int maxVisitCount = actions.Max(a => a.VisitCount);
-            var candidates = actions.Where(a => a.VisitCount == maxVisitCount).ToList();
-            return rnd.Next(0, candidates.Count);
+            var candidateCount = actions.Count(a => a.VisitCount == maxVisitCount);
+            int selectedCandiate = rnd.Next(0, candidateCount);
+
+            int counter = 0;
+            for (int i = 0; i < actions.Length; ++i)
+            {
+                if (actions[i].VisitCount == maxVisitCount)
+                {
+                    if (counter++ == selectedCandiate)
+                        return i;
+                }
+            }
+            return -1;
         }
     }
 }

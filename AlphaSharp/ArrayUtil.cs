@@ -6,6 +6,26 @@ namespace AlphaSharp
 {
     public static class ArrayUtil
     {
+        public static int ArgMax(float[] arr)
+        {
+            if (arr.Length == 0)
+                throw new ArgumentException("The input array cannot be empty.");
+
+            int maxIndex = 0;
+            float maxValue = arr[0];
+
+            for (int i = 1; i < arr.Length; i++)
+            {
+                if (arr[i] > maxValue)
+                {
+                    maxValue = arr[i];
+                    maxIndex = i;
+                }
+            }
+
+            return maxIndex;
+        }
+
         public static void Normalize(float[] values)
         {
             float sum = values.Sum();

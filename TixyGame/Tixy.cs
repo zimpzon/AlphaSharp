@@ -8,6 +8,7 @@ namespace TixyGame
         public int W { get; }
         public int H { get; }
         public int ActionCount => W * H * MoveDirections;
+        public int StateSize => W * H;
 
         private const int MoveDirections = 8;
 
@@ -25,12 +26,6 @@ namespace TixyGame
 
         public byte Get(byte[] state, int x, int y)
             => state[y * W + x];
-
-        public byte[] CreateEmptyState() =>
-            new byte[W * H];
-
-        public byte[] CreateEmptyActions() =>
-            new byte[ActionCount];
 
         public void SetStartingState(byte[] state)
         {

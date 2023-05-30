@@ -7,10 +7,9 @@ namespace AlphaSharp.Interfaces
     {
         int W { get; }
         int H { get; }
-        byte[] CreateEmptyState();
-        byte[] CreateEmptyActions();
-        void SetStartingState(byte[] state);
         int ActionCount { get; }
+        int StateSize { get; }
+        void SetStartingState(byte[] state);
         void GetValidActions(byte[] state, byte[] validActions);
         int GetGameEnded(byte[] state);
         void ExecutePlayerAction(byte[] state, int action);

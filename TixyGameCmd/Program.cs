@@ -1,5 +1,4 @@
 ﻿using AlphaSharp;
-using System.Xml.Linq;
 using TixyGame;
 
 namespace TixyGameCmd
@@ -16,21 +15,18 @@ namespace TixyGameCmd
             // reject or accept new nn
             // repeat
 
-            var player1 = new RandomPlayer();
-            var player2 = new RandomPlayer();
-
             var game = new Tixy(5, 7);
             int win1 = 0;
             int win2 = 0;
             int draw = 0;
 
-            var state = game.CreateEmptyState();
-            var actions = game.CreateEmptyActions();
+            var player1 = new RandomPlayer(game);
+            var player2 = new RandomPlayer(game);
 
             for (int i = 0; i < 1000; ++i)
             {
                 var pit = new OneVsOne(game, player1, player2);
-                int gameResult = pit.Run(50, state, actions);
+                int gameResult = pit.Run(maxMoves: 50);
                 if (gameResult == 1)
                     ++win1;
                 else if (gameResult == -1)

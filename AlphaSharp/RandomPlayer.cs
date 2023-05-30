@@ -4,8 +4,18 @@ namespace AlphaSharp
 {
     public class RandomPlayer : IPlayer
     {
-        public int PickAction(byte[] state, byte[] validActions)
+        private readonly IGame _game;
+
+        public RandomPlayer(IGame game)
         {
+            _game = game;
+        }
+
+        public int PickAction(byte[] state)
+        {
+            var validActions = new byte[_game.ActionCount];
+            _game.GetValidActions(state, validActions);
+
             int randomAction = ActionUtil.PickRandomNonZeroAction(validActions);
             return randomAction;
         }

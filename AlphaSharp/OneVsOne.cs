@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using AlphaSharp.Interfaces;
+﻿using AlphaSharp.Interfaces;
 
 namespace AlphaSharp
 {
@@ -16,8 +15,11 @@ namespace AlphaSharp
             _player2 = player2;
         }
 
-        public int Run(int maxMoves, byte[] state, byte[] actions)
+        public int Run(int maxMoves)
         {
+            var state = new byte[_game.StateSize];
+            var actions = new byte[_game.ActionCount];
+
             _game.SetStartingState(state);
 
             var currentPlayer = _player1;
@@ -29,7 +31,7 @@ namespace AlphaSharp
                     return 0;
 
                 _game.GetValidActions(state, actions);
-                int selectedAction = currentPlayer.PickAction(state, actions);
+                int selectedAction = currentPlayer.PickAction(state);
 
                 //_game.PrintState(state, (s) => Debug.WriteLine(s));
                 //_game.PrintDisplayTextForAction(selectedAction, (s) => Debug.WriteLine(s));
