@@ -25,6 +25,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AlphaSharp\AlphaSharp.csproj" />
+    <ProjectReference Include="..\TixyGame\TixyGame.csproj" />
   </ItemGroup>
 
 </Project>

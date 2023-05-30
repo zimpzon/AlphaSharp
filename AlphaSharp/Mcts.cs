@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using AlphaSharp.Interfaces;
+using static AlphaSharp.StateNode;
 using Math = System.Math;
 
 namespace AlphaSharp
@@ -16,6 +19,12 @@ namespace AlphaSharp
             public float MsInSkynet;
         }
 
+        private class SelectedAction
+        {
+            public int NodeIdx;
+            public int ActionIdx;
+        }
+
         // states won't be reused much in a single simulation when moving forward, but when simulation ended
         // we backtrack and update all Q values. This means only very few actions are ever needed, so we waste
         // a lot of memory allocating 200. (200 * ~20 = 4000 per state) maybe 40mb for whole simulation. Meh, fine
@@ -25,7 +34,6 @@ namespace AlphaSharp
         private readonly ISkynet _skynet;
         private readonly Args _args;
         private StateNode[] _stateNodes = new StateNode[10000];
-        private readonly object _createStateNodeLock = new();
         private readonly SimStats _simStats = new();
         private int _stateNodeCount = 0;
 
@@ -38,44 +46,33 @@ namespace AlphaSharp
             _args = args;
         }
 
-        private StateNode GetStateNodeFromIndex(int idx)
-        {
-            lock (_createStateNodeLock)
-            {
-                return _stateNodes[idx];
-            }
-        }
-
         private int GetOrCreateStateNodeFromState(byte[] state, out bool wasCreated)
         {
-            lock (_createStateNodeLock)
+            if (_stateNodeLookup.TryGetValue(state, out int idx))
             {
-                if (_stateNodeLookup.TryGetValue(state, out int idx))
-                {
-                    _simStats.NodesRevisited++;
-                    wasCreated = false;
-                    return idx;
-                }
-
-                // Does not exist, create it and add to lookup
-                if (_stateNodeCount >= _stateNodes.Length)
-                {
-                    Console.WriteLine($"expanding stateNode array from {_stateNodes.Length} to {_stateNodes.Length * 2}");
-                    Array.Resize(ref _stateNodes, _stateNodes.Length * 2);
-                }
-
-                _stateNodes[_stateNodeCount] = new StateNode(_game.ActionCount);
-                _stateNodeLookup.Add(state, _stateNodeCount);
-
-                _stateNodeCount++;
-                _simStats.NodesCreated++;
-                wasCreated = true;
-
-                return _stateNodeCount - 1;
+                _simStats.NodesRevisited++;
+                wasCreated = false;
+                return idx;
             }
+
+            // Does not exist, create it and add to lookup
+            if (_stateNodeCount >= _stateNodes.Length)
+            {
+                Console.WriteLine($"expanding stateNode array from {_stateNodes.Length} to {_stateNodes.Length * 2}");
+                Array.Resize(ref _stateNodes, _stateNodes.Length * 2);
+            }
+
+            _stateNodes[_stateNodeCount] = new StateNode(_game.ActionCount);
+            _stateNodeLookup.Add(state, _stateNodeCount);
+
+            _stateNodeCount++;
+            _simStats.NodesCreated++;
+            wasCreated = true;
+
+            return _stateNodeCount - 1;
         }
 
-        public void ExploreGameTree(byte[] startingState, int moveCount, int maxMoves, bool isTraining)
+        public void ExploreGameTree(byte[] startingState, int maxMoves, bool isTraining)
         {
             var state = new byte[startingState.Length];
             Array.Copy(startingState, state, state.Length);
@@ -83,31 +80,24 @@ namespace AlphaSharp
             var actionProbsTemp = new float[_game.ActionCount];
             var noiseTemp = new float[_game.ActionCount];
             var validActionsTemp = new byte[_game.ActionCount];
-            var selectedActions = new int[maxMoves];
+            List<SelectedAction> selectedActions = new ();
 
             int player = 1; // we always start from the perspective of player 1
             const float DirichletAmount = 0.8f;
-            const int RootIdx = 0;
-            int currentIndex = -1;
 
             while (true)
             {
-                // if maxDepth reached don't draw any conclusions, just return 0
-                if (moveCount++ >= maxMoves)
+                if (selectedActions.Count >= maxMoves)
                 {
-                    BacktrackAndUpdate(GetStateNodeFromIndex(currentIndex), selectedActions, moveCount, 0.0f);
+                    // score is undetermined, use 0.0
+                    BacktrackAndUpdate(selectedActions, 0.0f);
                     _simStats.MaxMovesReached++;
                     break;
                 }
 
                 // get or create node for current state
-                int idxNewStateNode = GetOrCreateStateNodeFromState(state, out bool wasCreated);
-
-                var stateNode = GetStateNodeFromIndex(idxNewStateNode);
-                SimpleLock.AcquireLock(ref stateNode.Lock);
-
-                stateNode.ParentIndex = currentIndex;
-                currentIndex = idxNewStateNode;
+                int idxStateNode = GetOrCreateStateNodeFromState(state, out bool wasCreated);
+                var stateNode = _stateNodes[idxStateNode];
 
                 // if game over not determined for state, do it now
                 if (stateNode.GameOver == -1)
@@ -116,9 +106,7 @@ namespace AlphaSharp
                 if (stateNode.GameOver != 0)
                 {
                     // game determined, stop sim and update tree back to root
-                    BacktrackAndUpdate(stateNode, selectedActions, moveCount, stateNode.GameOver * player);
-
-                    SimpleLock.ReleaseLock(ref stateNode.Lock);
+                    BacktrackAndUpdate(selectedActions, stateNode.GameOver * player);
                     break;
                 }
                 else
@@ -128,10 +116,8 @@ namespace AlphaSharp
                     {
                         // leaf node, get and save suggestions from Skynet, then backtrack to root using suggested V.
                         var sw = Stopwatch.StartNew();
-                        {
-                            _skynet.Suggest(state, actionProbsTemp, out stateNode.V);
-                            _simStats.MsInSkynet += sw.ElapsedMilliseconds;
-                        }
+                        _skynet.Suggest(state, actionProbsTemp, out float v);
+                        _simStats.MsInSkynet += sw.ElapsedMilliseconds;
 
                         _game.GetValidActions(state, validActionsTemp);
 
@@ -142,7 +128,7 @@ namespace AlphaSharp
                             stateNode.Actions[i].IsValidMove = validActionsTemp[i];
                         }
 
-                        bool isFirstMove = moveCount == 0;
+                        bool isFirstMove = selectedActions.Count == 0;
                         if (isFirstMove && isTraining)
                             Noise.AddDirichlet(actionProbsTemp, noiseTemp, DirichletAmount);
 
@@ -152,10 +138,8 @@ namespace AlphaSharp
                         // normalize so sum of probs is 1
                         ArrayUtil.Normalize(actionProbsTemp);
 
-                        BacktrackAndUpdate(stateNode, selectedActions, moveCount, stateNode.V);
+                        BacktrackAndUpdate(selectedActions, v);
 
-                        currentIndex = RootIdx;
-                        SimpleLock.ReleaseLock(ref stateNode.Lock);
                         continue;
                     }
 
@@ -163,7 +147,7 @@ namespace AlphaSharp
                     stateNode.VisitCount++;
 
                     float bestUpperConfidence = float.NegativeInfinity;
-                    int bestAction = -1;
+                    int selectedAction = -1;
 
                     for (int i = 0; i < stateNode.Actions.Length; i++)
                     {
@@ -178,82 +162,80 @@ namespace AlphaSharp
                             if (upperConfidence > bestUpperConfidence)
                             {
                                 bestUpperConfidence = upperConfidence;
-                                bestAction = i;
+                                selectedAction = i;
                             }
                         }
                     }
 
                     // an action was selected
-                    selectedActions[moveCount] = bestAction;
-                    stateNode.Actions[bestAction].VisitCount++;
+                    selectedActions.Add(new SelectedAction { NodeIdx = idxStateNode, ActionIdx = selectedAction });
+                    stateNode.Actions[selectedAction].VisitCount++;
 
-                    _game.ExecutePlayerAction(state, bestAction);
+                    _game.ExecutePlayerAction(state, selectedAction);
                     _game.FlipStateToNextPlayer(state);
 
                     player *= -1;
-                    SimpleLock.ReleaseLock(ref stateNode.Lock);
+
                 }
             }
         }
 
-        private void BacktrackAndUpdate(StateNode fromNode, int[] selectedActions, int moveIdx, float v)
+        private void BacktrackAndUpdate(List<SelectedAction> selectedActions, float v)
         {
-            // gameResult is for current player (fromNode), start with switch to opposing player.
-            var currentNode = fromNode;
-            while (currentNode.ParentIndex >= 0)
+            // v is for current player, start by negating it since good for us = bad for them and vice versa
+            for (int i = selectedActions.Count - 1; i >= 0; --i)
             {
                 v = -v;
-                currentNode = GetStateNodeFromIndex(currentNode.ParentIndex);
 
-                int a = selectedActions[moveIdx];
-                ref var action = ref currentNode.Actions[a];
+                var node = _stateNodes[selectedActions[i].NodeIdx];
+                int a = selectedActions[i].ActionIdx;
+                ref var action = ref node.Actions[a];
 
                 action.Q = action.Q == 0.0f ? v : (action.VisitCount * action.Q + v) / (action.VisitCount + 1);
             }
         }
 
-        public double[] GetActionProbs(byte[] state, bool isTraining, int numberOfSim, int simMaxMoves)
+        public float[] GetActionProbs(byte[] state, bool isTraining, int numberOfSim, int simMaxMoves)
         {
-            // NB NB NB: TorchSharp is threadsafe but not tasksafe! Do manual threading.
             for (int i = 0; i < numberOfSim; i++)
-                ExploreGameTree(state, moveCount: 0, simMaxMoves, isTraining);
+                ExploreGameTree(state, simMaxMoves, isTraining);
 
             int nodeIdx = GetOrCreateStateNodeFromState(state, out _);
-            var stateNode = GetStateNodeFromIndex(nodeIdx);
+            var stateNode = _stateNodes[nodeIdx];
+
+            var probs = new float[stateNode.Actions.Length];
 
             if (!isTraining)
             {
-                //ActionUtil.PickBestActionFromProbs(stateNode.Actions)
-                //int[] bestAs = Enumerable.Range(0, counts.Length).Where(a => counts[a] == counts.Max()).ToArray();
-                //int bestA = bestAs[new Random().Next(bestAs.Length)];
-                //double[] probs = Enumerable.Repeat(1.0 / counts.Length, counts.Length).ToArray();
-                //probs[bestA] = 1;
-                return null;
+                int selectedAction = ActionUtil.PickActionByHighestVisitCount(stateNode.Actions);
+                probs[selectedAction] = 1.0f;
+                return probs;
             }
 
             //double temp = move_count < 20 ? 1 : 0.1;
-
             //counts = counts.Select(x => Math.Pow(x, 1.0 / temp)).ToArray();
             //double counts_sum = counts.Sum();
 
-            //if (counts_sum == 0)
-            //{
-            //    // No actions were visited for this state
-            //    // This happens/can happen at the very last simulation step
-            //    Console.WriteLine("WARNING: current main game state did not record any visitcounts, returning 1 for all actions");
-            //    bool[] valids = game.GetValidMoves(board, 1);
-            //    double[] probs = Enumerable.Repeat(1.0 / counts.Length, counts.Length).ToArray();
-            //    for (int i = 0; i < probs.Length; i++)
-            //    {
-            //        probs[i] *= valids[i] ? 1 : 0;
-            //    }
-            //    double sum_probs = probs.Sum();
-            //    probs = probs.Select(x => x / sum_probs).ToArray();
-            //    return probs;
-            //}
+            int visitCountSum = stateNode.Actions.Sum(a => a.VisitCount);
+            int validCount = stateNode.Actions.Count(a => a.IsValidMove != 0);
 
-            //double[] probs_normalized = counts.Select(x => x / counts_sum).ToArray();
-            return null;
+            if (visitCountSum == 0)
+            {
+                // No actions were visited for this state
+                // This happens/can happen at the very last simulation step (at least in Python version)
+                Console.WriteLine("WARNING: current main game state did not record any visitcounts, returning 1 for all actions");
+
+                for (int i = 0; i < probs.Length; i++)
+                    probs[i] = 1.0f / validCount;
+
+                return probs;
+            }
+
+            // normalize visit counts to probs that sum to 1
+            for (int i = 0; i < probs.Length; i++)
+                probs[i] = stateNode.Actions[i].VisitCount / (float)visitCountSum;
+
+            return probs;
         }
     }
 
