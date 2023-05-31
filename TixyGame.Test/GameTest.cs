@@ -47,24 +47,23 @@ namespace TixyGame.Test
             game.GetValidActions(state, actions);
             Assert.NotEqual(0, actions.Count(a => a > 0));
 
-            // move P1 T up-right, magic number 6 is the x pos of P1 T
-            const int p1_T_XPos = 6;
-            Assert.Equal(TixyPieces.P1.T, game.Get(state, 1, p1_T_XPos));
+            // move P1 T up
+            const int p1_T_YPos = 6;
+            Assert.Equal(TixyPieces.P1.T, game.Get(state, 1, p1_T_YPos));
 
-            // verify that moving south east with piece at 0,0 is valid
-            int northEastPlaneIdx = TixyPieces.DeltasToPlaneIdx(1, -1); // 1, -1 is north east
+            int northPlaneIdx = TixyPieces.DeltasToPlaneIdx(0, -1); // 0, -1 is north
             int planeSize = game.W * game.H;
-            int action = northEastPlaneIdx * planeSize + p1_T_XPos * game.W + 1;
+            int action = northPlaneIdx * planeSize + p1_T_YPos * game.W + 1;
 
             // verify the action was set to 1 when calling GetValidActions
             Assert.Equal(1, actions[action]);
 
             // execute the action and verify the piece was moved
             game.ExecutePlayerAction(state, action);
-            Assert.Equal(0, game.Get(state, 1, p1_T_XPos));
+            Assert.Equal(0, game.Get(state, 1, p1_T_YPos));
 
-            int p1_T_new_XPos = 5;
-            Assert.Equal(TixyPieces.P1.T, game.Get(state, 2, p1_T_new_XPos));
+            int p1_T_new_YPos = p1_T_YPos - 1;
+            Assert.Equal(TixyPieces.P1.T, game.Get(state, 1, p1_T_new_YPos));
         }
 
         [Fact]
