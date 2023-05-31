@@ -8,7 +8,7 @@ namespace TixyGame
         {
             int planeSize = game.W * game.H;
             int planeId = action / planeSize;
-            TixyPieces.PlaneIdxToDeltas(planeId, out dx, out dy);
+            PlaneIdxToDeltas(planeId, out dx, out dy);
 
             int idxInPlane = action % planeSize;
             piece = state[idxInPlane];
@@ -40,6 +40,8 @@ namespace TixyGame
             [P2.X] = 'x',
             [P2.Y] = 'y'
         };
+
+        public const int NumberOfPieces = 8;
 
         public static class P1
         {
