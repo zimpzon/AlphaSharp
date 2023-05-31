@@ -12,8 +12,8 @@ namespace TixyGameCmd
             int win2 = 0;
             int draw = 0;
 
-            var player1 = new TixyHumanPlayer(game);
-            var player2 = new TixyGreedyPlayer(game);
+            var player1 = new RandomPlayer(game);
+            var player2 = new RandomPlayer(game);
 
             for (int i = 0; i < 10; ++i)
             {

@@ -6,7 +6,7 @@ namespace TixyGame
     public partial class TixyHumanPlayer : IPlayer
     {
         private readonly IGame _game;
-        private readonly Dictionary<string, int> colMapping = new Dictionary<string, int>
+        private readonly Dictionary<string, int> colMapping = new ()
         {
             {"A", 0},
             {"B", 1},
@@ -16,6 +16,7 @@ namespace TixyGame
             {"F", 5},
             {"G", 6}
         };
+
         private List<Tuple<int, int, int, int, int, int>> moves;
 
         public TixyHumanPlayer(IGame game)

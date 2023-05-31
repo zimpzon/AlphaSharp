@@ -59,12 +59,12 @@ namespace TixyGame
 
         public static Dictionary<int, List<ValueTuple<int, int>>> PieceMoves => new()
         {
-            [P1.T] = new List<ValueTuple<int, int>>() { (-1, -1), (0, -1), (1, -1), (0, 1) },
+            [P1.T] = new List<ValueTuple<int, int>>() { (-1, 0), (0, -1), (1, 0), (0, 1) },
             [P1.I] = new List<ValueTuple<int, int>>() { (0, -1), (0, 1) },
             [P1.X] = new List<ValueTuple<int, int>>() { (-1, -1), (1, -1), (-1, 1), (1, 1) },
             [P1.Y] = new List<ValueTuple<int, int>>() { (-1, -1), (1, -1), (0, 1) },
 
-            [P2.T] = new List<ValueTuple<int, int>>() { (0, -1), (0, 1), (-1, 1), (1, 1) },
+            [P2.T] = new List<ValueTuple<int, int>>() { (-1, 0), (0, 1), (1, 0), (0, -1) },
             [P2.I] = new List<ValueTuple<int, int>>() { (0, -1), (0, 1) },
             [P2.X] = new List<ValueTuple<int, int>>() { (-1, -1), (1, -1), (-1, 1), (1, 1) },
             [P2.Y] = new List<ValueTuple<int, int>>() { (-1, 1), (1, 1), (0, -1) },
