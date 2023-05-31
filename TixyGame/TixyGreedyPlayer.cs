@@ -22,7 +22,7 @@ namespace TixyGame
                     continue;
 
                 int action = i;
-                TixyPieces.DecodeAction(_game, state, action, out int row, out int col, out int piece, out int dx, out int dy);
+                TixyPieces.DecodeAction(_game, state, action, out int row, out int _, out int piece, out int _, out int dy);
 
                 bool isWinningMove = row + dy == 0 && piece == TixyPieces.P1.I;
                 if (isWinningMove)
