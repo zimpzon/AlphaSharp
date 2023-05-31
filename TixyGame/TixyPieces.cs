@@ -1,7 +1,21 @@
-﻿namespace TixyGame
+﻿using AlphaSharp.Interfaces;
+
+namespace TixyGame
 {
     public static class TixyPieces
     {
+        public static void DecodeAction(IGame game, byte[] state, int action, out int row, out int col, out int piece, out int dx, out int dy)
+        {
+            int planeSize = game.W * game.H;
+            int planeId = action / planeSize;
+            TixyPieces.PlaneIdxToDeltas(planeId, out dx, out dy);
+
+            int idxInPlane = action % planeSize;
+            piece = state[idxInPlane];
+            row = (idxInPlane % planeSize) / game.W;
+            col = (idxInPlane % planeSize) % game.W;
+        }
+
         public static byte FlipPlayer(byte piece)
         {
             if (piece == 0)
@@ -16,14 +30,15 @@
         public static Dictionary<int, char> PieceToChar => new()
         {
             [0] = '.',
-            [101] = 'T',
-            [102] = 'I',
-            [103] = 'X',
-            [104] = 'Y',
-            [201] = 't',
-            [202] = 'i',
-            [203] = 'x',
-            [204] = 'y'
+            [P1.T] = 'T',
+            [P1.I] = 'I',
+            [P1.X] = 'X',
+            [P1.Y] = 'Y',
+
+            [P2.T] = 't',
+            [P2.I] = 'i',
+            [P2.X] = 'x',
+            [P2.Y] = 'y'
         };
 
         public static class P1

@@ -7,23 +7,15 @@ namespace TixyGameCmd
     {
         static void Main(string[] _)
         {
-            // training loop:
-            // get two nn players with same nn version
-            // play against self * x, output training data
-            // train nn
-            // play against previus (+ random, greedy)
-            // reject or accept new nn
-            // repeat
-
             var game = new Tixy(5, 7);
             int win1 = 0;
             int win2 = 0;
             int draw = 0;
 
             var player1 = new RandomPlayer(game);
-            var player2 = new RandomPlayer(game);
+            var player2 = new TixyGreedyPlayer(game);
 
-            for (int i = 0; i < 1000; ++i)
+            for (int i = 0; i < 10; ++i)
             {
                 var pit = new OneVsOne(game, player1, player2);
                 int gameResult = pit.Run(maxMoves: 50);
@@ -33,9 +25,9 @@ namespace TixyGameCmd
                     ++win2;
                 else
                     ++draw;
-            }
 
-            Console.WriteLine($"win1: {win1}, win2: {win2}, draw: {draw}");
+                Console.WriteLine($"win1: {win1}, win2: {win2}, draw: {draw}");
+            }
         }
     }
 }

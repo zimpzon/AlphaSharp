@@ -57,10 +57,13 @@ namespace AlphaSharp
         public float[] GetActionProbs(byte[] state, bool isTraining)
         {
             var sw = Stopwatch.StartNew();
-            for (int i = 0; i < _args.SimCountLearn; i++)
+
+            int simCount = isTraining ? _args.SimCountLearn : _args.SimCountPlay;
+
+            for (int i = 0; i < simCount; i++)
                 ExploreGameTree(state, _args.SimMaxMoves, isTraining);
 
-            _simStats.MsInSimulation = sw.ElapsedMilliseconds;
+                _simStats.MsInSimulation = sw.ElapsedMilliseconds;
 
             int nodeIdx = GetOrCreateStateNodeFromState(state, out _);
             var stateNode = _stateNodes[nodeIdx];
