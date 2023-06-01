@@ -7,13 +7,13 @@ namespace TixyGameCmd
     {
         static void Main(string[] _)
         {
-            var game = new Tixy(5, 7);
+            var game = new Tixy(5, 5);
             int win1 = 0;
             int win2 = 0;
             int draw = 0;
 
             var player1 = new RandomPlayer(game);
-            var player2 = new MctsPlayer(game, new TixySkynet(game), new Args());
+            var player2 = new MctsPlayer(game, new TixySkynet(game), new Args { SimCountPlay = 10, SimMaxMoves = 1000 });
 
             for (int i = 0; i < 10; ++i)
             {

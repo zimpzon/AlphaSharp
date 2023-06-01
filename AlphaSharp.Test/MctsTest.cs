@@ -9,7 +9,7 @@ namespace AlphaSharp.Test
         public void ssssss()
         {
             var game = new Tixy(5, 5);
-            var skynet = new TixySkynet();
+            var skynet = new TixySkynet(game);
 
             var player1 = new MctsPlayer(game, skynet, new Args());
             var player2 = new RandomPlayer(game);

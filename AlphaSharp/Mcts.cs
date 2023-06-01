@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Text.Json;
 using AlphaSharp.Interfaces;
 using Math = System.Math;
 
@@ -9,13 +10,19 @@ namespace AlphaSharp
 {
     public class Mcts
     {
-        class SimStats
+        public class SimStats
         {
-            public int MaxMovesReached;
-            public int NodesCreated;
-            public int NodesRevisited;
-            public float MsInSkynet;
-            public float MsInSimulation;
+            public int MaxMovesReached { get; set; }
+            public int NodesCreated { get; set; }
+            public int NodesRevisited { get; set; }
+            public int TotalSims { get; set; }
+            public int TotalSimMoves { get; set; }
+            public int SkynetCalls { get; set; }
+            public float MsInSkynet { get; set; }
+            public float MsInSimulation { get; set; }
+
+            public override string ToString()
+                => JsonSerializer.Serialize(this);
         }
 
         private class SelectedAction
@@ -29,11 +36,12 @@ namespace AlphaSharp
         // a lot of memory allocating 200. (200 * ~20 = 4000 per state) maybe 40mb for whole simulation. Meh, fine
         // my back and forth endless loop was not fixed by visitcounts since they were updated on the way back.
 
+        public readonly SimStats Stats = new();
+
         private readonly IGame _game;
         private readonly ISkynet _skynet;
         private readonly Args _args;
         private StateNode[] _stateNodes = new StateNode[10000];
-        private readonly SimStats _simStats = new();
         private int _uniqueStateCount = 0;
         private readonly float[] _actionProbsTemp;
         private readonly float[] _noiseTemp;
@@ -61,9 +69,12 @@ namespace AlphaSharp
             int simCount = isTraining ? _args.SimCountLearn : _args.SimCountPlay;
 
             for (int i = 0; i < simCount; i++)
+            {
                 ExploreGameTree(state, _args.SimMaxMoves, isTraining);
+                Stats.TotalSims++;
+            }
 
-                _simStats.MsInSimulation = sw.ElapsedMilliseconds;
+            Stats.MsInSimulation = sw.ElapsedMilliseconds;
 
             int nodeIdx = GetOrCreateStateNodeFromState(state, out _);
             var stateNode = _stateNodes[nodeIdx];
@@ -118,7 +129,7 @@ namespace AlphaSharp
                 {
                     // score is undetermined, use 0.0
                     BacktrackAndUpdate(_selectedActions, 0.0f);
-                    _simStats.MaxMovesReached++;
+                    Stats.MaxMovesReached++;
                     break;
                 }
 
@@ -139,7 +150,8 @@ namespace AlphaSharp
                     // get and save suggestions from Skynet, then backtrack to root using suggested V.
                     var sw = Stopwatch.StartNew();
                     _skynet.Suggest(_state, _actionProbsTemp, out float v);
-                    _simStats.MsInSkynet += sw.ElapsedMilliseconds;
+                    Stats.MsInSkynet += sw.ElapsedMilliseconds;
+                    Stats.SkynetCalls++;
 
                     _game.GetValidActions(_state, _validActionsTemp);
 
@@ -198,6 +210,7 @@ namespace AlphaSharp
 
                 _game.ExecutePlayerAction(_state, selectedAction);
                 _game.FlipStateToNextPlayer(_state);
+                Stats.TotalSimMoves++;
 
                 player *= -1;
             }
@@ -208,7 +221,7 @@ namespace AlphaSharp
             long hash = Hash.ComputeHash(state);
             if (_stateNodeLookup.TryGetValue(hash, out int idx))
             {
-                _simStats.NodesRevisited++;
+                Stats.NodesRevisited++;
                 wasCreated = false;
                 return idx;
             }
@@ -224,7 +237,7 @@ namespace AlphaSharp
             _stateNodeLookup.Add(hash, _uniqueStateCount);
 
             _uniqueStateCount++;
-            _simStats.NodesCreated++;
+            Stats.NodesCreated++;
             wasCreated = true;
 
             return _uniqueStateCount - 1;

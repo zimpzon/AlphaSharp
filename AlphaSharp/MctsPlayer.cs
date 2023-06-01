@@ -1,4 +1,5 @@
 ﻿using AlphaSharp.Interfaces;
+using System;
 
 namespace AlphaSharp
 {
@@ -19,6 +20,7 @@ namespace AlphaSharp
         {
             var mcts = new Mcts(_game, _skynet, _args);
             var probs = mcts.GetActionProbs(state, isTraining: false);
+            Console.WriteLine($"{mcts.Stats}");
             return ArrayUtil.ArgMax(probs);
         }
     }
