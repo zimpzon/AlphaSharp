@@ -12,9 +12,11 @@ namespace TixyGame
         public TixySkynet(IGame game)
         {
             _game = game;
+            torch.set_num_threads(1);
+            torch.set_num_interop_threads(2);
 
             int oneHotEncodedInputSize = _game.W * _game.H * TixyPieces.NumberOfPieces;
-            _model = new TixySkynetModel(oneHotEncodedInputSize, _game.ActionCount, isTraining: true);
+            _model = new TixySkynetModel(oneHotEncodedInputSize, _game.ActionCount, isTraining: false);
         }
 
         private static torch.Tensor OneHotEncode(torch.Tensor batch)
@@ -40,6 +42,7 @@ namespace TixyGame
         {
             const int BatchSize = 1;
             var batch = torch.from_array(state).reshape(BatchSize, state.Length);
+            int nt = torch.get_num_threads();
 
             _model.eval();
 

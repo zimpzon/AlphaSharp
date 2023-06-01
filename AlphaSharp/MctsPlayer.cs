@@ -22,7 +22,8 @@ namespace AlphaSharp
             var sw = Stopwatch.StartNew();
             var mcts = new Mcts(_game, _skynet, _args);
             var probs = mcts.GetActionProbs(state, isTraining: false);
-            Console.WriteLine($"sim time: {sw.Elapsed.TotalSeconds:0.00} {mcts.Stats}");
+            float r = mcts.Stats.MsInSkynet / mcts.Stats.SkynetCalls;
+            Console.WriteLine($"skynet calls: {r:0.0} ms");//, sim time: {sw.Elapsed.TotalSeconds:0.00} sec, {mcts.Stats}");
             return ArrayUtil.ArgMax(probs);
         }
     }

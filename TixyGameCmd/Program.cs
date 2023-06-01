@@ -1,4 +1,5 @@
 ﻿using AlphaSharp;
+using AlphaSharp.Interfaces;
 using System.Threading.Tasks;
 using TixyGame;
 
@@ -6,15 +7,17 @@ namespace TixyGameCmd
 {
     internal static class Program
     {
+        static IGame game= new Tixy(5, 7);
+        static ISkynet skynet = new TixySkynet(game);
+
         static void Run(int id)
         {
-            var game = new Tixy(5, 7);
             int win1 = 0;
             int win2 = 0;
             int draw = 0;
 
             var player1 = new RandomPlayer(game);
-            var player2 = new MctsPlayer(game, new TixySkynet(game), new Args { SimCountPlay = 10, SimMaxMoves = 50 });
+            var player2 = new MctsPlayer(game, skynet, new Args { SimCountPlay = 10, SimMaxMoves = 50 });
 
             for (int i = 0; i < 10; ++i)
             {
@@ -33,12 +36,22 @@ namespace TixyGameCmd
 
         static void Main(string[] _)
         {
-            var task1 = Task.Run(() => Run(1));
-            var task2 = Task.Run(() => Run(2));
-            //var task3 = Task.Run(() => Run(3));
-            //var task4 = Task.Run(() => Run(4));
-            Task.WaitAll(task1, task2);
-            //Task.WaitAll(task1, task2, task3, task4);
+            var t1 = new Thread(() => Run(1));
+            var t2 = new Thread(() => Run(1));
+            var t3 = new Thread(() => Run(1));
+            var t4 = new Thread(() => Run(1));
+
+            t1.Start();
+            t2.Start();
+            t3.Start();
+            t4.Start();
+
+            t1.Join();
+            t2.Join();
+            t3.Join();
+            t4.Join();
+
+            Console.WriteLine("Done");
         }
     }
 }
