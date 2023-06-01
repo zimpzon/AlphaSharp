@@ -13,7 +13,7 @@ namespace TixyGameCmd
             int draw = 0;
 
             var player1 = new RandomPlayer(game);
-            var player2 = new RandomPlayer(game);
+            var player2 = new MctsPlayer(game, new TixySkynet(game), new Args());
 
             for (int i = 0; i < 10; ++i)
             {
