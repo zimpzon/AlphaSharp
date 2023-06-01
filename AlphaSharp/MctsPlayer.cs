@@ -1,5 +1,6 @@
 ﻿using AlphaSharp.Interfaces;
 using System;
+using System.Diagnostics;
 
 namespace AlphaSharp
 {
@@ -18,9 +19,10 @@ namespace AlphaSharp
 
         public int PickAction(byte[] state)
         {
+            var sw = Stopwatch.StartNew();
             var mcts = new Mcts(_game, _skynet, _args);
             var probs = mcts.GetActionProbs(state, isTraining: false);
-            Console.WriteLine($"{mcts.Stats}");
+            Console.WriteLine($"sim time: {sw.Elapsed.TotalSeconds:0.00} {mcts.Stats}");
             return ArrayUtil.ArgMax(probs);
         }
     }
