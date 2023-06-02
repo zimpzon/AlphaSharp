@@ -142,9 +142,10 @@ namespace TixyGame
             state[idxInLayer] = 0;
         }
 
-        public List<byte[]> GetStateSymmetries(byte[] state)
+        public List<(byte[], float[])> GetStateSymmetries(byte[] state, float[] probs)
         {
-            return new List<byte[]> { state };
+            // both state and probs must be transformed
+            return new List<(byte[], float[])>() { ((byte[])state.Clone(), (float[])probs.Clone()) };
         }
 
         public void PrintDisplayTextForAction(int action, Action<string> print)

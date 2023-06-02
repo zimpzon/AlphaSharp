@@ -41,9 +41,9 @@ namespace TixyGame
         public void Suggest(byte[] state, float[] actionsProbs, out float v)
         {
             const int BatchSize = 1;
-            bool b = torch.cuda_is_available();
             using var batch = torch.from_array(state).reshape(BatchSize, state.Length);
 
+            torch.no_grad();
             _model.eval();
 
             using var oneHotEncode = OneHotEncode(batch);

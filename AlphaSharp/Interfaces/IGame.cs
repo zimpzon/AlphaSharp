@@ -14,7 +14,7 @@ namespace AlphaSharp.Interfaces
         int GetGameEnded(byte[] state);
         void ExecutePlayerAction(byte[] state, int action);
         void FlipStateToNextPlayer(byte[] state);
-        List<byte[]> GetStateSymmetries(byte[] state);
+        List<(byte[], float[])> GetStateSymmetries(byte[] state, float[] probs);
 
         void PrintState(byte[] state, Action<string> print);
         void PrintDisplayTextForAction(int action, Action<string> print);

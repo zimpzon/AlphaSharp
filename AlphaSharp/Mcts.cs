@@ -36,7 +36,7 @@ namespace AlphaSharp
         // a lot of memory allocating 200. (200 * ~20 = 4000 per state) maybe 40mb for whole simulation. Meh, fine
         // my back and forth endless loop was not fixed by visitcounts since they were updated on the way back.
 
-        public readonly SimStats Stats = new();
+        public SimStats Stats { get; private set; } = new();
 
         private readonly IGame _game;
         private readonly ISkynet _skynet;
@@ -61,16 +61,24 @@ namespace AlphaSharp
             _validActionsTemp = new byte[_game.ActionCount];
             _state = new byte[_game.StateSize];
         }
+        
+        public void Reset()
+        {
+            _stateNodeLookup.Clear();
+            _uniqueStateCount = 0;
+            Stats = new SimStats();
+        }
 
         public float[] GetActionProbs(byte[] state, bool isTraining)
         {
             var sw = Stopwatch.StartNew();
 
-            int simCount = isTraining ? _args.SimCountLearn : _args.SimCountPlay;
+            int simCount = isTraining ? _args.TrainingSimulationCount : _args.PlayingSimulationCount;
+            int explorationMaxMoves = isTraining ? _args.TrainingSimulationMaxMoves: _args.PlayingSimulationMaxMoves;
 
             for (int i = 0; i < simCount; i++)
             {
-                ExploreGameTree(state, _args.SimMaxMoves, isTraining);
+                ExploreGameTree(state, explorationMaxMoves, isTraining);
                 Stats.TotalSims++;
             }
 
