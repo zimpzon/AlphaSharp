@@ -1,5 +1,6 @@
 ﻿using AlphaSharp;
 using AlphaSharp.Interfaces;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using TixyGame;
 
@@ -12,6 +13,9 @@ namespace TixyGameCmd
 
         static void Run(int id)
         {
+            
+            var proc = Process.GetCurrentProcess();
+            var dddd = Process.GetCurrentProcess().ProcessorAffinity;
             int win1 = 0;
             int win2 = 0;
             int draw = 0;
@@ -37,19 +41,19 @@ namespace TixyGameCmd
         static void Main(string[] _)
         {
             var t1 = new Thread(() => Run(1));
-            var t2 = new Thread(() => Run(1));
-            var t3 = new Thread(() => Run(1));
-            var t4 = new Thread(() => Run(1));
+            //var t2 = new Thread(() => Run(1));
+            //var t3 = new Thread(() => Run(1));
+            //var t4 = new Thread(() => Run(1));
 
             t1.Start();
-            t2.Start();
-            t3.Start();
-            t4.Start();
+            //t2.Start();
+            //t3.Start();
+            //t4.Start();
 
             t1.Join();
-            t2.Join();
-            t3.Join();
-            t4.Join();
+            //t2.Join();
+            //t3.Join();
+            //t4.Join();
 
             Console.WriteLine("Done");
         }

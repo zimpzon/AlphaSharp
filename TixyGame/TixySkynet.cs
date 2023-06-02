@@ -12,7 +12,7 @@ namespace TixyGame
         public TixySkynet(IGame game)
         {
             _game = game;
-            torch.set_num_threads(1);
+            torch.set_num_threads(4);
             torch.set_num_interop_threads(2);
 
             int oneHotEncodedInputSize = _game.W * _game.H * TixyPieces.NumberOfPieces;
@@ -41,14 +41,14 @@ namespace TixyGame
         public void Suggest(byte[] state, float[] actionsProbs, out float v)
         {
             const int BatchSize = 1;
-            var batch = torch.from_array(state).reshape(BatchSize, state.Length);
-            int nt = torch.get_num_threads();
+            bool b = torch.cuda_is_available();
+            using var batch = torch.from_array(state).reshape(BatchSize, state.Length);
 
             _model.eval();
 
-            var oneHotEncode = OneHotEncode(batch);
-            var probs = _model.Forward(oneHotEncode, out v);
-            probs = torch.exp(probs);
+            using var oneHotEncode = OneHotEncode(batch);
+            using var output = _model.Forward(oneHotEncode, out v);
+            using var probs = torch.exp(output);
 
             for (int i = 0; i < probs.shape[1]; i++)
             {
