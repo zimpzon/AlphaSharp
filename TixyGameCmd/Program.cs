@@ -1,22 +1,59 @@
 ﻿using AlphaSharp;
-using AlphaSharp.Interfaces;
 using TixyGame;
 
 namespace TixyGameCmd
 {
     internal static class Program
     {
-        static IGame game = new Tixy(5, 4);
-        static ISkynet skynet = new TixySkynet(game);
-
         static void Run(int id)
         {
+            var args = new Args
+            {
+                ResumeFromCheckpoint = true,
+                Iterations = 100,
+
+                // self-play
+                TrainingSimulationCount = 100,
+                TrainingSimulationMaxMoves = 80,
+                TrainingEpisodeMaxMoves = 80,
+                TrainSelfPlayEpisodes = 10,
+                
+                // net training
+                TrainingEpochs = 10,
+                TrainingLearningRate = 0.001f,
+                TrainingBatchSize = 64,
+                TrainingMaxExamples = 100000,
+                Cpuct = 1.0f,
+
+                // evaluation
+                EvalSimulationCount = 20,
+                EvalSimulationMaxMoves = 50,
+                EvalMaxMoves = 50,
+            };
+
+            //args = new Args
+            //{
+            //    // self-play
+            //    TrainingSimulationCount = 10,
+            //    TrainingSimulationMaxMoves = 10,
+            //    TrainingEpisodeMaxMoves = 10,
+
+            //    // net training
+            //    TrainEpochs = 10,
+            //    TrainLearningRate = 0.001f,
+            //    TrainPlayEpisodes = 10,
+
+            //    // evaluation
+            //    EvalSimulationCount = 20,
+            //    EvalSimulationMaxMoves = 20,
+            //    EvalMaxMoves = 50,
+            //};
+
+            var game = new Tixy(5, 5);
+            var skynet = new TixySkynet(game, args);
+
             var coach = new Coach();
-            coach.Run(game, skynet, "c:\\temp\\zerosharp", new Args {
-                TrainingSimulationCount = 20,
-                TrainingSimulationMaxMoves = 10,
-                TrainingEpisodeMaxMoves = 10,
-            });
+            coach.Run(game, skynet, "c:\\temp\\zerosharp\\zerosharp", args);
 
             //int win1 = 0;
             //int win2 = 0;
