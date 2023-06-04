@@ -1,10 +1,12 @@
 ﻿namespace AlphaSharp
 {
-    internal class TrainingData
+    public class TrainingData
     {
         public byte[] State { get; set; }
         public float[] ActionProbs { get; set; }
         public float Player1Value { get; set; }
+
+        public TrainingData() { }
 
         public TrainingData(byte[] state, float[] actionProbs, float player1Score)
         {

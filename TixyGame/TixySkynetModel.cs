@@ -3,7 +3,7 @@ using TorchSharp.Modules;
 
 namespace TixyGame
 {
-    public class TixySkynetModel : torch.nn.Module
+    public class TixySkynetModel : torch.nn.Module<torch.Tensor, (torch.Tensor, torch.Tensor)>
     {
         private readonly Linear _fc3;
         private readonly Linear _fc4;
@@ -40,17 +40,19 @@ namespace TixyGame
 
             _logSoftmax = torch.nn.LogSoftmax(1);
             _tanh = torch.nn.Tanh();
+
+            RegisterComponents();
         }
 
-        public torch.Tensor Forward(torch.Tensor x, out float v)
+        public override (torch.Tensor, torch.Tensor) forward(torch.Tensor x)
         {
             x = _seq.forward(x);
 
             var value = _fc4.forward(x);
-            v = _tanh.forward(value).ToSingle();
+            var v = _tanh.forward(value);
 
             var probs = _fc3.forward(x);
-            return _logSoftmax.forward(probs);
+            return (_logSoftmax.forward(probs), v);
         }
     }
 }

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Text;
 using System.Text.Json;
 using AlphaSharp.Interfaces;
 using Math = System.Math;
@@ -48,7 +49,7 @@ namespace AlphaSharp
         private readonly byte[] _validActionsTemp;
         private readonly List<SelectedAction> _selectedActions = new();
         private readonly byte[] _state;
-        private readonly Dictionary<long, int> _stateNodeLookup = new();
+        private readonly Dictionary<string, int> _stateNodeLookup = new();
 
         public Mcts(IGame game, ISkynet skynet, Args args)
         {
@@ -66,6 +67,7 @@ namespace AlphaSharp
         {
             _stateNodeLookup.Clear();
             _uniqueStateCount = 0;
+            Array.Clear(_stateNodes);
             Stats = new SimStats();
         }
 
@@ -73,8 +75,8 @@ namespace AlphaSharp
         {
             var sw = Stopwatch.StartNew();
 
-            int simCount = isTraining ? _args.TrainingSimulationCount : _args.PlayingSimulationCount;
-            int explorationMaxMoves = isTraining ? _args.TrainingSimulationMaxMoves: _args.PlayingSimulationMaxMoves;
+            int simCount = isTraining ? _args.TrainingSimulationCount : _args.EvalSimulationCount;
+            int explorationMaxMoves = isTraining ? _args.TrainingSimulationMaxMoves: _args.EvalSimulationMaxMoves;
 
             for (int i = 0; i < simCount; i++)
             {
@@ -135,8 +137,9 @@ namespace AlphaSharp
             {
                 if (_selectedActions.Count >= maxMoves)
                 {
-                    // score is undetermined, use 0.0
-                    BacktrackAndUpdate(_selectedActions, 0.0f);
+                    // score is undetermined, use very small negative value to indicate this.
+                    // we cannot ever use score 0, see loss function for the reason.
+                    BacktrackAndUpdate(_selectedActions, -0.0001f);
                     Stats.MaxMovesReached++;
                     break;
                 }
@@ -197,7 +200,7 @@ namespace AlphaSharp
                     {
                         float actionProbability = action.ActionProbability;
                         if (isFirstMove && isTraining)
-                            actionProbability = action.ActionProbability = (1 - DirichletAmount) * action.ActionProbability + DirichletAmount * _noiseTemp[i];
+                            actionProbability = (1 - DirichletAmount) * action.ActionProbability + DirichletAmount * _noiseTemp[i];
 
                         // if no Q value yet calc confidence without Q
                         float upperConfidence = action.Q == 0 ?
@@ -208,6 +211,8 @@ namespace AlphaSharp
                         {
                             bestUpperConfidence = upperConfidence;
                             selectedAction = i;
+                            var cpy = _state.Clone() as byte[];
+                            _game.ExecutePlayerAction(cpy, selectedAction);
                         }
                     }
                 }
@@ -226,8 +231,8 @@ namespace AlphaSharp
 
         private int GetOrCreateStateNodeFromState(byte[] state, out bool wasCreated)
         {
-            long hash = Hash.ComputeHash(state);
-            if (_stateNodeLookup.TryGetValue(hash, out int idx))
+            string key = Convert.ToBase64String(state);
+            if (_stateNodeLookup.TryGetValue(key, out int idx))
             {
                 Stats.NodesRevisited++;
                 wasCreated = false;
@@ -242,7 +247,7 @@ namespace AlphaSharp
             }
 
             _stateNodes[_uniqueStateCount] = new StateNode(_game.ActionCount);
-            _stateNodeLookup.Add(hash, _uniqueStateCount);
+            _stateNodeLookup.Add(key, _uniqueStateCount);
 
             _uniqueStateCount++;
             Stats.NodesCreated++;

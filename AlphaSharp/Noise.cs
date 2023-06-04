@@ -64,10 +64,5 @@ namespace AlphaSharp
             double theta = 2.0 * Math.PI * u2;
             return r * Math.Sin(theta);
         }
-
-        internal static void AddDirichlet(float[] actionProbsTemp, float[] noiseTemp, object dirichletAmount)
-        {
-            throw new NotImplementedException();
-        }
     }
 }

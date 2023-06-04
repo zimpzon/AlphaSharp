@@ -34,14 +34,16 @@ namespace TixyGame
             ClearPieces(state);
 
             Set(state, 0, 0, TixyPieces.P2.T);
-            Set(state, 1, 0, TixyPieces.P2.I);
-            Set(state, 2, 0, TixyPieces.P2.X);
-            Set(state, 3, 0, TixyPieces.P2.Y);
+            Set(state, 1, 0, TixyPieces.P2.Y);
+            Set(state, 2, 0, TixyPieces.P2.I);
+            Set(state, 3, 0, TixyPieces.P2.X);
+            Set(state, 4, 0, TixyPieces.P2.T);
 
             Set(state, 0, H - 1, TixyPieces.P1.T);
-            Set(state, 1, H - 1, TixyPieces.P1.I);
-            Set(state, 2, H - 1, TixyPieces.P1.X);
-            Set(state, 3, H - 1, TixyPieces.P1.Y);
+            Set(state, 1, H - 1, TixyPieces.P1.Y);
+            Set(state, 2, H - 1, TixyPieces.P1.I);
+            Set(state, 3, H - 1, TixyPieces.P1.X);
+            Set(state, 4, H - 1, TixyPieces.P1.T);
         }
 
         public int GetGameEnded(byte[] state)
@@ -130,7 +132,11 @@ namespace TixyGame
             int idxInLayer = action % (W * H);
             byte piece = state[idxInLayer];
             if (piece == 0)
-                throw new ArgumentException("Invalid action, piece is 0");
+            {
+                PrintState(state, Console.WriteLine);
+                PrintDisplayTextForAction(action, Console.WriteLine);
+                throw new ArgumentException($"Invalid action, piece is 0, action = {action}");
+            }
 
             int dstIdxInLayer = idxInLayer + dx + dy * W;
 

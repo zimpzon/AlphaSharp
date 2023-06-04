@@ -1,4 +1,6 @@
-﻿using AlphaSharp.Interfaces;
+﻿using AlphaSharp;
+using AlphaSharp.Interfaces;
+using System.Text.Json;
 using TorchSharp;
 
 namespace TixyGame
@@ -6,53 +8,128 @@ namespace TixyGame
     public class TixySkynet : ISkynet
     {
         private readonly IGame _game;
+        private readonly int _oneHotEncodedInputSize;
 
         private readonly TixySkynetModel _model;
 
-        public TixySkynet(IGame game)
+        public TixySkynet(IGame game, Args args, string modelFile = null)
         {
             _game = game;
-            torch.set_num_threads(4);
-            torch.set_num_interop_threads(2);
 
-            int oneHotEncodedInputSize = _game.W * _game.H * TixyPieces.NumberOfPieces;
-            _model = new TixySkynetModel(oneHotEncodedInputSize, _game.ActionCount, isTraining: false);
+            _oneHotEncodedInputSize = _game.W * _game.H * TixyPieces.NumberOfPieces;
+            _model = new TixySkynetModel(_oneHotEncodedInputSize, _game.ActionCount, isTraining: false);
+
+            if (!string.IsNullOrEmpty(modelFile))
+            {
+                Console.WriteLine($"Loading model file: {modelFile}...");
+                _model.load(modelFile);
+            }
+            else if (args.ResumeFromCheckpoint)
+            {
+                Console.WriteLine("Loading existing model...");
+                if (File.Exists("c:\\temp\\zerosharp\\tixy-model-post-train-latest.pt"))
+                    _model.load("c:\\temp\\zerosharp\\tixy-model-post-train-latest.pt");
+                else
+                    Console.WriteLine("No existing model found");
+            }
         }
 
-        private static torch.Tensor OneHotEncode(torch.Tensor batch)
+        public void LoadModel(string modelPath)
         {
-            long batchCount = batch.shape[0];
-            long layerSize = batch.shape[1];
-            long pieceCount = TixyPieces.NumberOfPieces;
+            _model.load(modelPath);
+        }
 
-            var oneHotPlanes = torch.zeros(new long[] { batchCount, pieceCount, layerSize }, dtype: torch.float32);
+        private float[] OneHotEncode(byte[] state)
+        {
+            var oneHotEncoded = new float[_oneHotEncodedInputSize];
 
-            for (long batchIdx = 0; batchIdx < batchCount; batchIdx++)
+            for (int i = 0; i < _game.StateSize; i++)
             {
-                for (int i = 1; i <= TixyPieces.NumberOfPieces; i++) // these are the piece types. It sets a 1 in the correct plane for each piece type, for each batch.
+                if (state[i] > 0)
                 {
-                    oneHotPlanes[batchIdx, i - 1] = batch[batchIdx].eq(i); // planes 0..numberOfPieces-1
+                    int idxInLayer = i;
+                    int pieceLayer = TixyPieces.PieceToPlaneIdx(state[i]);
+                    oneHotEncoded[pieceLayer * _game.StateSize + idxInLayer] = 1;
                 }
             }
 
-            return oneHotPlanes.flatten(start_dim: 1);
+            return oneHotEncoded;
         }
 
-        public void Suggest(byte[] state, float[] actionsProbs, out float v)
+        private static torch.Tensor LossProbs(torch.Tensor targets, torch.Tensor outputs)
         {
-            const int BatchSize = 1;
-            using var batch = torch.from_array(state).reshape(BatchSize, state.Length);
+            return -(targets * outputs).sum() / targets.shape[0];
+        }
 
-            torch.no_grad();
+        private static torch.Tensor LossV(torch.Tensor targets, torch.Tensor outputs)
+        {
+            return (targets - outputs.view(-1)).pow(2).sum() / targets.shape[0];
+        }
+
+        public void Train(List<TrainingData> trainingData, Args args, int iteration)
+        {
+            string td = JsonSerializer.Serialize(trainingData);
+            File.WriteAllText($"c:\\temp\\zerosharp\\tixy-training-data-{iteration}.json", td);
+            File.WriteAllText($"c:\\temp\\zerosharp\\tixy-training-data-latest.json", td);
+
+            _model.save($"c:\\temp\\zerosharp\\tixy-model-pre-train-{iteration}.pt");
+            _model.save("c:\\temp\\zerosharp\\tixy-model-pre-train-latest.pt");
+
+            var optimizer = torch.optim.Adam(_model.parameters(), lr: args.TrainingLearningRate);
+
+            for (int epoch = 0; epoch < args.TrainingEpochs; ++epoch)
+            {
+                Console.WriteLine($"Epoch {epoch}");
+                int batchCount = trainingData.Count / args.TrainingBatchSize;
+
+                for (int b = 0; b <= batchCount; ++b)
+                {
+                    var batchIndices = torch.randint(trainingData.Count, args.TrainingBatchSize).data<long>().ToList();
+                    var batch = batchIndices.Select(i => trainingData[(int)i]);
+
+                    var oneHotArray = batch.Select(td => OneHotEncode(td.State)).ToArray();
+                    var desiredProbsArray = batch.Select(td => td.ActionProbs).ToArray();
+                    var desiredVsArray = batch.Select(td => td.Player1Value).ToArray();
+
+                    var oneHotBatchTensor = torch.stack(oneHotArray.Select(a => torch.from_array(a))).reshape(args.TrainingBatchSize, -1);
+                    var desiredProbsBatchTensor = torch.stack(desiredProbsArray.Select(p => torch.from_array(p))).reshape(args.TrainingBatchSize, -1);
+                    var desiredVsBatchTensor = torch.from_array(desiredVsArray);
+
+                    _model.train();
+
+                    var (logProbs, vt) = _model.forward(oneHotBatchTensor);
+
+                    var lossV = LossV(desiredVsBatchTensor, vt);
+                    var lossProbs = LossProbs(desiredProbsBatchTensor, logProbs);
+                    var totalLoss = lossV + lossProbs;
+
+                    optimizer.zero_grad();
+                    totalLoss.backward();
+                    optimizer.step();
+
+                    Console.WriteLine($"Loss: {totalLoss.ToSingle()}, lossV: {lossV.ToSingle()}, lossProbs: {lossProbs.ToSingle()}");
+                }
+            }
+            _model.save($"c:\\temp\\zerosharp\\tixy-model-post-train-{iteration}.pt");
+            _model.save("c:\\temp\\zerosharp\\tixy-model-post-train-latest.pt");
+        }
+
+        public void Suggest(byte[] state, float[] dstActionsProbs, out float v)
+        {
+            using var noGrad = torch.no_grad();
             _model.eval();
 
-            using var oneHotEncode = OneHotEncode(batch);
-            using var output = _model.Forward(oneHotEncode, out v);
-            using var probs = torch.exp(output);
+            var oneHotEncoded = OneHotEncode(state);
+            var oneHotTensor = torch.from_array(oneHotEncoded).reshape(1, oneHotEncoded.Length);
+
+            var (logProbs, vt) = _model.forward(oneHotTensor);
+            v = vt.ToSingle();
+
+            using var probs = torch.exp(logProbs);
 
             for (int i = 0; i < probs.shape[1]; i++)
             {
-                actionsProbs[i] = probs[0, i].ToSingle();
+                dstActionsProbs[i] = probs[0, i].ToSingle();
             }
         }
     }

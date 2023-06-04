@@ -1,23 +1,34 @@
 ﻿using AlphaSharp.Interfaces;
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Text.Json;
 
 namespace AlphaSharp
 {
     public class Coach
     {
-        private readonly List<TrainingData> _trainingData = new ();
+        private List<TrainingData> _trainingData = new();
 
-        public void Run(IGame game, ISkynet skynet, string tempFolder, Args args)
+        public void Run(IGame game, ISkynet skynet, ISkynet evaluationSkynet, string tempFolder, Args args)
         {
-
-            for (int iter = 0; iter < args.SelfPlayIterations; iter++)
+            if (args.ResumeFromCheckpoint)
             {
-                Console.WriteLine($"--- starting iteration {iter + 1}/{args.SelfPlayIterations} ---");
+                Console.WriteLine("Loading trainingdata...");
+                if (File.Exists("c:\\temp\\zerosharp\\tixy-training-data-latest.json"))
+                    _trainingData = JsonSerializer.Deserialize<List<TrainingData>>(File.ReadAllText("c:\\temp\\zerosharp\\tixy-training-data-latest.json"));
+                else
+                    Console.WriteLine("No existing trainingdata found");
+            }
 
-                for (int epi = 0; epi < args.SelfPlayEpisodes; epi++)
+            for (int iter = 0; iter < args.Iterations; iter++)
+            {
+                Console.WriteLine($"--- starting iteration {iter + 1}/{args.Iterations} ---");
+
+                // Self-play episodes
+                for (int epi = 0; epi < args.TrainSelfPlayEpisodes; epi++)
                 {
-                    Console.WriteLine($"starting episode {epi + 1}/{args.SelfPlayEpisodes}");
+                    Console.WriteLine($"starting episode {epi + 1}/{args.TrainSelfPlayEpisodes}");
 
                     var episodeTrainingData = RunEpisode(game, skynet, args);
                     _trainingData.AddRange(episodeTrainingData);
@@ -27,18 +38,91 @@ namespace AlphaSharp
                         _trainingData.RemoveRange(0, _trainingData.Count - args.TrainingMaxExamples);
                 }
 
-                Train();
-                SelfPlay();
+                Train(_trainingData, skynet, args, iter);
+
+                EvaluateModel(game, skynet, evaluationSkynet, args);
             }
-            // add output training examples from all episodes to global training set.
-            // train skynet on global training set.
-            // run self play to accept or reject new model.
+        }
+
+        private void EvaluateModel(IGame game, ISkynet skynet, ISkynet evaluationSkynet, Args args)
+        {
+            int newWon = 0;
+            int oldWon = 0;
+            int evalDraw = 0;
+            evaluationSkynet.LoadModel("c:\\temp\\zerosharp\\tixy-model-pre-train-latest.pt");
+
+            for (int i = 0; i < 10; ++i)
+            {
+                var mctsPlayerOld = new MctsPlayer(game, evaluationSkynet, args);
+                var mctsPlayerNew = new MctsPlayer(game, skynet, args);
+                var oneVsOne = new OneVsOne(game, mctsPlayerNew, mctsPlayerOld);
+                int result = oneVsOne.Run(args.EvalSimulationMaxMoves);
+                if (result == 0)
+                    evalDraw++;
+                else if (result == 1)
+                    newWon++;
+                else if (result == -1)
+                    oldWon++;
+
+                Console.WriteLine($"new vs old model: newWon: {newWon}, oldWon: {oldWon}, draw: {evalDraw}");
+            }
+
+            bool newIsBetter = newWon > oldWon;
+            if (newIsBetter)
+            {
+                Console.WriteLine("new model is better, keeping it");
+            }
+            else
+            {
+                Console.WriteLine("old model is better, dropping new model");
+                skynet.LoadModel("c:\\temp\\zerosharp\\tixy-model-pre-train-latest.pt");
+            }
+
+            //int oneWon = 0;
+            //int twoWon = 0;
+            //int draw = 0;
+
+            //for (int i = 0; i < 10; ++i)
+            //{
+            //    var randomPlayer = new RandomPlayer(game);
+            //    var mctsPlayer = new MctsPlayer(game, skynet, args);
+            //    var oneVsOne = new OneVsOne(game, randomPlayer, mctsPlayer);
+            //    int result = oneVsOne.Run(args.EvalSimulationMaxMoves);
+            //    if (result == 0)
+            //        draw++;
+            //    else if (result == 1)
+            //        oneWon++;
+            //    else if (result == -1)
+            //        twoWon++;
+
+            //    Console.WriteLine($"AI as player2: aiWon: {oneWon}, randomWon: {twoWon}, draw: {draw}");
+            //}
+
+            //for (int i = 0; i < 10; ++i)
+            //{
+            //    var randomPlayer = new RandomPlayer(game);
+            //    var mctsPlayer = new MctsPlayer(game, skynet, args);
+            //    var oneVsOne = new OneVsOne(game, mctsPlayer, randomPlayer);
+            //    int result = oneVsOne.Run(args.EvalSimulationMaxMoves);
+            //    if (result == 0)
+            //        draw++;
+            //    else if (result == 1)
+            //        oneWon++;
+            //    else if (result == -1)
+            //        twoWon++;
+
+            //    Console.WriteLine($"AI as player1: aiWon: {oneWon}, randomWon: {twoWon}, draw: {draw}");
+            //}
+        }
+
+        private void Train(List<TrainingData> trainingData, ISkynet skynet, Args args, int iteration)
+        {
+            skynet.Train(trainingData, args, iteration);
         }
 
         private List<TrainingData> RunEpisode(IGame game, ISkynet skynet, Args args)
         {
             var state = new byte[game.StateSize];
-            var actions = new byte[game.ActionCount];
             var mcts = new Mcts(game, skynet, args);
 
             var trainingData = new List<TrainingData>();
@@ -57,8 +141,8 @@ namespace AlphaSharp
                     break;
                 }
 
-                game.GetValidActions(state, actions);
                 var probs = mcts.GetActionProbs(state, isTraining: true);
+
                 var sym = game.GetStateSymmetries(state, probs);
                 foreach (var s in sym)
                     trainingData.Add(new TrainingData(s.Item1, s.Item2, currentPlayer));
@@ -70,7 +154,13 @@ namespace AlphaSharp
 
                 gameResult = game.GetGameEnded(state);
                 if (gameResult != 0)
+                {
+                    Console.Write("end state:");
+                    game.PrintState(state, Console.WriteLine);
+                    Console.Write("winning move: ");
+                    game.PrintDisplayTextForAction(selectedAction, Console.WriteLine);
                     break;
+                }
 
                 game.FlipStateToNextPlayer(state);
 
@@ -87,17 +177,6 @@ namespace AlphaSharp
             }
 
             return trainingData;
-        }
-
-        private void Train()
-        {
-            // train skynet on global training set.
-        }
-
-        private void SelfPlay()
-        {
-            // play x time against previous model. In parallel!
-            // return result (win/loss/draw).
         }
     }
 }

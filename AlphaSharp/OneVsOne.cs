@@ -33,9 +33,6 @@ namespace AlphaSharp
                 _game.GetValidActions(state, actions);
                 int selectedAction = currentPlayer.PickAction(state);
 
-                //_game.PrintState(state, (s) => Debug.WriteLine(s));
-                //_game.PrintDisplayTextForAction(selectedAction, (s) => Debug.WriteLine(s));
-
                 _game.ExecutePlayerAction(state, selectedAction);
                 int gameResult = _game.GetGameEnded(state);
                 if (gameResult != 0)
