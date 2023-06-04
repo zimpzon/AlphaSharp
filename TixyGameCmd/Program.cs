@@ -1,5 +1,6 @@
 ﻿using AlphaSharp;
 using TixyGame;
+using TorchSharp;
 
 namespace TixyGameCmd
 {
@@ -13,10 +14,10 @@ namespace TixyGameCmd
                 Iterations = 100,
 
                 // self-play
-                TrainingSimulationCount = 100,
-                TrainingSimulationMaxMoves = 80,
-                TrainingEpisodeMaxMoves = 80,
-                TrainSelfPlayEpisodes = 10,
+                TrainingSimulationCount = 200,
+                TrainingSimulationMaxMoves = 100,
+                TrainingEpisodeMaxMoves = 100,
+                TrainSelfPlayEpisodes = 5,
                 
                 // net training
                 TrainingEpochs = 10,
@@ -26,9 +27,9 @@ namespace TixyGameCmd
                 Cpuct = 1.0f,
 
                 // evaluation
-                EvalSimulationCount = 20,
-                EvalSimulationMaxMoves = 50,
-                EvalMaxMoves = 50,
+                EvalSimulationCount = 100,
+                EvalSimulationMaxMoves = 80,
+                EvalMaxMoves = 80,
             };
 
             //args = new Args
@@ -49,11 +50,15 @@ namespace TixyGameCmd
             //    EvalMaxMoves = 50,
             //};
 
+            torch.set_num_threads(1);
+            torch.set_num_interop_threads(2);
+
             var game = new Tixy(5, 5);
             var skynet = new TixySkynet(game, args);
+            var evaluationSkynet = new TixySkynet(game, args);
 
             var coach = new Coach();
-            coach.Run(game, skynet, "c:\\temp\\zerosharp\\zerosharp", args);
+            coach.Run(game, skynet, evaluationSkynet, "c:\\temp\\zerosharp\\zerosharp", args);
 
             //int win1 = 0;
             //int win2 = 0;
