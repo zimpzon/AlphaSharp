@@ -13,9 +13,9 @@ namespace TixyGameCmd
         {
             var coach = new Coach();
             coach.Run(game, skynet, "c:\\temp\\zerosharp", new Args {
-                TrainingSimulationCount = 10,
+                TrainingSimulationCount = 20,
                 TrainingSimulationMaxMoves = 10,
-                TrainingEpisodeMaxMoves = 10
+                TrainingEpisodeMaxMoves = 10,
             });
 
             //int win1 = 0;
