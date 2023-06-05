@@ -14,9 +14,9 @@ namespace TixyGameCmd
                 Iterations = 1000,
 
                 // self-play
-                SelfPlaySimulationCount = 200,
-                SelfPlaySimulationMaxMoves = 100,
-                SelfPlayEpisodeMaxMoves = 100,
+                SelfPlaySimulationCount = 100,
+                SelfPlaySimulationMaxMoves = 50,
+                SelfPlayEpisodeMaxMoves = 50,
                 selfPlayEpisodes = 10,
                 
                 // net training
@@ -27,8 +27,8 @@ namespace TixyGameCmd
                 Cpuct = 1.0f,
 
                 // evaluation
-                EvalSimulationCount = 200,
-                EvalSimulationMaxMoves = 80,
+                EvalSimulationCount = 100,
+                EvalSimulationMaxMoves = 50,
                 EvalMaxMoves = 50,
             };
 

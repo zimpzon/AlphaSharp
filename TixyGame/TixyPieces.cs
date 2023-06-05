@@ -44,7 +44,10 @@ namespace TixyGame
         public const int NumberOfPieces = 8;
 
         public static int PieceToPlaneIdx(int piece)
-            => piece > 200 ? piece - 201 : piece - 101;
+            => piece > 200 ? piece - (201 - 4) : piece - 101;
+
+        public static int PlaneIdxToPiece(int planeIdx)
+            => planeIdx < 4 ? planeIdx + 101 : planeIdx + (201 - 4);
 
         public static class P1
         {

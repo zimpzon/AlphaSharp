@@ -84,7 +84,6 @@ namespace AlphaSharp
             var stateNode = _stateNodes[nodeIdx];
 
             var probs = new float[stateNode.Actions.Length];
-
             if (!isSelfPlay)
             {
                 int selectedAction = ActionUtil.PickActionByHighestVisitCount(stateNode.Actions);
@@ -118,7 +117,7 @@ namespace AlphaSharp
             return probs;
         }
 
-        private void ExploreGameTree(byte[] startingState, int maxMoves, bool isTraining)
+        private void ExploreGameTree(byte[] startingState, int maxMoves, bool isSelfPlay)
         {
             Array.Copy(startingState, _state, _state.Length);
 
@@ -182,7 +181,7 @@ namespace AlphaSharp
 
                 bool isFirstMove = _selectedActions.Count == 0;
 
-                if (isFirstMove && isTraining)
+                if (isFirstMove && isSelfPlay)
                     Noise.CreateDirichlet(_noiseTemp, DirichletAmount);
 
                 for (int i = 0; i < stateNode.Actions.Length; i++)
@@ -191,7 +190,7 @@ namespace AlphaSharp
                     if (action.IsValidMove != 0)
                     {
                         float actionProbability = action.ActionProbability;
-                        if (isFirstMove && isTraining)
+                        if (isFirstMove && isSelfPlay)
                             actionProbability = (1 - DirichletAmount) * action.ActionProbability + DirichletAmount * _noiseTemp[i];
 
                         // if no Q value yet calc confidence without Q

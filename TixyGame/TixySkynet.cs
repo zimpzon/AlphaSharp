@@ -54,6 +54,23 @@ namespace TixyGame
                 }
             }
 
+            // verify one-hot encoding
+            //int cnt = 0;
+            //for (int i = 0; i < oneHotEncoded.Length; i++)
+            //{
+            //    if (oneHotEncoded[i] != 0)
+            //    {
+            //        int ii = i % 25;
+            //        cnt++;
+            //        int x = ii % _game.W;
+            //        int y = ii / _game.W;
+            //        int p = TixyPieces.PlaneIdxToPiece(i / _game.StateSize);
+            //        int l = state[y * _game.W + x];
+            //        if (l != p)
+            //            Console.WriteLine("wut");
+            //    }
+            //}
+
             return oneHotEncoded;
         }
 

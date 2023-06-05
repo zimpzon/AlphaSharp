@@ -57,56 +57,56 @@ namespace AlphaSharp
 
         private void EvaluateModel(IGame game, ISkynet skynet, ISkynet evaluationSkynet, Args args)
         {
-            //int newWon = 0;
-            //int oldWon = 0;
-            //int evalDraw = 0;
-            //evaluationSkynet.LoadModel("c:\\temp\\zerosharp\\tixy-model-pre-train-latest.pt");
+            int newWon = 0;
+            int oldWon = 0;
+            int evalDraw = 0;
+            evaluationSkynet.LoadModel("c:\\temp\\zerosharp\\tixy-model-pre-train-latest.pt");
 
-            //Console.WriteLine("evaluating new model against previous model...");
+            Console.WriteLine("evaluating new model against previous model...");
 
-            //for (int i = 0; i < 20; ++i)
-            //{
-            //    var mctsPlayerOld = new MctsPlayer(game, evaluationSkynet, args);
-            //    var mctsPlayerNew = new MctsPlayer(game, skynet, args);
-            //    var oneVsOne = new OneVsOne(game, mctsPlayerNew, mctsPlayerOld);
-            //    int result = oneVsOne.Run(args.EvalSimulationMaxMoves);
-            //    if (result == 0)
-            //        evalDraw++;
-            //    else if (result == 1)
-            //        newWon++;
-            //    else if (result == -1)
-            //        oldWon++;
-            //}
+            for (int i = 0; i < 20; ++i)
+            {
+                var mctsPlayerOld = new MctsPlayer(game, evaluationSkynet, args);
+                var mctsPlayerNew = new MctsPlayer(game, skynet, args);
+                var oneVsOne = new OneVsOne(game, mctsPlayerNew, mctsPlayerOld);
+                int result = oneVsOne.Run(args.EvalSimulationMaxMoves);
+                if (result == 0)
+                    evalDraw++;
+                else if (result == 1)
+                    newWon++;
+                else if (result == -1)
+                    oldWon++;
+            }
 
-            //Console.WriteLine($"new as player 1: newWon: {newWon}, oldWon: {oldWon}, draw: {evalDraw}");
+            Console.WriteLine($"new as player 1: newWon: {newWon}, oldWon: {oldWon}, draw: {evalDraw}");
 
-            //for (int i = 0; i < 20; ++i)
-            //{
-            //    var mctsPlayerOld = new MctsPlayer(game, evaluationSkynet, args);
-            //    var mctsPlayerNew = new MctsPlayer(game, skynet, args);
-            //    var oneVsOne = new OneVsOne(game, mctsPlayerOld, mctsPlayerNew);
-            //    int result = oneVsOne.Run(args.EvalSimulationMaxMoves);
-            //    if (result == 0)
-            //        evalDraw++;
-            //    else if (result == 1)
-            //        oldWon++;
-            //    else if (result == -1)
-            //        newWon++;
-            //}
+            for (int i = 0; i < 20; ++i)
+            {
+                var mctsPlayerOld = new MctsPlayer(game, evaluationSkynet, args);
+                var mctsPlayerNew = new MctsPlayer(game, skynet, args);
+                var oneVsOne = new OneVsOne(game, mctsPlayerOld, mctsPlayerNew);
+                int result = oneVsOne.Run(args.EvalSimulationMaxMoves);
+                if (result == 0)
+                    evalDraw++;
+                else if (result == 1)
+                    oldWon++;
+                else if (result == -1)
+                    newWon++;
+            }
 
-            //Console.WriteLine($"total: newWon: {newWon}, oldWon: {oldWon}, draw: {evalDraw}");
+            Console.WriteLine($"total: newWon: {newWon}, oldWon: {oldWon}, draw: {evalDraw}");
 
-            //bool newIsBetter = newWon > oldWon;
-            //if (newIsBetter)
-            //{
-            //    Console.WriteLine("new model is better, keeping it");
-            //    skynet.SaveModel("c:\\temp\\zerosharp\\tixy-model-best.pt");
-            //}
-            //else
-            //{
-            //    Console.WriteLine("old model is better, dropping new model");
-            //    skynet.LoadModel("c:\\temp\\zerosharp\\tixy-model-pre-train-latest.pt");
-            //}
+            bool newIsBetter = newWon > oldWon;
+            if (newIsBetter)
+            {
+                Console.WriteLine("new model is better, keeping it");
+                skynet.SaveModel("c:\\temp\\zerosharp\\tixy-model-best.pt");
+            }
+            else
+            {
+                Console.WriteLine("old model is better, dropping new model");
+                skynet.LoadModel("c:\\temp\\zerosharp\\tixy-model-pre-train-latest.pt");
+            }
 
             int oneWon = 0;
             int twoWon = 0;
@@ -125,7 +125,7 @@ namespace AlphaSharp
                 else if (result == -1)
                     twoWon++;
             }
-            Console.WriteLine($"AI as player2: aiWon: {oneWon}, randomWon: {twoWon}, draw: {draw}");
+            Console.WriteLine($"AI as player2: aiWon: {twoWon}, randomWon: {oneWon}, draw: {draw}");
 
             oneWon = 0;
             twoWon = 0;
@@ -173,7 +173,7 @@ namespace AlphaSharp
                 {
                     // a value of 0 will f the loss calculation up since it does a multiply with value.
                     // so use a small non-zero value instead.
-                    gameResult = -0.0001f;
+                    gameResult = 0;
 
                     // just keep a few samples from draws so we never risk 0 samples
                     trainingData = trainingData.Take(10).ToList();
