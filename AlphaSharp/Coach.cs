@@ -24,6 +24,13 @@ namespace AlphaSharp
 
             for (int iter = 0; iter < args.Iterations; iter++)
             {
+                if (args.ResumeFromEval && iter == 0)
+                {
+                    Console.WriteLine("Skipping training and evaluating existing model...");
+                    EvaluateModel(game, skynet, evaluationSkynet, args);
+                    continue;
+                }
+
                 Console.WriteLine($"--- starting iteration {iter + 1}/{args.Iterations} ---");
 
                 // Self-play episodes
@@ -158,6 +165,8 @@ namespace AlphaSharp
             float currentPlayer = 1;
             float gameResult;
 
+            var rnd = new Random();
+
             while (true)
             {
                 if (moves++ >= args.TrainingEpisodeMaxMoves)
@@ -166,8 +175,8 @@ namespace AlphaSharp
                     // so use a small non-zero value instead.
                     gameResult = -0.0001f;
 
-                    // just keep a single sample from draws so we never risk 0 samples
-                    trainingData = trainingData.Take(1).ToList();
+                    // just keep a few samples from draws so we never risk 0 samples
+                    trainingData = trainingData.Take(10).ToList();
                     break;
                 }
 
@@ -179,7 +188,7 @@ namespace AlphaSharp
 
                 trainingData.Add(new TrainingData(state, probs, currentPlayer));
 
-                int selectedAction = ArrayUtil.ArgMax(probs);
+                int selectedAction = ArrayUtil.WeightedChoice(rnd, probs);
                 game.ExecutePlayerAction(state, selectedAction);
 
                 //game.PrintState(state, Console.WriteLine);

@@ -1,4 +1,5 @@
 ﻿using AlphaSharp.Interfaces;
+using System;
 
 namespace AlphaSharp
 {
@@ -34,6 +35,13 @@ namespace AlphaSharp
                 int selectedAction = currentPlayer.PickAction(state);
 
                 _game.ExecutePlayerAction(state, selectedAction);
+
+                var cpy = (byte[])state.Clone();
+                if (currentPlayer == _player2)
+                    _game.FlipStateToNextPlayer(cpy);
+
+                _game.PrintState(cpy, Console.WriteLine);
+
                 int gameResult = _game.GetGameEnded(state);
                 if (gameResult != 0)
                     return currentPlayer == _player1 ? 1 : -1;

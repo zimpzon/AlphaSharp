@@ -6,6 +6,22 @@ namespace AlphaSharp
 {
     public static class ArrayUtil
     {
+        public static int WeightedChoice(Random random, float[] probabilities)
+        {
+            var total = probabilities.Sum();
+            var randomValue = random.NextDouble() * total;
+
+            for (int i = 0; i < probabilities.Length; i++)
+            {
+                randomValue -= probabilities[i];
+                if (randomValue <= 0)
+                    return i;
+            }
+
+            // This should never happen if the probabilities sum to 1
+            throw new InvalidOperationException("Invalid probabilities");
+        }
+
         public static int ArgMax(float[] arr)
         {
             if (arr.Length == 0)

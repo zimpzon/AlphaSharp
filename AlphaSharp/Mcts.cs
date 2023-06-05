@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Text;
 using System.Text.Json;
 using AlphaSharp.Interfaces;
 using Math = System.Math;
@@ -126,7 +125,7 @@ namespace AlphaSharp
             _selectedActions.Clear();
 
             int player = 1; // we always start from the perspective of player 1
-            const float DirichletAmount = 0.8f;
+            const float DirichletAmount = 0.25f;
 
             int round = 0;
             while (true)

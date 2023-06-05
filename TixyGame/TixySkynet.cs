@@ -89,7 +89,6 @@ namespace TixyGame
 
             for (int epoch = 0; epoch < args.TrainingEpochs; ++epoch)
             {
-                Console.WriteLine($"Epoch {epoch}");
                 int batchCount = trainingData.Count / args.TrainingBatchSize;
 
                 float totalLossV = 0;

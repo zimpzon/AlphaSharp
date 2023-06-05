@@ -3,6 +3,7 @@
     public class Args
     {
         public bool ResumeFromCheckpoint = true;
+        public bool ResumeFromEval = false;
         public int Iterations = 100;
 
         public int TrainSelfPlayEpisodes = 10;
