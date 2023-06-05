@@ -16,8 +16,8 @@ namespace TixyGameCmd
                 // self-play
                 TrainingSimulationCount = 200,
                 TrainingSimulationMaxMoves = 100,
-                TrainingEpisodeMaxMoves = 100,
-                TrainSelfPlayEpisodes = 5,
+                TrainingEpisodeMaxMoves = 150,
+                TrainSelfPlayEpisodes = 20,
                 
                 // net training
                 TrainingEpochs = 10,
@@ -50,8 +50,8 @@ namespace TixyGameCmd
             //    EvalMaxMoves = 50,
             //};
 
-            torch.set_num_threads(1);
-            torch.set_num_interop_threads(2);
+            //torch.set_num_threads(1);
+            //torch.set_num_interop_threads(2);
 
             var game = new Tixy(5, 5);
             var skynet = new TixySkynet(game, args);

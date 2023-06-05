@@ -116,21 +116,19 @@ namespace TixyGame
 
         public void Suggest(byte[] state, float[] dstActionsProbs, out float v)
         {
-            using var noGrad = torch.no_grad();
             _model.eval();
+            using var x = torch.no_grad();
 
             var oneHotEncoded = OneHotEncode(state);
             var oneHotTensor = torch.from_array(oneHotEncoded).reshape(1, oneHotEncoded.Length);
-
             var (logProbs, vt) = _model.forward(oneHotTensor);
+
             v = vt.ToSingle();
 
-            using var probs = torch.exp(logProbs);
+            var probs = torch.exp(logProbs);
 
-            for (int i = 0; i < probs.shape[1]; i++)
-            {
-                dstActionsProbs[i] = probs[0, i].ToSingle();
-            }
+            var data = probs.flatten().data<float>();
+            data.CopyTo(dstActionsProbs);
         }
     }
 }

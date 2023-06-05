@@ -32,18 +32,13 @@ namespace AlphaSharp
             public int ActionIdx;
         }
 
-        // states won't be reused much in a single simulation when moving forward, but when simulation ended
-        // we backtrack and update all Q values. This means only very few actions are ever needed, so we waste
-        // a lot of memory allocating 200. (200 * ~20 = 4000 per state) maybe 40mb for whole simulation. Meh, fine
-        // my back and forth endless loop was not fixed by visitcounts since they were updated on the way back.
-
         public SimStats Stats { get; private set; } = new();
 
         private readonly IGame _game;
         private readonly ISkynet _skynet;
         private readonly Args _args;
-        private StateNode[] _stateNodes = new StateNode[10000];
-        private int _uniqueStateCount = 0;
+        private StateNode[] _stateNodes = new StateNode[100000];
+        private int _stateIdx = 0;
         private readonly float[] _actionProbsTemp;
         private readonly float[] _noiseTemp;
         private readonly byte[] _validActionsTemp;
@@ -66,7 +61,7 @@ namespace AlphaSharp
         public void Reset()
         {
             _stateNodeLookup.Clear();
-            _uniqueStateCount = 0;
+            _stateIdx = 0;
             Array.Clear(_stateNodes);
             Stats = new SimStats();
         }
@@ -133,12 +128,13 @@ namespace AlphaSharp
             int player = 1; // we always start from the perspective of player 1
             const float DirichletAmount = 0.8f;
 
+            int round = 0;
             while (true)
             {
-                if (_selectedActions.Count >= maxMoves)
+                if (round++ >= maxMoves)
                 {
                     // score is undetermined, use very small negative value to indicate this.
-                    // we cannot ever use score 0, see loss function for the reason.
+                    // we may not ever use score 0, see loss function for the reason (multiply).
                     BacktrackAndUpdate(_selectedActions, -0.0001f);
                     Stats.MaxMovesReached++;
                     break;
@@ -176,10 +172,7 @@ namespace AlphaSharp
                     }
 
                     BacktrackAndUpdate(_selectedActions, v);
-
-                    player = 1;
-                    Array.Copy(startingState, _state, _state.Length);
-                    continue;
+                    break;
                 }
 
                 // revisited node, pick the action with the highest upper confidence bound
@@ -240,20 +233,20 @@ namespace AlphaSharp
             }
 
             // Does not exist, create it and add to lookup
-            if (_uniqueStateCount >= _stateNodes.Length)
+            if (_stateIdx >= _stateNodes.Length)
             {
                 Console.WriteLine($"expanding stateNode array from {_stateNodes.Length} to {_stateNodes.Length * 2}");
                 Array.Resize(ref _stateNodes, _stateNodes.Length * 2);
             }
 
-            _stateNodes[_uniqueStateCount] = new StateNode(_game.ActionCount);
-            _stateNodeLookup.Add(key, _uniqueStateCount);
+            _stateNodes[_stateIdx] = new StateNode(_game.ActionCount);
+            _stateNodeLookup.Add(key, _stateIdx);
 
-            _uniqueStateCount++;
+            _stateIdx++;
             Stats.NodesCreated++;
             wasCreated = true;
 
-            return _uniqueStateCount - 1;
+            return _stateIdx - 1;
         }
 
         private void BacktrackAndUpdate(List<SelectedAction> selectedActions, float v)
