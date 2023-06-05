@@ -13,7 +13,7 @@ namespace TixyGame
         private readonly LogSoftmax _logSoftmax;
         private readonly Tanh _tanh;
 
-        public TixySkynetModel(int inputSize, int outputSize, bool isTraining) : base("tixy")
+        public TixySkynetModel(int inputSize, int outputSize) : base("tixy")
         {
             const float DropOut = 0.3f;
             const int size1 = 1024;
@@ -30,18 +30,22 @@ namespace TixyGame
                 ("relu2", torch.nn.ReLU()),
                 ("drop2", torch.nn.Dropout(DropOut)));
 
-            _seq.train(isTraining);
-
             _fc3 = torch.nn.Linear(512, outputSize);
-            _fc3.train(isTraining);
-
             _fc4 = torch.nn.Linear(512, 1);
-            _fc4.train(isTraining);
 
             _logSoftmax = torch.nn.LogSoftmax(1);
             _tanh = torch.nn.Tanh();
 
+            SetIsTraining(false);
+
             RegisterComponents();
+        }
+
+        public void SetIsTraining(bool isTraining)
+        {
+            _seq.train(isTraining);
+            _fc3.train(isTraining);
+            _fc4.train(isTraining);
         }
 
         public override (torch.Tensor, torch.Tensor) forward(torch.Tensor x)

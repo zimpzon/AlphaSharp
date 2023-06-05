@@ -13,9 +13,9 @@ namespace TixyGameCmd
                 Iterations = 1000,
 
                 // self-play
-                TrainingSimulationCount = 200,
-                TrainingSimulationMaxMoves = 100,
-                TrainingEpisodeMaxMoves = 150,
+                TrainingSimulationCount = 300,
+                TrainingSimulationMaxMoves = 50,
+                TrainingEpisodeMaxMoves = 50,
                 TrainSelfPlayEpisodes = 20,
                 
                 // net training
@@ -27,8 +27,8 @@ namespace TixyGameCmd
 
                 // evaluation
                 EvalSimulationCount = 100,
-                EvalSimulationMaxMoves = 80,
-                EvalMaxMoves = 80,
+                EvalSimulationMaxMoves = 50,
+                EvalMaxMoves = 50,
             };
 
             //args = new Args
@@ -57,7 +57,7 @@ namespace TixyGameCmd
             var evaluationSkynet = new TixySkynet(game, args);
 
             var coach = new Coach();
-            coach.Run(game, skynet, evaluationSkynet, "c:\\temp\\zerosharp\\zerosharp", args);
+            coach.Run(game, skynet, evaluationSkynet, args);
         }
 
         static void Main(string[] _)

@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 
 namespace AlphaSharp
@@ -10,7 +11,7 @@ namespace AlphaSharp
     {
         private List<TrainingData> _trainingData = new();
 
-        public void Run(IGame game, ISkynet skynet, ISkynet evaluationSkynet, string tempFolder, Args args)
+        public void Run(IGame game, ISkynet skynet, ISkynet evaluationSkynet, Args args)
         {
             if (args.ResumeFromCheckpoint)
             {
@@ -35,7 +36,10 @@ namespace AlphaSharp
 
                     // remove oldest examples first if over the limit
                     if (_trainingData.Count > args.TrainingMaxExamples)
+                    {
+                        Console.WriteLine($"removing {_trainingData.Count - args.TrainingMaxExamples} oldest trainingData examples");
                         _trainingData.RemoveRange(0, _trainingData.Count - args.TrainingMaxExamples);
+                    }
                 }
 
                 Train(_trainingData, skynet, args, iter);
@@ -152,13 +156,18 @@ namespace AlphaSharp
 
             int moves = 0;
             float currentPlayer = 1;
-            int gameResult;
+            float gameResult;
 
             while (true)
             {
                 if (moves++ >= args.TrainingEpisodeMaxMoves)
                 {
-                    gameResult = 0;
+                    // a value of 0 will f the loss calculation up since it does a multiply with value.
+                    // so use a small non-zero value instead.
+                    gameResult = -0.0001f;
+
+                    // just keep a single sample from draws so we never risk 0 samples
+                    trainingData = trainingData.Take(1).ToList();
                     break;
                 }
 
@@ -172,6 +181,8 @@ namespace AlphaSharp
 
                 int selectedAction = ArrayUtil.ArgMax(probs);
                 game.ExecutePlayerAction(state, selectedAction);
+
+                //game.PrintState(state, Console.WriteLine);
 
                 gameResult = game.GetGameEnded(state);
                 if (gameResult != 0)
@@ -188,13 +199,13 @@ namespace AlphaSharp
                 currentPlayer *= -1;
             }
 
-            Console.WriteLine("episode result: " + gameResult * currentPlayer + ", moves: " + (moves - 1));
-            // adjust training with the final game result
+            gameResult *= currentPlayer;
+
+            Console.WriteLine("episode result: " + gameResult + ", moves: " + (moves - 1));
+
             for (int i = 0; i < trainingData.Count; i++)
             {
-                // gameResult is 0 (draw) or 1 (since board is seen from player 1's perspective when moving).
-                // so the actual result is gained by just multiplying with the value of currentPlayer which is either 1 or -1.
-                trainingData[i].Player1Value = gameResult * trainingData[i].Player1Value * -1;
+                trainingData[i].Player1Value = trainingData[i].Player1Value * gameResult;
             }
 
             return trainingData;

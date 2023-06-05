@@ -133,9 +133,8 @@ namespace AlphaSharp
             {
                 if (round++ >= maxMoves)
                 {
-                    // score is undetermined, use very small negative value to indicate this.
-                    // we may not ever use score 0, see loss function for the reason (multiply).
-                    BacktrackAndUpdate(_selectedActions, -0.0001f);
+                    // too many moves = draw
+                    BacktrackAndUpdate(_selectedActions, 0.0f);
                     Stats.MaxMovesReached++;
                     break;
                 }
