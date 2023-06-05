@@ -12,23 +12,18 @@ namespace TixyGame
 
         private readonly TixySkynetModel _model;
 
-        public TixySkynet(IGame game, Args args, string modelFile = null)
+        public TixySkynet(IGame game, Args args)
         {
             _game = game;
 
             _oneHotEncodedInputSize = _game.W * _game.H * TixyPieces.NumberOfPieces;
             _model = new TixySkynetModel(_oneHotEncodedInputSize, _game.ActionCount, isTraining: false);
 
-            if (!string.IsNullOrEmpty(modelFile))
-            {
-                Console.WriteLine($"Loading model file: {modelFile}...");
-                _model.load(modelFile);
-            }
-            else if (args.ResumeFromCheckpoint)
+            if (args.ResumeFromCheckpoint)
             {
                 Console.WriteLine("Loading existing model...");
-                if (File.Exists("c:\\temp\\zerosharp\\tixy-model-post-train-latest.pt"))
-                    _model.load("c:\\temp\\zerosharp\\tixy-model-post-train-latest.pt");
+                if (File.Exists("c:\\temp\\zerosharp\\tixy-model-best.pt"))
+                    _model.load("c:\\temp\\zerosharp\\tixy-model-best.pt");
                 else
                     Console.WriteLine("No existing model found");
             }
@@ -37,6 +32,11 @@ namespace TixyGame
         public void LoadModel(string modelPath)
         {
             _model.load(modelPath);
+        }
+
+        public void SaveModel(string modelPath)
+        {
+            _model.save(modelPath);
         }
 
         private float[] OneHotEncode(byte[] state)
@@ -82,7 +82,10 @@ namespace TixyGame
                 Console.WriteLine($"Epoch {epoch}");
                 int batchCount = trainingData.Count / args.TrainingBatchSize;
 
-                for (int b = 0; b <= batchCount; ++b)
+                float totalLossV = 0;
+                float totalLossProbs = 0;
+
+                for (int b = 0; b < batchCount; ++b)
                 {
                     var batchIndices = torch.randint(trainingData.Count, args.TrainingBatchSize).data<long>().ToList();
                     var batch = batchIndices.Select(i => trainingData[(int)i]);
@@ -107,9 +110,16 @@ namespace TixyGame
                     totalLoss.backward();
                     optimizer.step();
 
-                    Console.WriteLine($"Loss: {totalLoss.ToSingle()}, lossV: {lossV.ToSingle()}, lossProbs: {lossProbs.ToSingle()}");
+                    totalLossV += lossV.ToSingle();
+                    totalLossProbs += lossProbs.ToSingle();
+
+                    if (epoch == 0 && b == 0)
+                        Console.WriteLine($"epoch start: {epoch + 1} Loss: {totalLossV + totalLossProbs}, lossV: {totalLossV}, lossProbs: {totalLossProbs}");
                 }
+
+                Console.WriteLine($"epoch end: {epoch + 1} Loss: {(totalLossV + totalLossProbs) / batchCount}, lossV: {totalLossV / batchCount}, lossProbs: {totalLossProbs / batchCount}");
             }
+
             _model.save($"c:\\temp\\zerosharp\\tixy-model-post-train-{iteration}.pt");
             _model.save("c:\\temp\\zerosharp\\tixy-model-post-train-latest.pt");
         }

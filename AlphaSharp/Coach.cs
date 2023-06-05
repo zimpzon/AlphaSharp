@@ -51,7 +51,9 @@ namespace AlphaSharp
             int evalDraw = 0;
             evaluationSkynet.LoadModel("c:\\temp\\zerosharp\\tixy-model-pre-train-latest.pt");
 
-            for (int i = 0; i < 10; ++i)
+            Console.WriteLine("evaluating new model against previous model...");
+
+            for (int i = 0; i < 20; ++i)
             {
                 var mctsPlayerOld = new MctsPlayer(game, evaluationSkynet, args);
                 var mctsPlayerNew = new MctsPlayer(game, skynet, args);
@@ -63,14 +65,31 @@ namespace AlphaSharp
                     newWon++;
                 else if (result == -1)
                     oldWon++;
-
-                Console.WriteLine($"new vs old model: newWon: {newWon}, oldWon: {oldWon}, draw: {evalDraw}");
             }
+
+            Console.WriteLine($"new as player 1: newWon: {newWon}, oldWon: {oldWon}, draw: {evalDraw}");
+
+            for (int i = 0; i < 20; ++i)
+            {
+                var mctsPlayerOld = new MctsPlayer(game, evaluationSkynet, args);
+                var mctsPlayerNew = new MctsPlayer(game, skynet, args);
+                var oneVsOne = new OneVsOne(game, mctsPlayerOld, mctsPlayerNew);
+                int result = oneVsOne.Run(args.EvalSimulationMaxMoves);
+                if (result == 0)
+                    evalDraw++;
+                else if (result == 1)
+                    oldWon++;
+                else if (result == -1)
+                    newWon++;
+            }
+
+            Console.WriteLine($"total: newWon: {newWon}, oldWon: {oldWon}, draw: {evalDraw}");
 
             bool newIsBetter = newWon > oldWon;
             if (newIsBetter)
             {
                 Console.WriteLine("new model is better, keeping it");
+                skynet.SaveModel("c:\\temp\\zerosharp\\tixy-model-best.pt");
             }
             else
             {
@@ -78,41 +97,43 @@ namespace AlphaSharp
                 skynet.LoadModel("c:\\temp\\zerosharp\\tixy-model-pre-train-latest.pt");
             }
 
-            //int oneWon = 0;
-            //int twoWon = 0;
-            //int draw = 0;
+            int oneWon = 0;
+            int twoWon = 0;
+            int draw = 0;
 
-            //for (int i = 0; i < 10; ++i)
-            //{
-            //    var randomPlayer = new RandomPlayer(game);
-            //    var mctsPlayer = new MctsPlayer(game, skynet, args);
-            //    var oneVsOne = new OneVsOne(game, randomPlayer, mctsPlayer);
-            //    int result = oneVsOne.Run(args.EvalSimulationMaxMoves);
-            //    if (result == 0)
-            //        draw++;
-            //    else if (result == 1)
-            //        oneWon++;
-            //    else if (result == -1)
-            //        twoWon++;
+            for (int i = 0; i < 10; ++i)
+            {
+                var randomPlayer = new RandomPlayer(game);
+                var mctsPlayer = new MctsPlayer(game, skynet, args);
+                var oneVsOne = new OneVsOne(game, randomPlayer, mctsPlayer);
+                int result = oneVsOne.Run(args.EvalSimulationMaxMoves);
+                if (result == 0)
+                    draw++;
+                else if (result == 1)
+                    oneWon++;
+                else if (result == -1)
+                    twoWon++;
+            }
+            Console.WriteLine($"AI as player2: aiWon: {oneWon}, randomWon: {twoWon}, draw: {draw}");
 
-            //    Console.WriteLine($"AI as player2: aiWon: {oneWon}, randomWon: {twoWon}, draw: {draw}");
-            //}
+            oneWon = 0;
+            twoWon = 0;
+            draw = 0;
 
-            //for (int i = 0; i < 10; ++i)
-            //{
-            //    var randomPlayer = new RandomPlayer(game);
-            //    var mctsPlayer = new MctsPlayer(game, skynet, args);
-            //    var oneVsOne = new OneVsOne(game, mctsPlayer, randomPlayer);
-            //    int result = oneVsOne.Run(args.EvalSimulationMaxMoves);
-            //    if (result == 0)
-            //        draw++;
-            //    else if (result == 1)
-            //        oneWon++;
-            //    else if (result == -1)
-            //        twoWon++;
-
-            //    Console.WriteLine($"AI as player1: aiWon: {oneWon}, randomWon: {twoWon}, draw: {draw}");
-            //}
+            for (int i = 0; i < 10; ++i)
+            {
+                var randomPlayer = new RandomPlayer(game);
+                var mctsPlayer = new MctsPlayer(game, skynet, args);
+                var oneVsOne = new OneVsOne(game, mctsPlayer, randomPlayer);
+                int result = oneVsOne.Run(args.EvalSimulationMaxMoves);
+                if (result == 0)
+                    draw++;
+                else if (result == 1)
+                    oneWon++;
+                else if (result == -1)
+                    twoWon++;
+            }
+            Console.WriteLine($"AI as player1: aiWon: {oneWon}, randomWon: {twoWon}, draw: {draw}");
         }
 
         private void Train(List<TrainingData> trainingData, ISkynet skynet, Args args, int iteration)
