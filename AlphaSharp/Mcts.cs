@@ -65,16 +65,16 @@ namespace AlphaSharp
             Stats = new SimStats();
         }
 
-        public float[] GetActionProbs(byte[] state, bool isTraining)
+        public float[] GetActionProbs(byte[] state, bool isSelfPlay)
         {
             var sw = Stopwatch.StartNew();
 
-            int simCount = isTraining ? _args.TrainingSimulationCount : _args.EvalSimulationCount;
-            int explorationMaxMoves = isTraining ? _args.TrainingSimulationMaxMoves: _args.EvalSimulationMaxMoves;
+            int simCount = isSelfPlay ? _args.SelfPlaySimulationCount : _args.EvalSimulationCount;
+            int explorationMaxMoves = isSelfPlay ? _args.SelfPlaySimulationMaxMoves: _args.EvalSimulationMaxMoves;
 
             for (int i = 0; i < simCount; i++)
             {
-                ExploreGameTree(state, explorationMaxMoves, isTraining);
+                ExploreGameTree(state, explorationMaxMoves, isSelfPlay);
                 Stats.TotalSims++;
             }
 
@@ -85,7 +85,7 @@ namespace AlphaSharp
 
             var probs = new float[stateNode.Actions.Length];
 
-            if (!isTraining)
+            if (!isSelfPlay)
             {
                 int selectedAction = ActionUtil.PickActionByHighestVisitCount(stateNode.Actions);
                 probs[selectedAction] = 1.0f;
@@ -124,7 +124,6 @@ namespace AlphaSharp
 
             _selectedActions.Clear();
 
-            int player = 1; // we always start from the perspective of player 1
             const float DirichletAmount = 0.25f;
 
             int round = 0;
@@ -146,13 +145,14 @@ namespace AlphaSharp
 
                 if (stateNode.GameOver != 0)
                 {
-                    BacktrackAndUpdate(_selectedActions, stateNode.GameOver * player);
+                    // game result is always 1 for a won game. the winner was the opponent since player was already switched
+                    BacktrackAndUpdate(_selectedActions, 1);
                     break;
                 }
 
                 if (isLeafNode)
                 {
-                    // get and save suggestions from Skynet, then backtrack to root using suggested V.
+                    // get and save suggestions from Skynet, then backtrack to root using suggested v
                     var sw = Stopwatch.StartNew();
                     _skynet.Suggest(_state, _actionProbsTemp, out float v);
                     Stats.MsInSkynet += sw.ElapsedMilliseconds;
@@ -169,7 +169,8 @@ namespace AlphaSharp
                         stateNode.Actions[i].IsValidMove = _validActionsTemp[i];
                     }
 
-                    BacktrackAndUpdate(_selectedActions, v);
+                    // latest recorded action was the opponents, but v is for me, so negate v
+                    BacktrackAndUpdate(_selectedActions, -v);
                     break;
                 }
 
@@ -202,8 +203,6 @@ namespace AlphaSharp
                         {
                             bestUpperConfidence = upperConfidence;
                             selectedAction = i;
-                            var cpy = _state.Clone() as byte[];
-                            _game.ExecutePlayerAction(cpy, selectedAction);
                         }
                     }
                 }
@@ -215,8 +214,6 @@ namespace AlphaSharp
                 _game.ExecutePlayerAction(_state, selectedAction);
                 _game.FlipStateToNextPlayer(_state);
                 Stats.TotalSimMoves++;
-
-                player *= -1;
             }
         }
 
@@ -249,16 +246,16 @@ namespace AlphaSharp
 
         private void BacktrackAndUpdate(List<SelectedAction> selectedActions, float v)
         {
-            // v is for current player, start by negating it since good for us = bad for them and vice versa
             for (int i = selectedActions.Count - 1; i >= 0; --i)
             {
-                v = -v;
-
                 var node = _stateNodes[selectedActions[i].NodeIdx];
                 int a = selectedActions[i].ActionIdx;
                 ref var action = ref node.Actions[a];
 
                 action.Q = action.Q == 0.0f ? v : (action.VisitCount * action.Q + v) / (action.VisitCount + 1);
+
+                // switch to the other players perspective
+                v = -v;
             }
         }
     }

@@ -5,10 +5,17 @@ namespace TixyGame
 {
     public class TixySkynetModel : torch.nn.Module<torch.Tensor, (torch.Tensor, torch.Tensor)>
     {
-        private readonly Linear _fc3;
-        private readonly Linear _fc4;
+        private readonly Linear _lin1;
+        private readonly BatchNorm1d _bn1;
+        private readonly ReLU _relu1;
+        private readonly Dropout _drop1;
 
-        private readonly Sequential _seq;
+        private readonly Linear _lin2;
+        private readonly BatchNorm1d _bn2;
+        private readonly ReLU _relu2;
+
+        private readonly Dropout _drop2; private readonly Linear _fc3;
+        private readonly Linear _fc4;
 
         private readonly LogSoftmax _logSoftmax;
         private readonly Tanh _tanh;
@@ -19,38 +26,28 @@ namespace TixyGame
             const int size1 = 1024;
             const int size2 = 512;
 
-            _seq = torch.nn.Sequential(
-                ("lin1", torch.nn.Linear(inputSize, size1)),
-                ("bn1", torch.nn.BatchNorm1d(size1)),
-                ("relu1", torch.nn.ReLU()),
-                ("drop1", torch.nn.Dropout(DropOut)),
+            _lin1 = torch.nn.Linear(inputSize, size1);
+            _bn1 = torch.nn.BatchNorm1d(size1);
+            _relu1 = torch.nn.ReLU();
+            _drop1 = torch.nn.Dropout(DropOut);
 
-                ("lin2", torch.nn.Linear(size1, size2)),
-                ("bn2", torch.nn.BatchNorm1d(size2)),
-                ("relu2", torch.nn.ReLU()),
-                ("drop2", torch.nn.Dropout(DropOut)));
-
+            _lin2 = torch.nn.Linear(size1, size2);
+            _bn2 = torch.nn.BatchNorm1d(size2);
+            _relu2 = torch.nn.ReLU();
+            _drop2 = torch.nn.Dropout(DropOut);
             _fc3 = torch.nn.Linear(512, outputSize);
             _fc4 = torch.nn.Linear(512, 1);
 
             _logSoftmax = torch.nn.LogSoftmax(1);
             _tanh = torch.nn.Tanh();
 
-            SetIsTraining(false);
-
             RegisterComponents();
-        }
-
-        public void SetIsTraining(bool isTraining)
-        {
-            _seq.train(isTraining);
-            _fc3.train(isTraining);
-            _fc4.train(isTraining);
         }
 
         public override (torch.Tensor, torch.Tensor) forward(torch.Tensor x)
         {
-            x = _seq.forward(x);
+            x = _drop1.forward(_relu1.forward(_bn1.forward(_lin1.forward(x))));
+            x = _drop2.forward(_relu2.forward(_bn2.forward(_lin2.forward(x))));
 
             var value = _fc4.forward(x);
             var v = _tanh.forward(value);

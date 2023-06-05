@@ -14,16 +14,16 @@ namespace TixyGameCmd
                 Iterations = 1000,
 
                 // self-play
-                TrainingSimulationCount = 300,
-                TrainingSimulationMaxMoves = 80,
-                TrainingEpisodeMaxMoves = 80,
-                TrainSelfPlayEpisodes = 20,
+                SelfPlaySimulationCount = 200,
+                SelfPlaySimulationMaxMoves = 100,
+                SelfPlayEpisodeMaxMoves = 100,
+                selfPlayEpisodes = 10,
                 
                 // net training
                 TrainingEpochs = 10,
                 TrainingLearningRate = 0.001f,
                 TrainingBatchSize = 64,
-                TrainingMaxExamples = 100000,
+                SelfPlayMaxExamples = 100000,
                 Cpuct = 1.0f,
 
                 // evaluation

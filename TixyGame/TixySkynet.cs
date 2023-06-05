@@ -19,7 +19,6 @@ namespace TixyGame
 
             _oneHotEncodedInputSize = _game.W * _game.H * TixyPieces.NumberOfPieces;
             _model = new TixySkynetModel(_oneHotEncodedInputSize, _game.ActionCount);
-            _model.SetIsTraining(false);
 
             if (args.ResumeFromCheckpoint)
             {
@@ -68,11 +67,6 @@ namespace TixyGame
             return (targets - outputs.view(-1)).pow(2).sum() / targets.shape[0];
         }
 
-        public void Evaulate()
-        {
-            _model.SetIsTraining(false);
-        }
-
         public void Train(List<TrainingData> trainingData, Args args, int iteration)
         {
             string td = JsonSerializer.Serialize(trainingData);
@@ -82,13 +76,12 @@ namespace TixyGame
             _model.save($"c:\\temp\\zerosharp\\tixy-model-pre-train-{iteration}.pt");
             _model.save("c:\\temp\\zerosharp\\tixy-model-pre-train-latest.pt");
 
-            _model.SetIsTraining(true);
-            _model.train();
-
             var optimizer = torch.optim.Adam(_model.parameters(), lr: args.TrainingLearningRate);
 
             for (int epoch = 0; epoch < args.TrainingEpochs; ++epoch)
             {
+                _model.train();
+
                 int batchCount = trainingData.Count / args.TrainingBatchSize;
 
                 float totalLossV = 0;
@@ -137,15 +130,14 @@ namespace TixyGame
                         Console.WriteLine(sb.ToString());
                         File.AppendAllText("c:\\temp\\zerosharp\\errors.txt", sb.ToString());
                     }
-                }
 
-                Console.WriteLine($"epoch end: {epoch + 1} Loss: {(totalLossV + totalLossProbs) / batchCount}, lossV: {totalLossV / batchCount}, lossProbs: {totalLossProbs / batchCount}");
+                    if (epoch == args.TrainingEpochs - 1 && b == batchCount - 1)
+                        Console.WriteLine($"epoch end: {epoch + 1} Loss: {(totalLossV + totalLossProbs) / batchCount}, lossV: {totalLossV / batchCount}, lossProbs: {totalLossProbs / batchCount}");
+                }
             }
 
             _model.save($"c:\\temp\\zerosharp\\tixy-model-post-train-{iteration}.pt");
             _model.save("c:\\temp\\zerosharp\\tixy-model-post-train-latest.pt");
-
-            _model.SetIsTraining(false);
         }
 
         public void Suggest(byte[] state, float[] dstActionsProbs, out float v)

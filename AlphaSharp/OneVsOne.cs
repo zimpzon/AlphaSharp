@@ -36,11 +36,10 @@ namespace AlphaSharp
 
                 _game.ExecutePlayerAction(state, selectedAction);
 
-                var cpy = (byte[])state.Clone();
-                if (currentPlayer == _player2)
-                    _game.FlipStateToNextPlayer(cpy);
-
-                _game.PrintState(cpy, Console.WriteLine);
+                //var cpy = (byte[])state.Clone();
+                //if (currentPlayer == _player2)
+                //    _game.FlipStateToNextPlayer(cpy);
+                //_game.PrintState(cpy, Console.WriteLine);
 
                 int gameResult = _game.GetGameEnded(state);
                 if (gameResult != 0)

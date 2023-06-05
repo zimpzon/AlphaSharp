@@ -15,7 +15,7 @@ namespace AlphaSharp
         {
             //_mcts.Reset(); - use more memory, but play faster. right?
 
-            var probs = _mcts.GetActionProbs(state, isTraining: false);
+            var probs = _mcts.GetActionProbs(state, isSelfPlay: false);
             return ArrayUtil.ArgMax(probs);
         }
     }
