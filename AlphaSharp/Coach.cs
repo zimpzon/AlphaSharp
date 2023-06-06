@@ -10,6 +10,8 @@ namespace AlphaSharp
     public class Coach
     {
         private List<TrainingData> _trainingData = new();
+        private int _modelsKept = 0;
+        private int _modelsDropped = 0;
 
         public void Run(IGame game, ISkynet skynet, ISkynet evaluationSkynet, Args args)
         {
@@ -99,12 +101,14 @@ namespace AlphaSharp
             bool newIsBetter = newWon > oldWon;
             if (newIsBetter)
             {
-                Console.WriteLine("new model is better, keeping it");
+                _modelsKept++;
+                Console.WriteLine($"new model is better, keeping it (kept: {_modelsKept}/{_modelsDropped + _modelsKept})");
                 skynet.SaveModel("c:\\temp\\zerosharp\\tixy-model-best.pt");
             }
             else
             {
-                Console.WriteLine("new model is NOT better, dropping new model");
+                _modelsDropped++;
+                Console.WriteLine($"new model is NOT better, dropping new model (kept: {_modelsKept}/{_modelsDropped + _modelsKept})");
                 skynet.LoadModel("c:\\temp\\zerosharp\\tixy-model-pre-train-latest.pt");
             }
 
