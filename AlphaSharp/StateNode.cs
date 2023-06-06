@@ -15,7 +15,7 @@
 
 		public StateNode(int actionCount)
 		{
-			GameOver = -1;
+			GameOver = int.MinValue;
 			Actions = new Action[actionCount];
 		}
 

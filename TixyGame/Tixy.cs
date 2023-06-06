@@ -37,13 +37,13 @@ namespace TixyGame
             Set(state, 1, 0, TixyPieces.P2.Y);
             Set(state, 2, 0, TixyPieces.P2.I);
             Set(state, 3, 0, TixyPieces.P2.X);
-            Set(state, 4, 0, TixyPieces.P2.T);
+            //Set(state, 4, 0, TixyPieces.P2.T);
 
             Set(state, 0, H - 1, TixyPieces.P1.T);
             Set(state, 1, H - 1, TixyPieces.P1.Y);
             Set(state, 2, H - 1, TixyPieces.P1.I);
             Set(state, 3, H - 1, TixyPieces.P1.X);
-            Set(state, 4, H - 1, TixyPieces.P1.T);
+            //Set(state, 4, H - 1, TixyPieces.P1.T);
         }
 
         public int GetGameEnded(byte[] state)
@@ -75,7 +75,7 @@ namespace TixyGame
 
             bool p2Wins = countQueenP2AtBottom > 0 || countQueenP1 == 0;
             if (p2Wins)
-                return 1;
+                return -1;
 
             return 0;
         }

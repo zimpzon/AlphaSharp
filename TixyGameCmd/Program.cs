@@ -14,10 +14,10 @@ namespace TixyGameCmd
                 Iterations = 1000,
 
                 // self-play
-                SelfPlaySimulationCount = 100,
-                SelfPlaySimulationMaxMoves = 50,
-                SelfPlayEpisodeMaxMoves = 50,
-                selfPlayEpisodes = 10,
+                SelfPlaySimulationCount = 300,
+                SelfPlaySimulationMaxMoves = 200,
+                SelfPlayEpisodeMaxMoves = 80,
+                selfPlayEpisodes = 20,
                 
                 // net training
                 TrainingEpochs = 10,
@@ -27,9 +27,9 @@ namespace TixyGameCmd
                 Cpuct = 1.0f,
 
                 // evaluation
-                EvalSimulationCount = 100,
-                EvalSimulationMaxMoves = 50,
-                EvalMaxMoves = 50,
+                EvalSimulationCount = 200,
+                EvalSimulationMaxMoves = 80,
+                EvalMaxMoves = 80,
             };
 
             //args = new Args

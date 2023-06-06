@@ -22,9 +22,9 @@ namespace TixyGame
 
         public TixySkynetModel(int inputSize, int outputSize) : base("tixy")
         {
-            const float DropOut = 0.3f;
+            const float DropOut = 0.5f;
             const int size1 = 1024;
-            const int size2 = 512;
+            const int size2 = 256;
 
             _lin1 = torch.nn.Linear(inputSize, size1);
             _bn1 = torch.nn.BatchNorm1d(size1);
@@ -35,8 +35,8 @@ namespace TixyGame
             _bn2 = torch.nn.BatchNorm1d(size2);
             _relu2 = torch.nn.ReLU();
             _drop2 = torch.nn.Dropout(DropOut);
-            _fc3 = torch.nn.Linear(512, outputSize);
-            _fc4 = torch.nn.Linear(512, 1);
+            _fc3 = torch.nn.Linear(size2, outputSize);
+            _fc4 = torch.nn.Linear(size2, 1);
 
             _logSoftmax = torch.nn.LogSoftmax(1);
             _tanh = torch.nn.Tanh();

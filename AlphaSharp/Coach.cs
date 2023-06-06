@@ -64,7 +64,7 @@ namespace AlphaSharp
 
             Console.WriteLine("evaluating new model against previous model...");
 
-            for (int i = 0; i < 20; ++i)
+            for (int i = 0; i < 10; ++i)
             {
                 var mctsPlayerOld = new MctsPlayer(game, evaluationSkynet, args);
                 var mctsPlayerNew = new MctsPlayer(game, skynet, args);
@@ -80,7 +80,7 @@ namespace AlphaSharp
 
             Console.WriteLine($"new as player 1: newWon: {newWon}, oldWon: {oldWon}, draw: {evalDraw}");
 
-            for (int i = 0; i < 20; ++i)
+            for (int i = 0; i < 10; ++i)
             {
                 var mctsPlayerOld = new MctsPlayer(game, evaluationSkynet, args);
                 var mctsPlayerNew = new MctsPlayer(game, skynet, args);
@@ -104,7 +104,7 @@ namespace AlphaSharp
             }
             else
             {
-                Console.WriteLine("old model is better, dropping new model");
+                Console.WriteLine("new model is NOT better, dropping new model");
                 skynet.LoadModel("c:\\temp\\zerosharp\\tixy-model-pre-train-latest.pt");
             }
 
@@ -169,11 +169,11 @@ namespace AlphaSharp
 
             while (true)
             {
-                if (moves++ >= args.SelfPlayEpisodeMaxMoves)
+                if (moves++ > args.SelfPlayEpisodeMaxMoves)
                 {
                     // a value of 0 will f the loss calculation up since it does a multiply with value.
                     // so use a small non-zero value instead.
-                    gameResult = 0;
+                    gameResult = 0.0001f;
 
                     // just keep a few samples from draws so we never risk 0 samples
                     trainingData = trainingData.Take(10).ToList();
@@ -194,6 +194,7 @@ namespace AlphaSharp
                 gameResult = game.GetGameEnded(state);
                 if (gameResult != 0)
                 {
+                    gameResult = currentPlayer;
                     //Console.Write("end state:");
                     //game.PrintState(state, Console.WriteLine);
                     //Console.Write("winning move: ");
@@ -206,13 +207,11 @@ namespace AlphaSharp
                 currentPlayer *= -1;
             }
 
-            gameResult *= currentPlayer;
-
-            Console.WriteLine("episode result: " + gameResult + ", moves: " + (moves - 1));
+            Console.WriteLine("episode result: " + gameResult + ", moves: " + moves);
 
             for (int i = 0; i < trainingData.Count; i++)
             {
-                trainingData[i].Player1Value = trainingData[i].Player1Value * gameResult;
+                trainingData[i].Player1Value *= gameResult;
             }
 
             return trainingData;

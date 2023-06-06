@@ -99,16 +99,7 @@ namespace AlphaSharp
             int validCount = stateNode.Actions.Count(a => a.IsValidMove != 0);
 
             if (visitCountSum == 0)
-            {
-                // No actions were visited for this state
-                // This happens/can happen at the very last simulation step (at least in Python version)
                 Console.WriteLine("WARNING: current main game state did not record any visitcounts, returning 1 for all actions");
-
-                for (int i = 0; i < probs.Length; i++)
-                    probs[i] = 1.0f / validCount;
-
-                return probs;
-            }
 
             // normalize visit counts to probs that sum to 1
             for (int i = 0; i < probs.Length; i++)
@@ -131,15 +122,16 @@ namespace AlphaSharp
                 if (round++ >= maxMoves)
                 {
                     // too many moves = draw
-                    BacktrackAndUpdate(_selectedActions, 0.0f);
+                    BacktrackAndUpdate(_selectedActions, 0.00001f);
                     Stats.MaxMovesReached++;
                     break;
                 }
 
                 int idxStateNode = GetOrCreateStateNodeFromState(_state, out bool isLeafNode);
                 var stateNode = _stateNodes[idxStateNode];
+                stateNode.VisitCount++;
 
-                if (stateNode.GameOver == -1)
+                if (stateNode.GameOver == int.MinValue)
                     stateNode.GameOver = _game.GetGameEnded(_state);
 
                 if (stateNode.GameOver != 0)
@@ -174,7 +166,6 @@ namespace AlphaSharp
                 }
 
                 // revisited node, pick the action with the highest upper confidence bound
-                stateNode.VisitCount++;
 
                 float bestUpperConfidence = float.NegativeInfinity;
                 int selectedAction = -1;
@@ -208,10 +199,10 @@ namespace AlphaSharp
 
                 // an action was selected
                 _selectedActions.Add(new SelectedAction { NodeIdx = idxStateNode, ActionIdx = selectedAction });
-                stateNode.Actions[selectedAction].VisitCount++;
 
                 _game.ExecutePlayerAction(_state, selectedAction);
                 _game.FlipStateToNextPlayer(_state);
+
                 Stats.TotalSimMoves++;
             }
         }
@@ -250,6 +241,7 @@ namespace AlphaSharp
                 var node = _stateNodes[selectedActions[i].NodeIdx];
                 int a = selectedActions[i].ActionIdx;
                 ref var action = ref node.Actions[a];
+                action.VisitCount++;
 
                 action.Q = action.Q == 0.0f ? v : (action.VisitCount * action.Q + v) / (action.VisitCount + 1);
 
