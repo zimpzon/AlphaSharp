@@ -18,8 +18,8 @@ namespace AlphaSharp
             public int TotalSims { get; set; }
             public int TotalSimMoves { get; set; }
             public int SkynetCalls { get; set; }
-            public float MsInSkynet { get; set; }
-            public float MsInSimulation { get; set; }
+            public double MsInSkynet { get; set; }
+            public double MsInSimulation { get; set; }
 
             public override string ToString()
                 => JsonSerializer.Serialize(this);
@@ -78,7 +78,7 @@ namespace AlphaSharp
                 Stats.TotalSims++;
             }
 
-            Stats.MsInSimulation = sw.ElapsedMilliseconds;
+            Stats.MsInSimulation = sw.Elapsed.TotalMilliseconds;
 
             int nodeIdx = GetOrCreateStateNodeFromState(state, out _);
             var stateNode = _stateNodes[nodeIdx];
@@ -148,7 +148,8 @@ namespace AlphaSharp
                     // get and save suggestions from Skynet, then backtrack to root using suggested v
                     var sw = Stopwatch.StartNew();
                     _skynet.Suggest(_state, _actionProbsTemp, out float v);
-                    Stats.MsInSkynet += sw.ElapsedMilliseconds;
+                    double ms = sw.Elapsed.TotalMilliseconds;
+                    Stats.MsInSkynet += ms;
                     Stats.SkynetCalls++;
 
                     _game.GetValidActions(_state, _validActionsTemp);

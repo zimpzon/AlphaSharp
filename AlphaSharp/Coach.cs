@@ -1,9 +1,11 @@
 ﻿using AlphaSharp.Interfaces;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
 
 namespace AlphaSharp
 {
@@ -12,12 +14,12 @@ namespace AlphaSharp
         private List<TrainingData> _trainingData = new();
         private int _modelsKept = 0;
         private int _modelsDropped = 0;
-        private IPlayer _baselinePlayer;
+        private readonly object _lock = new();
+        long episodesCompleted = 0;
 
-        public void Run(IGame game, ISkynet skynet, ISkynet evaluationSkynet, IPlayer baselinePlayer, Args args)
+
+        public void Run(IGame game, ISkynet skynet, ISkynet evaluationSkynet, Args args)
         {
-            _baselinePlayer = baselinePlayer;
-
             if (args.ResumeFromCheckpoint)
             {
                 Console.WriteLine("Loading trainingdata...");
@@ -39,19 +41,28 @@ namespace AlphaSharp
                 Console.WriteLine($"--- starting iteration {iter + 1}/{args.Iterations} ---");
 
                 // Self-play episodes
-                for (int epi = 0; epi < args.selfPlayEpisodes; epi++)
+                episodesCompleted = 0;
+
+                var episodeNumbers = Enumerable.Range(0, args.selfPlayEpisodes).ToList();
+                var episodeParam = episodeNumbers.Select(e => new EpisodeParam { Game = game, Skynet = skynet, Args = args, Episode = e }).ToList();
+                var consumer = new ThreadedConsumer<EpisodeParam, List<TrainingData>>(RunEpisode, args.MaxWorkerThreads);
+
+                var sw = Stopwatch.StartNew();
+
+                var episodesTrainingData = consumer.Run(episodeParam);
+
+                var elapsed = sw.Elapsed;
+                var newSamples = episodesTrainingData.SelectMany(e => e).ToList();
+
+                Console.WriteLine($"completed {args.selfPlayEpisodes} episodes in {elapsed.TotalSeconds:0.00} sec (avg: {elapsed.TotalSeconds / args.selfPlayEpisodes:0.00} sec), samples collected: {newSamples.Count}");
+
+                _trainingData.AddRange(newSamples);
+
+                // remove oldest examples first if over the limit
+                if (_trainingData.Count > args.SelfPlayMaxExamples)
                 {
-                    //Console.WriteLine($"starting episode {epi + 1}/{args.TrainSelfPlayEpisodes}");
-
-                    var episodeTrainingData = RunEpisode(game, skynet, args, epi);
-                    _trainingData.AddRange(episodeTrainingData);
-
-                    // remove oldest examples first if over the limit
-                    if (_trainingData.Count > args.SelfPlayMaxExamples)
-                    {
-                        Console.WriteLine($"removing {_trainingData.Count - args.SelfPlayMaxExamples} oldest trainingData examples");
-                        _trainingData.RemoveRange(0, _trainingData.Count - args.SelfPlayMaxExamples);
-                    }
+                    Console.WriteLine($"removing {_trainingData.Count - args.SelfPlayMaxExamples} oldest trainingData examples");
+                    _trainingData.RemoveRange(0, _trainingData.Count - args.SelfPlayMaxExamples);
                 }
 
                 Train(_trainingData, skynet, args, iter);
@@ -68,7 +79,6 @@ namespace AlphaSharp
             evaluationSkynet.LoadModel("c:\\temp\\zerosharp\\tixy-model-pre-train-latest.pt");
 
             Console.WriteLine("evaluating new model against previous model...");
-
 
             for (int i = 0; i < 20; ++i)
             {
@@ -113,53 +123,23 @@ namespace AlphaSharp
                 Console.WriteLine($"new model is NOT better, dropping new model (kept: {_modelsKept}/{_modelsDropped + _modelsKept})");
                 skynet.LoadModel("c:\\temp\\zerosharp\\tixy-model-pre-train-latest.pt");
             }
-
-            //int oneWon = 0;
-            //int twoWon = 0;
-            //int draw = 0;
-
-            //for (int i = 0; i < 10; ++i)
-            //{
-            //    var mctsPlayer = new MctsPlayer(game, skynet, args);
-            //    var oneVsOne = new OneVsOne(game, _baselinePlayer, mctsPlayer);
-
-            //    int result = oneVsOne.Run(args.EvalSimulationMaxMoves);
-            //    if (result == 0)
-            //        draw++;
-            //    else if (result == 1)
-            //        oneWon++;
-            //    else if (result == -1)
-            //        twoWon++;
-            //}
-            //Console.WriteLine($"Skynet pl2, skynet: {twoWon}, baseline: {oneWon}, draw: {draw}");
-
-            //oneWon = 0;
-            //twoWon = 0;
-            //draw = 0;
-
-            //for (int i = 0; i < 10; ++i)
-            //{
-            //    var mctsPlayer = new MctsPlayer(game, skynet, args);
-            //    var oneVsOne = new OneVsOne(game, mctsPlayer, _baselinePlayer);
-
-            //    int result = oneVsOne.Run(args.EvalSimulationMaxMoves);
-            //    if (result == 0)
-            //        draw++;
-            //    else if (result == 1)
-            //        oneWon++;
-            //    else if (result == -1)
-            //        twoWon++;
-            //}
-            //Console.WriteLine($"Skynet pl1, skynet: {oneWon}, baseline: {twoWon}, draw: {draw}");
         }
 
-        private void Train(List<TrainingData> trainingData, ISkynet skynet, Args args, int iteration)
+        private static void Train(List<TrainingData> trainingData, ISkynet skynet, Args args, int iteration)
         {
             skynet.Train(trainingData, args, iteration);
         }
 
-        private List<TrainingData> RunEpisode(IGame game, ISkynet skynet, Args args, int episode)
+        long concurrentEpisodes = 0;
+
+        private List<TrainingData> RunEpisode(EpisodeParam param)
         {
+            Interlocked.Increment(ref concurrentEpisodes);
+
+            var game = param.Game;
+            var skynet = param.Skynet;
+            var args = param.Args;
+
             var state = new byte[game.StateSize];
             var mcts = new Mcts(game, skynet, args);
 
@@ -204,12 +184,12 @@ namespace AlphaSharp
                 {
                     gameResult = currentPlayer;
 
-                    Console.Write("last move: ");
-                    game.PrintDisplayTextForAction(selectedAction, Console.WriteLine);
-                    Console.Write("from state: ");
-                    game.PrintState(prevState, Console.WriteLine);
-                    Console.Write("to state: ");
-                    game.PrintState(state, Console.WriteLine);
+                    //Console.Write("last move: ");
+                    //game.PrintDisplayTextForAction(selectedAction, Console.WriteLine);
+                    //Console.Write("from state: ");
+                    //game.PrintState(prevState, Console.WriteLine);
+                    //Console.Write("to state: ");
+                    //game.PrintState(state, Console.WriteLine);
 
                     break;
                 }
@@ -220,12 +200,18 @@ namespace AlphaSharp
                 currentPlayer *= -1;
             }
 
-            Console.WriteLine($"episode result {episode + 1}/{args.selfPlayEpisodes}: " + gameResult + ", moves: " + moves);
+            double msPerSkynetCall = mcts.Stats.MsInSkynet / mcts.Stats.SkynetCalls;
+
+            lock (_lock)
+            {
+                episodesCompleted++;
+                Console.WriteLine($"episode result {episodesCompleted}/{args.selfPlayEpisodes}: {gameResult}, moves: {moves}, skynet/ms: {msPerSkynetCall:0.000}, {mcts.Stats}, concurrentEpisodes: {concurrentEpisodes}");
+            }
 
             for (int i = 0; i < trainingData.Count; i++)
-            {
                 trainingData[i].Player1Value *= gameResult;
-            }
+
+            Interlocked.Decrement(ref concurrentEpisodes);
 
             return trainingData;
         }

@@ -6,19 +6,20 @@ namespace TixyGameCmd
 {
     internal static class Program
     {
-        static void Run(int id)
+        static void Run()
         {
             var args = new Args
             {
                 ResumeFromCheckpoint = true,
                 ResumeFromEval = false,
                 Iterations = 1000,
+                MaxWorkerThreads = 4, // 4 threads seems optimal'ish on home pc with 12/24 cores // Environment.ProcessorCount,
 
                 // self-play
-                SelfPlaySimulationCount = 2000,
-                SelfPlaySimulationMaxMoves = 500,
-                SelfPlayEpisodeMaxMoves = 150,
-                selfPlayEpisodes = 30,
+                SelfPlaySimulationCount = 1000,
+                SelfPlaySimulationMaxMoves = 100,
+                SelfPlayEpisodeMaxMoves = 100,
+                selfPlayEpisodes = 16,
                 
                 // net training
                 TrainingEpochs = 10,
@@ -33,42 +34,49 @@ namespace TixyGameCmd
                 EvalMaxMoves = 150,
             };
 
-            //args = new Args
+            //var args = new Args
             //{
+            //    ResumeFromCheckpoint = true,
+            //    ResumeFromEval = false,
+            //    Iterations = 1000,
+            //    MaxWorkerThreads = 1, // Environment.ProcessorCount,
+
             //    // self-play
-            //    TrainingSimulationCount = 10,
-            //    TrainingSimulationMaxMoves = 10,
-            //    TrainingEpisodeMaxMoves = 10,
+            //    SelfPlaySimulationCount = 2000,
+            //    SelfPlaySimulationMaxMoves = 500,
+            //    SelfPlayEpisodeMaxMoves = 150,
+            //    selfPlayEpisodes = 30,
 
             //    // net training
-            //    TrainEpochs = 10,
-            //    TrainLearningRate = 0.001f,
-            //    TrainPlayEpisodes = 10,
+            //    TrainingEpochs = 10,
+            //    TrainingLearningRate = 0.001f,
+            //    TrainingBatchSize = 64,
+            //    SelfPlayMaxExamples = 100000,
+            //    Cpuct = 1.0f,
 
             //    // evaluation
-            //    EvalSimulationCount = 20,
-            //    EvalSimulationMaxMoves = 20,
-            //    EvalMaxMoves = 50,
+            //    EvalSimulationCount = 1000,
+            //    EvalSimulationMaxMoves = 300,
+            //    EvalMaxMoves = 150,
             //};
 
-            torch.set_num_threads(1);
-            torch.set_num_interop_threads(1);
-
-            var game = new Tixy(7, 7);
+            var game = new Tixy(5, 5);
             var skynet = new TixySkynet(game, args);
             var evaluationSkynet = new TixySkynet(game, args);
-            var greedyPlayer = new TixyGreedyPlayer(game);
             var coach = new Coach();
-            coach.Run(game, skynet, evaluationSkynet, greedyPlayer, args);
+            coach.Run(game, skynet, evaluationSkynet, args);
         }
 
         static void Main(string[] _)
         {
+            torch.set_num_threads(1);
+            torch.set_num_interop_threads(1);
+
             while (true)
             {
                 try
                 {
-                    Run(0);
+                    Run();
                     Console.WriteLine("Done");
                 }
                 catch (Exception ex)

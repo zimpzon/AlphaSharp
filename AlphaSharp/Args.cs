@@ -5,6 +5,7 @@
         public bool ResumeFromCheckpoint = true;
         public bool ResumeFromEval = false;
         public int Iterations = 100;
+        public int MaxWorkerThreads = 1;
 
         public int TrainingEpochs = 10;
         public int TrainingBatchSize = 64;
