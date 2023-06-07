@@ -16,7 +16,7 @@ namespace AlphaSharp
             _player2 = player2;
         }
 
-        public int Run(int maxMoves)
+        public int Run(int maxMoves, bool verbose = false)
         {
             var state = new byte[_game.StateSize];
             var actions = new byte[_game.ActionCount];
@@ -26,6 +26,8 @@ namespace AlphaSharp
             var currentPlayer = _player1;
 
             int moves = 0;
+            var prevState = new byte[_game.StateSize];
+
             while (true)
             {
                 if (moves++ >= maxMoves)
@@ -43,9 +45,23 @@ namespace AlphaSharp
 
                 int gameResult = _game.GetGameEnded(state);
                 if (gameResult != 0)
+                {
+                    if (verbose)
+                    {
+                        Console.Write("last move: ");
+                        _game.PrintDisplayTextForAction(selectedAction, Console.WriteLine);
+                        Console.Write("from state: ");
+                        _game.PrintState(prevState, Console.WriteLine);
+                        Console.Write("to state: ");
+                        _game.PrintState(state, Console.WriteLine);
+                    }
+
                     return currentPlayer == _player1 ? 1 : -1;
+                }
 
                 _game.FlipStateToNextPlayer(state);
+                Array.Copy(state, prevState, state.Length);
+
                 currentPlayer = currentPlayer == _player1 ? _player2 : _player1;
             }
         }

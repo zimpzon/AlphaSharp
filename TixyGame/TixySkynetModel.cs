@@ -24,7 +24,7 @@ namespace TixyGame
         {
             const float DropOut = 0.5f;
             const int size1 = 1024;
-            const int size2 = 256;
+            const int size2 = 512;
 
             _lin1 = torch.nn.Linear(inputSize, size1);
             _bn1 = torch.nn.BatchNorm1d(size1);

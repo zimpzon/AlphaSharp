@@ -1,5 +1,6 @@
 ﻿using AlphaSharp;
 using TixyGame;
+using TorchSharp;
 
 namespace TixyGameCmd
 {
@@ -14,9 +15,9 @@ namespace TixyGameCmd
                 Iterations = 1000,
 
                 // self-play
-                SelfPlaySimulationCount = 300,
-                SelfPlaySimulationMaxMoves = 200,
-                SelfPlayEpisodeMaxMoves = 80,
+                SelfPlaySimulationCount = 500,
+                SelfPlaySimulationMaxMoves = 1000,
+                SelfPlayEpisodeMaxMoves = 500,
                 selfPlayEpisodes = 20,
                 
                 // net training
@@ -27,9 +28,9 @@ namespace TixyGameCmd
                 Cpuct = 1.0f,
 
                 // evaluation
-                EvalSimulationCount = 200,
-                EvalSimulationMaxMoves = 80,
-                EvalMaxMoves = 80,
+                EvalSimulationCount = 500,
+                EvalSimulationMaxMoves = 1000,
+                EvalMaxMoves = 500,
             };
 
             //args = new Args
@@ -50,21 +51,31 @@ namespace TixyGameCmd
             //    EvalMaxMoves = 50,
             //};
 
-            //torch.set_num_threads(1);
-            //torch.set_num_interop_threads(2);
+            torch.set_num_threads(1);
+            torch.set_num_interop_threads(1);
 
-            var game = new Tixy(5, 5);
+            var game = new Tixy(7, 7);
             var skynet = new TixySkynet(game, args);
             var evaluationSkynet = new TixySkynet(game, args);
-
+            var greedyPlayer = new TixyGreedyPlayer(game);
             var coach = new Coach();
-            coach.Run(game, skynet, evaluationSkynet, args);
+            coach.Run(game, skynet, evaluationSkynet, greedyPlayer, args);
         }
 
         static void Main(string[] _)
         {
-            Run(1);
-            Console.WriteLine("Done");
+            while (true)
+            {
+                try
+                {
+                    Run(0);
+                    Console.WriteLine("Done");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex);
+                }
+            }
         }
     }
 }

@@ -9,9 +9,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AlphaSharp.Test", "AlphaSha
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TixyGameCmd", "TixyGameCmd\TixyGameCmd.csproj", "{EAEF2932-272E-4A24-AC9E-F6A0F8CF4300}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TixyGame", "TixyGame\TixyGame.csproj", "{50050070-D490-4C90-8308-C292ED8FC2B9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TixyGame", "TixyGame\TixyGame.csproj", "{50050070-D490-4C90-8308-C292ED8FC2B9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TixyGame.Test", "TixyGame.Test\TixyGame.Test.csproj", "{5A213E03-C4C8-41A2-8797-2E22CC18AA84}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TixyGame.Test", "TixyGame.Test\TixyGame.Test.csproj", "{5A213E03-C4C8-41A2-8797-2E22CC18AA84}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestingCmd", "TestingCmd\TestingCmd.csproj", "{206AD8CB-7493-4AF6-BB23-D9A6727B80AE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -39,6 +41,10 @@ Global
 		{5A213E03-C4C8-41A2-8797-2E22CC18AA84}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5A213E03-C4C8-41A2-8797-2E22CC18AA84}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5A213E03-C4C8-41A2-8797-2E22CC18AA84}.Release|Any CPU.Build.0 = Release|Any CPU
+		{206AD8CB-7493-4AF6-BB23-D9A6727B80AE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{206AD8CB-7493-4AF6-BB23-D9A6727B80AE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{206AD8CB-7493-4AF6-BB23-D9A6727B80AE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{206AD8CB-7493-4AF6-BB23-D9A6727B80AE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -12,9 +12,12 @@ namespace AlphaSharp
         private List<TrainingData> _trainingData = new();
         private int _modelsKept = 0;
         private int _modelsDropped = 0;
+        private IPlayer _baselinePlayer;
 
-        public void Run(IGame game, ISkynet skynet, ISkynet evaluationSkynet, Args args)
+        public void Run(IGame game, ISkynet skynet, ISkynet evaluationSkynet, IPlayer baselinePlayer, Args args)
         {
+            _baselinePlayer = baselinePlayer;
+
             if (args.ResumeFromCheckpoint)
             {
                 Console.WriteLine("Loading trainingdata...");
@@ -118,9 +121,9 @@ namespace AlphaSharp
 
             for (int i = 0; i < 10; ++i)
             {
-                var randomPlayer = new RandomPlayer(game);
                 var mctsPlayer = new MctsPlayer(game, skynet, args);
-                var oneVsOne = new OneVsOne(game, randomPlayer, mctsPlayer);
+                var oneVsOne = new OneVsOne(game, _baselinePlayer, mctsPlayer);
+
                 int result = oneVsOne.Run(args.EvalSimulationMaxMoves);
                 if (result == 0)
                     draw++;
@@ -129,7 +132,7 @@ namespace AlphaSharp
                 else if (result == -1)
                     twoWon++;
             }
-            Console.WriteLine($"AI as player2: aiWon: {twoWon}, randomWon: {oneWon}, draw: {draw}");
+            Console.WriteLine($"Skynet pl2, skynet: {twoWon}, baseline: {oneWon}, draw: {draw}");
 
             oneWon = 0;
             twoWon = 0;
@@ -137,9 +140,9 @@ namespace AlphaSharp
 
             for (int i = 0; i < 10; ++i)
             {
-                var randomPlayer = new RandomPlayer(game);
                 var mctsPlayer = new MctsPlayer(game, skynet, args);
-                var oneVsOne = new OneVsOne(game, mctsPlayer, randomPlayer);
+                var oneVsOne = new OneVsOne(game, mctsPlayer, _baselinePlayer);
+
                 int result = oneVsOne.Run(args.EvalSimulationMaxMoves);
                 if (result == 0)
                     draw++;
@@ -148,7 +151,7 @@ namespace AlphaSharp
                 else if (result == -1)
                     twoWon++;
             }
-            Console.WriteLine($"AI as player1: aiWon: {oneWon}, randomWon: {twoWon}, draw: {draw}");
+            Console.WriteLine($"Skynet pl1, skynet: {oneWon}, baseline: {twoWon}, draw: {draw}");
         }
 
         private void Train(List<TrainingData> trainingData, ISkynet skynet, Args args, int iteration)
@@ -171,6 +174,8 @@ namespace AlphaSharp
 
             var rnd = new Random();
 
+            var prevState = new byte[game.StateSize];
+
             while (true)
             {
                 if (moves++ > args.SelfPlayEpisodeMaxMoves)
@@ -179,8 +184,8 @@ namespace AlphaSharp
                     // so use a small non-zero value instead.
                     gameResult = 0.0001f;
 
-                    // just keep a few samples from draws so we never risk 0 samples
-                    trainingData = trainingData.Take(10).ToList();
+                    // just keep a few samples from draws, the ones in the end probably caused the draw
+                    trainingData = trainingData.TakeLast(20).ToList();
                     break;
                 }
 
@@ -199,14 +204,19 @@ namespace AlphaSharp
                 if (gameResult != 0)
                 {
                     gameResult = currentPlayer;
-                    //Console.Write("end state:");
-                    //game.PrintState(state, Console.WriteLine);
-                    //Console.Write("winning move: ");
-                    //game.PrintDisplayTextForAction(selectedAction, Console.WriteLine);
+
+                    Console.Write("last move: ");
+                    game.PrintDisplayTextForAction(selectedAction, Console.WriteLine);
+                    Console.Write("from state: ");
+                    game.PrintState(prevState, Console.WriteLine);
+                    Console.Write("to state: ");
+                    game.PrintState(state, Console.WriteLine);
+
                     break;
                 }
 
                 game.FlipStateToNextPlayer(state);
+                Array.Copy(state, prevState, state.Length);
 
                 currentPlayer *= -1;
             }

@@ -8,7 +8,7 @@ namespace TixyGame.Test
         [Fact]
         public void FlipPlayer()
         {
-            var game = new Tixy(5, 7);
+            var game = new Tixy(7, 7);
             var state = new  byte[game.StateSize];
             Assert.All(state, i => Assert.Equal(0, i));
 

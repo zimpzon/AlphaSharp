@@ -96,10 +96,12 @@ namespace AlphaSharp
             //double counts_sum = counts.Sum();
 
             int visitCountSum = stateNode.Actions.Sum(a => a.VisitCount);
-            int validCount = stateNode.Actions.Count(a => a.IsValidMove != 0);
 
             if (visitCountSum == 0)
+            {
                 Console.WriteLine("WARNING: current main game state did not record any visitcounts, returning 1 for all actions");
+                throw new InvalidOperationException($"current node has no actions with visitCount > 0");
+            }
 
             // normalize visit counts to probs that sum to 1
             for (int i = 0; i < probs.Length; i++)
