@@ -11,14 +11,14 @@ namespace TixyGameCmd
             var args = new Args
             {
                 ResumeFromCheckpoint = true,
-                ResumeFromEval = true,
+                ResumeFromEval = false,
                 Iterations = 1000,
 
                 // self-play
-                SelfPlaySimulationCount = 500,
-                SelfPlaySimulationMaxMoves = 1000,
-                SelfPlayEpisodeMaxMoves = 500,
-                selfPlayEpisodes = 20,
+                SelfPlaySimulationCount = 2000,
+                SelfPlaySimulationMaxMoves = 200,
+                SelfPlayEpisodeMaxMoves = 100,
+                selfPlayEpisodes = 30,
                 
                 // net training
                 TrainingEpochs = 10,
@@ -29,8 +29,8 @@ namespace TixyGameCmd
 
                 // evaluation
                 EvalSimulationCount = 200,
-                EvalSimulationMaxMoves = 500,
-                EvalMaxMoves = 150,
+                EvalSimulationMaxMoves = 200,
+                EvalMaxMoves = 100,
             };
 
             //args = new Args

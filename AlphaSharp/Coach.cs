@@ -43,7 +43,7 @@ namespace AlphaSharp
                 {
                     //Console.WriteLine($"starting episode {epi + 1}/{args.TrainSelfPlayEpisodes}");
 
-                    var episodeTrainingData = RunEpisode(game, skynet, args);
+                    var episodeTrainingData = RunEpisode(game, skynet, args, epi);
                     _trainingData.AddRange(episodeTrainingData);
 
                     // remove oldest examples first if over the limit
@@ -68,22 +68,6 @@ namespace AlphaSharp
             evaluationSkynet.LoadModel("c:\\temp\\zerosharp\\tixy-model-pre-train-latest.pt");
 
             Console.WriteLine("evaluating new model against previous model...");
-
-            for (int i = 0; i < 10; ++i)
-            {
-                var mctsPlayerOld = new MctsPlayer(game, evaluationSkynet, args);
-                var mctsPlayerNew = new MctsPlayer(game, skynet, args);
-                var oneVsOne = new OneVsOne(game, mctsPlayerNew, mctsPlayerOld);
-                int result = oneVsOne.Run(args.EvalSimulationMaxMoves);
-                if (result == 0)
-                    evalDraw++;
-                else if (result == 1)
-                    newWon++;
-                else if (result == -1)
-                    oldWon++;
-
-                Console.WriteLine($"new as player 1: newWon: {newWon}, oldWon: {oldWon}, draw: {evalDraw}");
-            }
 
 
             for (int i = 0; i < 20; ++i)
@@ -174,7 +158,7 @@ namespace AlphaSharp
             skynet.Train(trainingData, args, iteration);
         }
 
-        private List<TrainingData> RunEpisode(IGame game, ISkynet skynet, Args args)
+        private List<TrainingData> RunEpisode(IGame game, ISkynet skynet, Args args, int episode)
         {
             var state = new byte[game.StateSize];
             var mcts = new Mcts(game, skynet, args);
@@ -236,7 +220,7 @@ namespace AlphaSharp
                 currentPlayer *= -1;
             }
 
-            Console.WriteLine("episode result: " + gameResult + ", moves: " + moves);
+            Console.WriteLine($"episode result {episode + 1}/{args.selfPlayEpisodes}: " + gameResult + ", moves: " + moves);
 
             for (int i = 0; i < trainingData.Count; i++)
             {
