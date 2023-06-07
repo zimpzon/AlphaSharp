@@ -81,25 +81,40 @@ namespace AlphaSharp
                     newWon++;
                 else if (result == -1)
                     oldWon++;
+
+                Console.WriteLine($"new as player 1: newWon: {newWon}, oldWon: {oldWon}, draw: {evalDraw}");
             }
 
-            Console.WriteLine($"new as player 1: newWon: {newWon}, oldWon: {oldWon}, draw: {evalDraw}");
 
-            for (int i = 0; i < 10; ++i)
+            for (int i = 0; i < 20; ++i)
             {
+                bool newFirst = i % 2 == 0;
+
                 var mctsPlayerOld = new MctsPlayer(game, evaluationSkynet, args);
                 var mctsPlayerNew = new MctsPlayer(game, skynet, args);
-                var oneVsOne = new OneVsOne(game, mctsPlayerOld, mctsPlayerNew);
+                var oneVsOne = new OneVsOne(game, newFirst ? mctsPlayerNew : mctsPlayerOld, newFirst ? mctsPlayerOld : mctsPlayerNew);
                 int result = oneVsOne.Run(args.EvalSimulationMaxMoves);
+
+                int winValueNew = newFirst ? 1 : -1;
+                int winValueOld = newFirst ? -1 : 1;
+
                 if (result == 0)
                     evalDraw++;
-                else if (result == 1)
+                else if (result == winValueOld)
                     oldWon++;
-                else if (result == -1)
+                else if (result == winValueNew)
                     newWon++;
-            }
 
-            Console.WriteLine($"total: newWon: {newWon}, oldWon: {oldWon}, draw: {evalDraw}");
+                if (oldWon >= 10 || newWon > 10)
+                {
+                    Console.WriteLine($"winner decided early: newWon: {newWon}, oldWon: {oldWon}, draw: {evalDraw}");
+                    break;
+                }
+
+                string s = newFirst ? "new as p1" : "old as p1";
+
+                Console.WriteLine($"score ({s}): newWon: {newWon}, oldWon: {oldWon}, draw: {evalDraw}");
+            }
 
             bool newIsBetter = newWon > oldWon;
             if (newIsBetter)
@@ -115,43 +130,43 @@ namespace AlphaSharp
                 skynet.LoadModel("c:\\temp\\zerosharp\\tixy-model-pre-train-latest.pt");
             }
 
-            int oneWon = 0;
-            int twoWon = 0;
-            int draw = 0;
+            //int oneWon = 0;
+            //int twoWon = 0;
+            //int draw = 0;
 
-            for (int i = 0; i < 10; ++i)
-            {
-                var mctsPlayer = new MctsPlayer(game, skynet, args);
-                var oneVsOne = new OneVsOne(game, _baselinePlayer, mctsPlayer);
+            //for (int i = 0; i < 10; ++i)
+            //{
+            //    var mctsPlayer = new MctsPlayer(game, skynet, args);
+            //    var oneVsOne = new OneVsOne(game, _baselinePlayer, mctsPlayer);
 
-                int result = oneVsOne.Run(args.EvalSimulationMaxMoves);
-                if (result == 0)
-                    draw++;
-                else if (result == 1)
-                    oneWon++;
-                else if (result == -1)
-                    twoWon++;
-            }
-            Console.WriteLine($"Skynet pl2, skynet: {twoWon}, baseline: {oneWon}, draw: {draw}");
+            //    int result = oneVsOne.Run(args.EvalSimulationMaxMoves);
+            //    if (result == 0)
+            //        draw++;
+            //    else if (result == 1)
+            //        oneWon++;
+            //    else if (result == -1)
+            //        twoWon++;
+            //}
+            //Console.WriteLine($"Skynet pl2, skynet: {twoWon}, baseline: {oneWon}, draw: {draw}");
 
-            oneWon = 0;
-            twoWon = 0;
-            draw = 0;
+            //oneWon = 0;
+            //twoWon = 0;
+            //draw = 0;
 
-            for (int i = 0; i < 10; ++i)
-            {
-                var mctsPlayer = new MctsPlayer(game, skynet, args);
-                var oneVsOne = new OneVsOne(game, mctsPlayer, _baselinePlayer);
+            //for (int i = 0; i < 10; ++i)
+            //{
+            //    var mctsPlayer = new MctsPlayer(game, skynet, args);
+            //    var oneVsOne = new OneVsOne(game, mctsPlayer, _baselinePlayer);
 
-                int result = oneVsOne.Run(args.EvalSimulationMaxMoves);
-                if (result == 0)
-                    draw++;
-                else if (result == 1)
-                    oneWon++;
-                else if (result == -1)
-                    twoWon++;
-            }
-            Console.WriteLine($"Skynet pl1, skynet: {oneWon}, baseline: {twoWon}, draw: {draw}");
+            //    int result = oneVsOne.Run(args.EvalSimulationMaxMoves);
+            //    if (result == 0)
+            //        draw++;
+            //    else if (result == 1)
+            //        oneWon++;
+            //    else if (result == -1)
+            //        twoWon++;
+            //}
+            //Console.WriteLine($"Skynet pl1, skynet: {oneWon}, baseline: {twoWon}, draw: {draw}");
         }
 
         private void Train(List<TrainingData> trainingData, ISkynet skynet, Args args, int iteration)

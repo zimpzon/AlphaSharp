@@ -11,7 +11,7 @@ namespace TixyGameCmd
             var args = new Args
             {
                 ResumeFromCheckpoint = true,
-                ResumeFromEval = false,
+                ResumeFromEval = true,
                 Iterations = 1000,
 
                 // self-play
@@ -28,9 +28,9 @@ namespace TixyGameCmd
                 Cpuct = 1.0f,
 
                 // evaluation
-                EvalSimulationCount = 500,
-                EvalSimulationMaxMoves = 1000,
-                EvalMaxMoves = 500,
+                EvalSimulationCount = 200,
+                EvalSimulationMaxMoves = 500,
+                EvalMaxMoves = 150,
             };
 
             //args = new Args
