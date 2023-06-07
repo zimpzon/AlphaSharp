@@ -16,10 +16,10 @@ namespace TixyGameCmd
                 MaxWorkerThreads = 4, // 4 threads seems optimal'ish on home pc with 12/24 cores // Environment.ProcessorCount,
 
                 // self-play
-                SelfPlaySimulationCount = 1000,
-                SelfPlaySimulationMaxMoves = 100,
-                SelfPlayEpisodeMaxMoves = 100,
-                selfPlayEpisodes = 16,
+                SelfPlaySimulationCount = 2000,
+                SelfPlaySimulationMaxMoves = 500,
+                SelfPlayEpisodeMaxMoves = 150,
+                selfPlayEpisodes = 40,
                 
                 // net training
                 TrainingEpochs = 10,
@@ -29,8 +29,9 @@ namespace TixyGameCmd
                 Cpuct = 1.0f,
 
                 // evaluation
+                EvalRounds = 20,
                 EvalSimulationCount = 1000,
-                EvalSimulationMaxMoves = 300,
+                EvalSimulationMaxMoves = 500,
                 EvalMaxMoves = 150,
             };
 
@@ -60,7 +61,7 @@ namespace TixyGameCmd
             //    EvalMaxMoves = 150,
             //};
 
-            var game = new Tixy(5, 5);
+            var game = new Tixy(7, 7);
             var skynet = new TixySkynet(game, args);
             var evaluationSkynet = new TixySkynet(game, args);
             var coach = new Coach();

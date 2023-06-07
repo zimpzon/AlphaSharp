@@ -71,46 +71,66 @@ namespace AlphaSharp
             }
         }
 
+        long winNew = 0;
+        long winOld = 0;
+        long draw = 0;
+        long concurrentEval = 0;
+
+        private int RunEvalRound(EvalParam param)
+        {
+            Interlocked.Increment(ref concurrentEval);
+
+            // Is result decided yet?
+            long roundsLeft = param.Args.EvalRounds - (winOld + winNew + draw);
+            long roundsToCatchUp = Math.Abs(winOld - winNew);
+            if (roundsToCatchUp >= roundsLeft)
+                return 0;
+
+            var mctsPlayerOld = new MctsPlayer(param.Game, param.EvaluationSkynet, param.Args);
+            var mctsPlayerNew = new MctsPlayer(param.Game, param.Skynet, param.Args);
+            var oneVsOne = new OneVsOne(param.Game, param.NewModelIsPlayer1 ? mctsPlayerNew : mctsPlayerOld, param.NewModelIsPlayer1 ? mctsPlayerOld : mctsPlayerNew);
+            int result = oneVsOne.Run(param.Args.EvalSimulationMaxMoves);
+
+            int winValueNew = param.NewModelIsPlayer1 ? 1 : -1;
+            int winValueOld = param.NewModelIsPlayer1 ? -1 : 1;
+
+            if (result == 0)
+                Interlocked.Increment(ref draw);
+            else if (result == winValueOld)
+                Interlocked.Increment(ref winOld);
+            else if (result == winValueNew)
+                Interlocked.Increment(ref winNew);
+
+            Console.WriteLine($"end eval round, new model wins: {winNew}, old model wins: {winOld}, draw: {draw}, concurrentEval: {concurrentEval}");
+
+            Interlocked.Decrement(ref concurrentEval);
+
+            return 0;
+        }
+
         private void EvaluateModel(IGame game, ISkynet skynet, ISkynet evaluationSkynet, Args args)
         {
-            int newWon = 0;
-            int oldWon = 0;
-            int evalDraw = 0;
+            winNew = 0;
+            winOld = 0;
+            draw = 0;
+            concurrentEval = 0;
+
             evaluationSkynet.LoadModel("c:\\temp\\zerosharp\\tixy-model-pre-train-latest.pt");
 
             Console.WriteLine("evaluating new model against previous model...");
 
-            for (int i = 0; i < 20; ++i)
-            {
-                bool newFirst = i % 2 == 0;
+            var countNumbers = Enumerable.Range(0, args.EvalRounds).ToList();
+            var evalParam = countNumbers.Select(e => new EvalParam { NewModelIsPlayer1 = e % 2 == 0, Game = game, Skynet = skynet, EvaluationSkynet = evaluationSkynet, Args = args }).ToList();
+            var consumer = new ThreadedConsumer<EvalParam, int>(RunEvalRound, args.MaxWorkerThreads);
 
-                var mctsPlayerOld = new MctsPlayer(game, evaluationSkynet, args);
-                var mctsPlayerNew = new MctsPlayer(game, skynet, args);
-                var oneVsOne = new OneVsOne(game, newFirst ? mctsPlayerNew : mctsPlayerOld, newFirst ? mctsPlayerOld : mctsPlayerNew);
-                int result = oneVsOne.Run(args.EvalSimulationMaxMoves);
+            var sw = Stopwatch.StartNew();
 
-                int winValueNew = newFirst ? 1 : -1;
-                int winValueOld = newFirst ? -1 : 1;
+            var episodesTrainingData = consumer.Run(evalParam);
 
-                if (result == 0)
-                    evalDraw++;
-                else if (result == winValueOld)
-                    oldWon++;
-                else if (result == winValueNew)
-                    newWon++;
+            var elapsed = sw.Elapsed;
+            Console.WriteLine($"eval complete, rounds: {args.EvalRounds}, sec: {elapsed.TotalSeconds:0.00} (avg: {elapsed.TotalSeconds / args.EvalRounds:0.00} sec) wins new: {winNew}, wins old: {winOld}, draw: {draw}");
 
-                if (oldWon >= 10 || newWon > 10)
-                {
-                    Console.WriteLine($"winner decided early: newWon: {newWon}, oldWon: {oldWon}, draw: {evalDraw}");
-                    break;
-                }
-
-                string s = newFirst ? "new as p1" : "old as p1";
-
-                Console.WriteLine($"score ({s}): newWon: {newWon}, oldWon: {oldWon}, draw: {evalDraw}");
-            }
-
-            bool newIsBetter = newWon > oldWon;
+            bool newIsBetter = winNew > winOld;
             if (newIsBetter)
             {
                 _modelsKept++;
