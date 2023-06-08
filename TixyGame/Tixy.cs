@@ -38,16 +38,16 @@ namespace TixyGame
             Set(state, 2, 0, TixyPieces.P2.Y);
             Set(state, 3, 0, TixyPieces.P2.I);
             Set(state, 4, 0, TixyPieces.P2.Y);
-            //Set(state, 5, 0, TixyPieces.P2.T);
-            //Set(state, 6, 0, TixyPieces.P2.X);
+            Set(state, 5, 0, TixyPieces.P2.T);
+            Set(state, 6, 0, TixyPieces.P2.X);
 
             Set(state, 0, H - 1, TixyPieces.P1.X);
             Set(state, 1, H - 1, TixyPieces.P1.T);
             Set(state, 2, H - 1, TixyPieces.P1.Y);
             Set(state, 3, H - 1, TixyPieces.P1.I);
             Set(state, 4, H - 1, TixyPieces.P1.Y);
-            //Set(state, 5, H - 1, TixyPieces.P1.T);
-            //Set(state, 6, H - 1, TixyPieces.P1.X);
+            Set(state, 5, H - 1, TixyPieces.P1.T);
+            Set(state, 6, H - 1, TixyPieces.P1.X);
         }
 
         public int GetGameEnded(byte[] state)

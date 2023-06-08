@@ -32,7 +32,7 @@ namespace TixyGameCmd
                 EvalMaxMoves = 150,
             };
 
-            var game = new Tixy(5, 7);
+            var game = new Tixy(7, 7);
             var skynet = new TixySkynet(game, args);
             skynet.LoadModel("c:\\temp\\zerosharp\\tixy-model-best.pt");
             var p1 = new RandomPlayer(game);
