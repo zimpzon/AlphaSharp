@@ -13,7 +13,7 @@ namespace TixyGame
 
         private readonly TixySkynetModel _model;
 
-        public TixySkynet(IGame game, Args args)
+        public TixySkynet(IGame game, TixyParameters args)
         {
             _game = game;
 
@@ -84,7 +84,7 @@ namespace TixyGame
             return (targets - outputs.view(-1)).pow(2).sum() / targets.shape[0];
         }
 
-        public void Train(List<TrainingData> trainingData, Args args, int iteration)
+        public void Train(List<TrainingData> trainingData, AlphaParameters args, int iteration)
         {
             string td = JsonSerializer.Serialize(trainingData);
             File.WriteAllText($"c:\\temp\\zerosharp\\tixy-training-data-{iteration}.json", td);

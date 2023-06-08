@@ -8,64 +8,42 @@ namespace TixyGameCmd
     {
         static void Run()
         {
-            var args = new Args
+            var alphaParam = new AlphaParameters
             {
+                // global
                 ResumeFromCheckpoint = true,
                 ResumeFromEval = false,
                 Iterations = 1000,
-                MaxWorkerThreads = 4, // 4 threads seems optimal'ish on home pc with 12/24 cores // Environment.ProcessorCount,
+                MaxWorkerThreads = 4, // diminishing returns, 4 threads seems optimal'ish on home pc with 12/24 cores
+                MaxTrainingExamples = 100000,
+                Cpuct = 1.0f,
+                OutputFolder = "c:\\temp\\zerosharp\\tixy",
 
                 // self-play
                 SelfPlaySimulationCount = 2000,
                 SelfPlaySimulationMaxMoves = 500,
                 SelfPlayEpisodeMaxMoves = 150,
-                selfPlayEpisodes = 40,
-                
-                // net training
-                TrainingEpochs = 10,
-                TrainingLearningRate = 0.001f,
-                TrainingBatchSize = 64,
-                SelfPlayMaxExamples = 100000,
-                Cpuct = 1.0f,
+                SelfPlayEpisodes = 40,
 
                 // evaluation
-                EvalRounds = 20,
-                EvalSimulationCount = 1000,
-                EvalSimulationMaxMoves = 500,
-                EvalMaxMoves = 150,
+                EvaluationRounds = 20,
+                EvaluationSimulationCount = 1000,
+                EvaluationSimulationMaxMoves = 500,
+                EvaluationMaxMoves = 150,
             };
 
-            //var args = new Args
-            //{
-            //    ResumeFromCheckpoint = true,
-            //    ResumeFromEval = false,
-            //    Iterations = 1000,
-            //    MaxWorkerThreads = 1, // Environment.ProcessorCount,
+            var tixyParam = new TixyParameters
+            {
+                TrainingEpochs = 10,
+                TrainingBatchSize = 64,
+                TrainingLearningRate = 0.001f,
+            };
 
-            //    // self-play
-            //    SelfPlaySimulationCount = 2000,
-            //    SelfPlaySimulationMaxMoves = 500,
-            //    SelfPlayEpisodeMaxMoves = 150,
-            //    selfPlayEpisodes = 30,
-
-            //    // net training
-            //    TrainingEpochs = 10,
-            //    TrainingLearningRate = 0.001f,
-            //    TrainingBatchSize = 64,
-            //    SelfPlayMaxExamples = 100000,
-            //    Cpuct = 1.0f,
-
-            //    // evaluation
-            //    EvalSimulationCount = 1000,
-            //    EvalSimulationMaxMoves = 300,
-            //    EvalMaxMoves = 150,
-            //};
-
-            var game = new Tixy(7, 7);
-            var skynet = new TixySkynet(game, args);
-            var evaluationSkynet = new TixySkynet(game, args);
+            var game = new Tixy(5, 5);
+            var skynet = new TixySkynet(game, tixyParam);
+            var evaluationSkynet = new TixySkynet(game, tixyParam);
             var coach = new Coach();
-            coach.Run(game, skynet, evaluationSkynet, args);
+            coach.Run(game, skynet, evaluationSkynet, alphaParam);
         }
 
         static void Main(string[] _)

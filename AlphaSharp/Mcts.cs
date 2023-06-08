@@ -35,7 +35,7 @@ namespace AlphaSharp
 
         private readonly IGame _game;
         private readonly ISkynet _skynet;
-        private readonly Args _args;
+        private readonly AlphaParameters _args;
         private StateNode[] _stateNodes = new StateNode[100000];
         private int _stateIdx = 0;
         private readonly float[] _actionProbsTemp;
@@ -45,7 +45,7 @@ namespace AlphaSharp
         private readonly byte[] _state;
         private readonly Dictionary<string, int> _stateNodeLookup = new();
 
-        public Mcts(IGame game, ISkynet skynet, Args args)
+        public Mcts(IGame game, ISkynet skynet, AlphaParameters args)
         {
             _game = game;
             _skynet = skynet;
@@ -69,8 +69,8 @@ namespace AlphaSharp
         {
             var sw = Stopwatch.StartNew();
 
-            int simCount = isSelfPlay ? _args.SelfPlaySimulationCount : _args.EvalSimulationCount;
-            int explorationMaxMoves = isSelfPlay ? _args.SelfPlaySimulationMaxMoves: _args.EvalSimulationMaxMoves;
+            int simCount = isSelfPlay ? _args.SelfPlaySimulationCount : _args.EvaluationSimulationCount;
+            int explorationMaxMoves = isSelfPlay ? _args.SelfPlaySimulationMaxMoves: _args.EvaluationSimulationMaxMoves;
 
             for (int i = 0; i < simCount; i++)
             {

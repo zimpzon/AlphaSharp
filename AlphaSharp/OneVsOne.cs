@@ -21,7 +21,7 @@ namespace AlphaSharp
             var state = new byte[_game.StateSize];
             var actions = new byte[_game.ActionCount];
 
-            _game.SetStartingState(state);
+            _game.GetStartingState(state);
 
             var currentPlayer = _player1;
 

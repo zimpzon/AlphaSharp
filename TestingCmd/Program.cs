@@ -7,7 +7,7 @@ namespace TixyGameCmd
     {
         static void Run()
         {
-            var args = new Args
+            var args = new AlphaParameters
             {
                 ResumeFromCheckpoint = true,
                 ResumeFromEval = false,
@@ -17,19 +17,19 @@ namespace TixyGameCmd
                 SelfPlaySimulationCount = 500,
                 SelfPlaySimulationMaxMoves = 200,
                 SelfPlayEpisodeMaxMoves = 80,
-                selfPlayEpisodes = 20,
+                SelfPlayEpisodes = 20,
 
                 // net training
                 TrainingEpochs = 10,
                 TrainingLearningRate = 0.001f,
                 TrainingBatchSize = 64,
-                SelfPlayMaxExamples = 100000,
+                MaxTrainingExamples = 100000,
                 Cpuct = 1.0f,
 
                 // evaluation
-                EvalSimulationCount = 200,
-                EvalSimulationMaxMoves = 150,
-                EvalMaxMoves = 150,
+                EvaluationSimulationCount = 200,
+                EvaluationSimulationMaxMoves = 150,
+                EvaluationMaxMoves = 150,
             };
 
             var game = new Tixy(7, 7);

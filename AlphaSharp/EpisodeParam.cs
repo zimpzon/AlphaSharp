@@ -6,7 +6,7 @@ namespace AlphaSharp
     {
         public IGame Game { get; set; }
         public ISkynet Skynet { get; set; }
-        public Args Args { get; set; }
+        public AlphaParameters Args { get; set; }
         public int Episode { get; set; }
     }
 }

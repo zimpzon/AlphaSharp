@@ -17,8 +17,8 @@ namespace AlphaSharp
         private readonly object _lock = new();
         long episodesCompleted = 0;
 
-
-        public void Run(IGame game, ISkynet skynet, ISkynet evaluationSkynet, Args args)
+        // Skynet factory? Coach should control loading, saving, etc.
+        public void Run(IGame game, Func<ISkynet> skynetFactory, AlphaParameters args)
         {
             if (args.ResumeFromCheckpoint)
             {
@@ -28,6 +28,9 @@ namespace AlphaSharp
                 else
                     Console.WriteLine("No existing trainingdata found");
             }
+
+            var skynet = skynetFactory();
+            var evaluationSkynet = skynetFactory();
 
             for (int iter = 0; iter < args.Iterations; iter++)
             {
@@ -43,7 +46,7 @@ namespace AlphaSharp
                 // Self-play episodes
                 episodesCompleted = 0;
 
-                var episodeNumbers = Enumerable.Range(0, args.selfPlayEpisodes).ToList();
+                var episodeNumbers = Enumerable.Range(0, args.SelfPlayEpisodes).ToList();
                 var episodeParam = episodeNumbers.Select(e => new EpisodeParam { Game = game, Skynet = skynet, Args = args, Episode = e }).ToList();
                 var consumer = new ThreadedConsumer<EpisodeParam, List<TrainingData>>(RunEpisode, args.MaxWorkerThreads);
 
@@ -54,15 +57,15 @@ namespace AlphaSharp
                 var elapsed = sw.Elapsed;
                 var newSamples = episodesTrainingData.SelectMany(e => e).ToList();
 
-                Console.WriteLine($"completed {args.selfPlayEpisodes} episodes in {elapsed.TotalSeconds:0.00} sec (avg: {elapsed.TotalSeconds / args.selfPlayEpisodes:0.00} sec), samples collected: {newSamples.Count}");
+                Console.WriteLine($"completed {args.SelfPlayEpisodes} episodes in {elapsed.TotalSeconds:0.00} sec (avg: {elapsed.TotalSeconds / args.SelfPlayEpisodes:0.00} sec), samples collected: {newSamples.Count}");
 
                 _trainingData.AddRange(newSamples);
 
                 // remove oldest examples first if over the limit
-                if (_trainingData.Count > args.SelfPlayMaxExamples)
+                if (_trainingData.Count > args.MaxTrainingExamples)
                 {
-                    Console.WriteLine($"removing {_trainingData.Count - args.SelfPlayMaxExamples} oldest trainingData examples");
-                    _trainingData.RemoveRange(0, _trainingData.Count - args.SelfPlayMaxExamples);
+                    Console.WriteLine($"removing {_trainingData.Count - args.MaxTrainingExamples} oldest trainingData examples");
+                    _trainingData.RemoveRange(0, _trainingData.Count - args.MaxTrainingExamples);
                 }
 
                 Train(_trainingData, skynet, args, iter);
@@ -81,7 +84,7 @@ namespace AlphaSharp
             Interlocked.Increment(ref concurrentEval);
 
             // Is result decided yet?
-            long roundsLeft = param.Args.EvalRounds - (winOld + winNew + draw);
+            long roundsLeft = param.Args.EvaluationRounds - (winOld + winNew + draw);
             long roundsToCatchUp = Math.Abs(winOld - winNew);
             if (roundsToCatchUp >= roundsLeft)
                 return 0;
@@ -89,7 +92,7 @@ namespace AlphaSharp
             var mctsPlayerOld = new MctsPlayer(param.Game, param.EvaluationSkynet, param.Args);
             var mctsPlayerNew = new MctsPlayer(param.Game, param.Skynet, param.Args);
             var oneVsOne = new OneVsOne(param.Game, param.NewModelIsPlayer1 ? mctsPlayerNew : mctsPlayerOld, param.NewModelIsPlayer1 ? mctsPlayerOld : mctsPlayerNew);
-            int result = oneVsOne.Run(param.Args.EvalSimulationMaxMoves);
+            int result = oneVsOne.Run(param.Args.EvaluationSimulationMaxMoves);
 
             int winValueNew = param.NewModelIsPlayer1 ? 1 : -1;
             int winValueOld = param.NewModelIsPlayer1 ? -1 : 1;
@@ -108,7 +111,7 @@ namespace AlphaSharp
             return 0;
         }
 
-        private void EvaluateModel(IGame game, ISkynet skynet, ISkynet evaluationSkynet, Args args)
+        private void EvaluateModel(IGame game, ISkynet skynet, ISkynet evaluationSkynet, AlphaParameters args)
         {
             winNew = 0;
             winOld = 0;
@@ -119,7 +122,7 @@ namespace AlphaSharp
 
             Console.WriteLine("evaluating new model against previous model...");
 
-            var countNumbers = Enumerable.Range(0, args.EvalRounds).ToList();
+            var countNumbers = Enumerable.Range(0, args.EvaluationRounds).ToList();
             var evalParam = countNumbers.Select(e => new EvalParam { NewModelIsPlayer1 = e % 2 == 0, Game = game, Skynet = skynet, EvaluationSkynet = evaluationSkynet, Args = args }).ToList();
             var consumer = new ThreadedConsumer<EvalParam, int>(RunEvalRound, args.MaxWorkerThreads);
 
@@ -128,7 +131,7 @@ namespace AlphaSharp
             var episodesTrainingData = consumer.Run(evalParam);
 
             var elapsed = sw.Elapsed;
-            Console.WriteLine($"eval complete, rounds: {args.EvalRounds}, sec: {elapsed.TotalSeconds:0.00} (avg: {elapsed.TotalSeconds / args.EvalRounds:0.00} sec) wins new: {winNew}, wins old: {winOld}, draw: {draw}");
+            Console.WriteLine($"eval complete, rounds: {args.EvaluationRounds}, sec: {elapsed.TotalSeconds:0.00} (avg: {elapsed.TotalSeconds / args.EvaluationRounds:0.00} sec) wins new: {winNew}, wins old: {winOld}, draw: {draw}");
 
             bool newIsBetter = winNew > winOld;
             if (newIsBetter)
@@ -145,7 +148,7 @@ namespace AlphaSharp
             }
         }
 
-        private static void Train(List<TrainingData> trainingData, ISkynet skynet, Args args, int iteration)
+        private static void Train(List<TrainingData> trainingData, ISkynet skynet, AlphaParameters args, int iteration)
         {
             skynet.Train(trainingData, args, iteration);
         }
@@ -165,7 +168,7 @@ namespace AlphaSharp
 
             var trainingData = new List<TrainingData>();
 
-            game.SetStartingState(state);
+            game.GetStartingState(state);
 
             int moves = 0;
             float currentPlayer = 1;
@@ -225,7 +228,7 @@ namespace AlphaSharp
             lock (_lock)
             {
                 episodesCompleted++;
-                Console.WriteLine($"episode result {episodesCompleted}/{args.selfPlayEpisodes}: {gameResult}, moves: {moves}, skynet/ms: {msPerSkynetCall:0.000}, {mcts.Stats}, concurrentEpisodes: {concurrentEpisodes}");
+                Console.WriteLine($"episode result {episodesCompleted}/{args.SelfPlayEpisodes}: {gameResult}, moves: {moves}, skynet/ms: {msPerSkynetCall:0.000}, {mcts.Stats}, concurrentEpisodes: {concurrentEpisodes}");
             }
 
             for (int i = 0; i < trainingData.Count; i++)

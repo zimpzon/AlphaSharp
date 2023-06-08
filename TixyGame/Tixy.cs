@@ -29,7 +29,7 @@ namespace TixyGame
         public byte Get(byte[] state, int x, int y)
             => state[y * W + x];
 
-        public void SetStartingState(byte[] state)
+        public void GetStartingState(byte[] state)
         {
             ClearPieces(state);
 

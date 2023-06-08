@@ -6,7 +6,7 @@ namespace AlphaSharp
     {
         private readonly Mcts _mcts;
 
-        public MctsPlayer(IGame game, ISkynet skynet, Args args)
+        public MctsPlayer(IGame game, ISkynet skynet, AlphaParameters args)
         {
             _mcts = new Mcts(game, skynet, args);
         }
