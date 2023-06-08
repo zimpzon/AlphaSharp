@@ -6,7 +6,7 @@ namespace AlphaSharp
 {
     /// <summary>
     /// PyTorch needs threads, not tasks, to run in parallel. There is some thread-local state and tasks are not hard-bound to threads.
-    /// For heavy'ish work, creates and destroys a threads.
+    /// For heavy'ish work, creates and destroys threads.
     /// </summary>
     internal class ThreadedConsumer<TIn, TOut>
     {
