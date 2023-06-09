@@ -13,8 +13,6 @@ namespace AlphaSharp
 
         public int PickAction(byte[] state)
         {
-            // _mcts.Reset(); - use more memory, but play faster. right?
-
             var probs = _mcts.GetActionProbs(state, isSelfPlay: false);
             return ArrayUtil.ArgMax(probs);
         }

@@ -9,9 +9,9 @@ namespace TixyGameCmd
         {
             var args = new AlphaParameters
             {
-                ResumeFromCheckpoint = true,
-                ResumeFromEval = false,
                 Iterations = 1000,
+                MaxTrainingExamples = 100000,
+                Cpuct = 1.0f,
 
                 // self-play
                 SelfPlaySimulationCount = 500,
@@ -19,12 +19,6 @@ namespace TixyGameCmd
                 SelfPlayEpisodeMaxMoves = 80,
                 SelfPlayEpisodes = 20,
 
-                // net training
-                TrainingEpochs = 10,
-                TrainingLearningRate = 0.001f,
-                TrainingBatchSize = 64,
-                MaxTrainingExamples = 100000,
-                Cpuct = 1.0f,
 
                 // evaluation
                 EvaluationSimulationCount = 200,
@@ -32,9 +26,17 @@ namespace TixyGameCmd
                 EvaluationMaxMoves = 150,
             };
 
-            var game = new Tixy(7, 7);
-            var skynet = new TixySkynet(game, args);
-            skynet.LoadModel("c:\\temp\\zerosharp\\tixy-model-best.pt");
+            var tixyParam = new TixyParameters
+            {
+                TrainingEpochs = 10,
+                TrainingBatchSize = 64,
+                TrainingLearningRate = 0.001f,
+            };
+
+            var game = new Tixy(5, 5);
+            var skynet = new TixySkynet(game, tixyParam);
+            skynet.LoadModel("c:\\temp\\zerosharp\\best.skynet");
+
             var p1 = new RandomPlayer(game);
             var p2 = new TixyGreedyPlayer(game);
             var p3 = new MctsPlayer(game, skynet, args);

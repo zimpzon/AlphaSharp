@@ -21,8 +21,7 @@ namespace AlphaSharp
             public double MsInSkynet { get; set; }
             public double MsInSimulation { get; set; }
 
-            public override string ToString()
-                => JsonSerializer.Serialize(this);
+            public override string ToString() => JsonSerializer.Serialize(this);
         }
 
         private class SelectedAction
@@ -35,7 +34,7 @@ namespace AlphaSharp
 
         private readonly IGame _game;
         private readonly ISkynet _skynet;
-        private readonly AlphaParameters _args;
+        private readonly AlphaParameters _param;
         private StateNode[] _stateNodes = new StateNode[100000];
         private int _stateIdx = 0;
         private readonly float[] _actionProbsTemp;
@@ -49,7 +48,7 @@ namespace AlphaSharp
         {
             _game = game;
             _skynet = skynet;
-            _args = args;
+            _param = args;
 
             _actionProbsTemp = new float[_game.ActionCount];
             _noiseTemp = new float[_game.ActionCount];
@@ -69,8 +68,8 @@ namespace AlphaSharp
         {
             var sw = Stopwatch.StartNew();
 
-            int simCount = isSelfPlay ? _args.SelfPlaySimulationCount : _args.EvaluationSimulationCount;
-            int explorationMaxMoves = isSelfPlay ? _args.SelfPlaySimulationMaxMoves: _args.EvaluationSimulationMaxMoves;
+            int simCount = isSelfPlay ? _param.SelfPlaySimulationCount : _param.EvaluationSimulationCount;
+            int explorationMaxMoves = isSelfPlay ? _param.SelfPlaySimulationMaxMoves: _param.EvaluationSimulationMaxMoves;
 
             for (int i = 0; i < simCount; i++)
             {
@@ -91,17 +90,9 @@ namespace AlphaSharp
                 return probs;
             }
 
-            //double temp = move_count < 20 ? 1 : 0.1;
-            //counts = counts.Select(x => Math.Pow(x, 1.0 / temp)).ToArray();
-            //double counts_sum = counts.Sum();
-
             int visitCountSum = stateNode.Actions.Sum(a => a.VisitCount);
-
             if (visitCountSum == 0)
-            {
-                Console.WriteLine("WARNING: current main game state did not record any visitcounts, returning 1 for all actions");
-                throw new InvalidOperationException($"current node has no actions with visitCount > 0");
-            }
+                throw new InvalidOperationException($"no actions of the current state has any visit counts");
 
             // normalize visit counts to probs that sum to 1
             for (int i = 0; i < probs.Length; i++)
@@ -124,7 +115,7 @@ namespace AlphaSharp
                 if (round++ >= maxMoves)
                 {
                     // too many moves = draw
-                    BacktrackAndUpdate(_selectedActions, 0.00001f);
+                    BacktrackAndUpdate(_selectedActions, 0);
                     Stats.MaxMovesReached++;
                     break;
                 }
@@ -189,8 +180,8 @@ namespace AlphaSharp
 
                         // if no Q value yet calc confidence without Q
                         float upperConfidence = action.Q == 0 ?
-                            _args.Cpuct * actionProbability * (float)Math.Sqrt(stateNode.VisitCount + float.Epsilon) :
-                            action.Q + _args.Cpuct * actionProbability * (float)Math.Sqrt(stateNode.VisitCount) / (1.0f + action.VisitCount);
+                            _param.Cpuct * actionProbability * (float)Math.Sqrt(stateNode.VisitCount + float.Epsilon) :
+                            action.Q + _param.Cpuct * actionProbability * (float)Math.Sqrt(stateNode.VisitCount) / (1.0f + action.VisitCount);
 
                         if (upperConfidence > bestUpperConfidence)
                         {
@@ -220,11 +211,12 @@ namespace AlphaSharp
                 return idx;
             }
 
-            // Does not exist, create it and add to lookup
             if (_stateIdx >= _stateNodes.Length)
             {
-                Console.WriteLine($"expanding stateNode array from {_stateNodes.Length} to {_stateNodes.Length * 2}");
-                Array.Resize(ref _stateNodes, _stateNodes.Length * 2);
+                int newSize = (int)(_stateNodes.Length * 1.5);
+                _param.TextInfoCallback(LogLevel.MoreInfo, $"expanding stateNode array from {_stateNodes.Length} to {newSize}");
+
+                Array.Resize(ref _stateNodes, newSize);
             }
 
             _stateNodes[_stateIdx] = new StateNode(_game.ActionCount);

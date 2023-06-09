@@ -1,6 +1,5 @@
 ﻿using AlphaSharp;
 using AlphaSharp.Interfaces;
-using System.Text;
 using System.Text.Json;
 using TorchSharp;
 
@@ -12,22 +11,15 @@ namespace TixyGame
         private readonly int _oneHotEncodedInputSize;
 
         private readonly TixySkynetModel _model;
+        private readonly TixyParameters _param;
 
-        public TixySkynet(IGame game, TixyParameters args)
+        public TixySkynet(IGame game, TixyParameters param)
         {
             _game = game;
+            _param = param;
 
             _oneHotEncodedInputSize = _game.W * _game.H * TixyPieces.NumberOfPieces;
             _model = new TixySkynetModel(_oneHotEncodedInputSize, _game.ActionCount);
-
-            if (args.ResumeFromCheckpoint)
-            {
-                Console.WriteLine("Loading existing model...");
-                if (File.Exists("c:\\temp\\zerosharp\\tixy-model-best.pt"))
-                    _model.load("c:\\temp\\zerosharp\\tixy-model-best.pt");
-                else
-                    Console.WriteLine("No existing model found");
-            }
         }
 
         public void LoadModel(string modelPath)
@@ -76,7 +68,8 @@ namespace TixyGame
 
         private static torch.Tensor LossProbs(torch.Tensor targets, torch.Tensor outputs)
         {
-            return -(targets * outputs).sum() / targets.shape[0];
+            // add a tiny amount to targets to avoid multiplying by zero
+            return -((targets + 0.00001f) * outputs).sum() / targets.shape[0];
         }
 
         private static torch.Tensor LossV(torch.Tensor targets, torch.Tensor outputs)
@@ -84,77 +77,48 @@ namespace TixyGame
             return (targets - outputs.view(-1)).pow(2).sum() / targets.shape[0];
         }
 
-        public void Train(List<TrainingData> trainingData, AlphaParameters args, int iteration)
+        public void Train(List<TrainingData> trainingData)
         {
             string td = JsonSerializer.Serialize(trainingData);
-            File.WriteAllText($"c:\\temp\\zerosharp\\tixy-training-data-{iteration}.json", td);
-            File.WriteAllText($"c:\\temp\\zerosharp\\tixy-training-data-latest.json", td);
 
-            _model.save($"c:\\temp\\zerosharp\\tixy-model-pre-train-{iteration}.pt");
-            _model.save("c:\\temp\\zerosharp\\tixy-model-pre-train-latest.pt");
+            var optimizer = torch.optim.Adam(_model.parameters(), lr: _param.TrainingLearningRate);
 
-            var optimizer = torch.optim.Adam(_model.parameters(), lr: args.TrainingLearningRate);
-
-            for (int epoch = 0; epoch < args.TrainingEpochs; ++epoch)
+            for (int epoch = 0; epoch < _param.TrainingEpochs; ++epoch)
             {
                 _model.train();
 
-                int batchCount = trainingData.Count / args.TrainingBatchSize;
+                int batchCount = trainingData.Count / _param.TrainingBatchSize;
 
                 float totalLossV = 0;
                 float totalLossProbs = 0;
 
                 for (int b = 0; b < batchCount; ++b)
                 {
-                    try
-                    {
-                        var batchIndices = torch.randint(trainingData.Count, args.TrainingBatchSize).data<long>().ToList();
-                        var batch = batchIndices.Select(i => trainingData[(int)i]);
+                    var batchIndices = torch.randint(trainingData.Count, _param.TrainingBatchSize).data<long>().ToList();
+                    var batch = batchIndices.Select(i => trainingData[(int)i]);
 
-                        var oneHotArray = batch.Select(td => OneHotEncode(td.State)).ToArray();
-                        var desiredProbsArray = batch.Select(td => td.ActionProbs).ToArray();
-                        var desiredVsArray = batch.Select(td => td.Player1Value).ToArray();
+                    var oneHotArray = batch.Select(td => OneHotEncode(td.State)).ToArray();
+                    var desiredProbsArray = batch.Select(td => td.ActionProbs).ToArray();
+                    var desiredVsArray = batch.Select(td => td.Player1Value).ToArray();
 
-                        using var oneHotBatchTensor = torch.stack(oneHotArray.Select(a => torch.from_array(a))).reshape(args.TrainingBatchSize, -1);
-                        using var desiredProbsBatchTensor = torch.stack(desiredProbsArray.Select(p => torch.from_array(p))).reshape(args.TrainingBatchSize, -1);
-                        using var desiredVsBatchTensor = torch.from_array(desiredVsArray);
+                    using var oneHotBatchTensor = torch.stack(oneHotArray.Select(a => torch.from_array(a))).reshape(_param.TrainingBatchSize, -1);
+                    using var desiredProbsBatchTensor = torch.stack(desiredProbsArray.Select(p => torch.from_array(p))).reshape(_param.TrainingBatchSize, -1);
+                    using var desiredVsBatchTensor = torch.from_array(desiredVsArray);
 
-                        var (logProbs, vt) = _model.forward(oneHotBatchTensor);
+                    var (logProbs, vt) = _model.forward(oneHotBatchTensor);
 
-                        var lossV = LossV(desiredVsBatchTensor, vt);
-                        var lossProbs = LossProbs(desiredProbsBatchTensor, logProbs);
-                        var totalLoss = lossV + lossProbs;
+                    var lossV = LossV(desiredVsBatchTensor, vt);
+                    var lossProbs = LossProbs(desiredProbsBatchTensor, logProbs);
+                    var totalLoss = lossV + lossProbs;
 
-                        optimizer.zero_grad();
-                        totalLoss.backward();
-                        optimizer.step();
+                    optimizer.zero_grad();
+                    totalLoss.backward();
+                    optimizer.step();
 
-                        totalLossV += lossV.ToSingle();
-                        totalLossProbs += lossProbs.ToSingle();
-
-                        if (epoch == 0 && b == 0)
-                            Console.WriteLine($"epoch start: {epoch + 1} Loss: {totalLossV + totalLossProbs}, lossV: {totalLossV}, lossProbs: {totalLossProbs}");
-                    }
-                    catch (Exception ex)
-                    {
-                        var sb = new StringBuilder();
-                        sb.AppendLine(ex.ToString());
-                        sb.AppendLine($"ERROR in batch");
-                        sb.AppendLine($"batchId {b}");
-                        sb.AppendLine($"trainingData.count:  {trainingData.Count}");
-                        sb.AppendLine();
-                        sb.AppendLine();
-                        Console.WriteLine(sb.ToString());
-                        File.AppendAllText("c:\\temp\\zerosharp\\errors.txt", sb.ToString());
-                    }
-
-                    if (epoch == args.TrainingEpochs - 1 && b == batchCount - 1)
-                        Console.WriteLine($"epoch end: {epoch + 1} Loss: {(totalLossV + totalLossProbs) / batchCount}, lossV: {totalLossV / batchCount}, lossProbs: {totalLossProbs / batchCount}");
+                    totalLossV += lossV.ToSingle();
+                    totalLossProbs += lossProbs.ToSingle();
                 }
             }
-
-            _model.save($"c:\\temp\\zerosharp\\tixy-model-post-train-{iteration}.pt");
-            _model.save("c:\\temp\\zerosharp\\tixy-model-post-train-latest.pt");
         }
 
         public void Suggest(byte[] state, float[] dstActionsProbs, out float v)

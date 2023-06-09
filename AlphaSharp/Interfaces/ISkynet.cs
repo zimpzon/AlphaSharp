@@ -7,6 +7,6 @@ namespace AlphaSharp.Interfaces
         void LoadModel(string modelPath);
         void SaveModel(string modelPath);
         void Suggest(byte[] state, float[] dstActionsProbs, out float v);
-        void Train(List<TrainingData> trainingData, AlphaParameters args, int iteration);
+        void Train(List<TrainingData> trainingData);
     }
 }

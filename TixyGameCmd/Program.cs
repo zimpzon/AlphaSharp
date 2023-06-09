@@ -8,11 +8,16 @@ namespace TixyGameCmd
     {
         static void Run()
         {
+            // +progress callback
+            // progress print helpers
+            // tic tac from py
+            // subfolders in project
+            // beautiful progress, something. with stats for all iterations.
+
             var alphaParam = new AlphaParameters
             {
                 // global
                 ResumeFromCheckpoint = true,
-                ResumeFromEval = false,
                 Iterations = 1000,
                 MaxWorkerThreads = 4, // diminishing returns, 4 threads seems optimal'ish on home pc with 12/24 cores
                 MaxTrainingExamples = 100000,
@@ -20,13 +25,13 @@ namespace TixyGameCmd
                 OutputFolder = "c:\\temp\\zerosharp\\tixy",
 
                 // self-play
-                SelfPlaySimulationCount = 2000,
+                SelfPlaySimulationCount = 500,
                 SelfPlaySimulationMaxMoves = 500,
                 SelfPlayEpisodeMaxMoves = 150,
-                SelfPlayEpisodes = 40,
+                SelfPlayEpisodes = 20,
 
                 // evaluation
-                EvaluationRounds = 20,
+                EvaluationRounds = 10,
                 EvaluationSimulationCount = 1000,
                 EvaluationSimulationMaxMoves = 500,
                 EvaluationMaxMoves = 150,
@@ -40,18 +45,17 @@ namespace TixyGameCmd
             };
 
             var game = new Tixy(5, 5);
+            var skynetCreator = () => new TixySkynet(game, tixyParam);
             var skynet = new TixySkynet(game, tixyParam);
             var evaluationSkynet = new TixySkynet(game, tixyParam);
-            var coach = new Coach();
-            coach.Run(game, skynet, evaluationSkynet, alphaParam);
+
+            var trainer = new AlphaSharpTrainer(game, skynetCreator, alphaParam);
+            trainer.Run();
         }
 
         static void Main(string[] _)
         {
-            torch.set_num_threads(1);
-            torch.set_num_interop_threads(1);
-
-            while (true)
+            //while (true)
             {
                 try
                 {
