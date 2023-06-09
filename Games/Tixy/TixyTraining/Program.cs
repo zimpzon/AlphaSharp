@@ -19,21 +19,21 @@ namespace TixyGameCmd
                 // global
                 ResumeFromCheckpoint = true,
                 Iterations = 1000,
-                MaxWorkerThreads = 4, // diminishing returns, 4 threads seems optimal'ish on home pc with 12/24 cores
+                MaxWorkerThreads = 1, // diminishing returns, 4 threads seems optimal'ish on home pc with 12/24 cores
                 MaxTrainingExamples = 100000,
                 Cpuct = 1.0f,
                 OutputFolder = "c:\\temp\\zerosharp\\tixy",
 
                 // self-play
-                SelfPlaySimulationCount = 500,
-                SelfPlaySimulationMaxMoves = 500,
+                SelfPlaySimulationCount = 800,
+                SelfPlaySimulationMaxMoves = 300,
                 SelfPlayEpisodeMaxMoves = 150,
-                SelfPlayEpisodes = 20,
+                SelfPlayEpisodes = 30,
 
                 // evaluation
                 EvaluationRounds = 10,
-                EvaluationSimulationCount = 1000,
-                EvaluationSimulationMaxMoves = 500,
+                EvaluationSimulationCount = 500,
+                EvaluationSimulationMaxMoves = 200,
                 EvaluationMaxMoves = 150,
             };
 
@@ -44,7 +44,10 @@ namespace TixyGameCmd
                 TrainingLearningRate = 0.001f,
             };
 
-            var game = new Tixy(5, 5);
+            // setting threads to 1 seems to be rather important. more than 1 *always* slows down torch in my testing.
+            torch.set_num_threads(1);
+
+            var game = new Tixy(6, 6);
             var skynetCreator = () => new TixySkynet(game, tixyParam);
             var skynet = new TixySkynet(game, tixyParam);
             var evaluationSkynet = new TixySkynet(game, tixyParam);
@@ -55,17 +58,14 @@ namespace TixyGameCmd
 
         static void Main(string[] _)
         {
-            //while (true)
+            try
             {
-                try
-                {
-                    Run();
-                    Console.WriteLine("Done");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex);
-                }
+                Run();
+                Console.WriteLine("Exiting");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
             }
         }
     }

@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 
 namespace TixyGame
 {
-    public partial class TixyHumanPlayer : IPlayer
+    public class TixyHumanPlayer : IPlayer
     {
         private readonly IGame _game;
         private readonly Dictionary<string, int> colMapping = new ()
@@ -86,11 +86,11 @@ namespace TixyGame
 
             while (true)
             {
-                Console.WriteLine("Your move, punk:");
+                Console.WriteLine("Your move, human:");
                 string inputMove = Console.ReadLine();
                 if (!IsValidInput(inputMove))
                 {
-                    Console.WriteLine("Invalid input, punk");
+                    Console.WriteLine("Invalid input, human");
                     continue;
                 }
 
@@ -98,7 +98,7 @@ namespace TixyGame
                 int? validMove = FindMove(parsedInput.Item1, parsedInput.Item2);
                 if (validMove == null)
                 {
-                    Console.WriteLine("Invalid move, punk");
+                    Console.WriteLine("Invalid move, human");
                     continue;
                 }
 

@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading;
+using static AlphaSharp.StateNode;
 
 namespace AlphaSharp
 {
@@ -139,10 +140,15 @@ namespace AlphaSharp
             var rnd = new Random();
 
             var prevState = new byte[_game.StateSize];
+            var validActions = new byte[_game.ActionCount];
 
             while (true)
             {
-                if (moves++ > _param.SelfPlayEpisodeMaxMoves)
+                _game.GetValidActions(state, validActions);
+                int validActionCount = ArrayUtil.CountNonZero(validActions);
+
+                bool isDraw = validActionCount == 0 || moves++ > _param.SelfPlayEpisodeMaxMoves;
+                if (isDraw)
                 {
                     gameResult = 0;
 
@@ -188,6 +194,7 @@ namespace AlphaSharp
         long winNew = 0;
         long winOld = 0;
         long draw = 0;
+
         int evalRoundsCompleted = 0;
         const int NotUsed = 0;
 
@@ -198,7 +205,7 @@ namespace AlphaSharp
             long roundsToCatchUp = Math.Abs(winOld - winNew);
             if (roundsToCatchUp >= roundsLeft)
             {
-                _param.TextInfoCallback(LogLevel.Info, $"outcome is determined, stopping evaluation early");
+                _param.TextInfoCallback(LogLevel.Info, $"Outcome is determined, stopping evaluation early");
                 return NotUsed;
             }
 
@@ -237,7 +244,7 @@ namespace AlphaSharp
 
             lock (_lock)
             {
-                string msg = $"round done ({resultStr}), new model: {winNew}, old model: {winOld}, draw: {draw}";
+                string msg = $"Round done ({resultStr}), new model: {winNew}, old model: {winOld}, draw: {draw}";
                 _param.TextInfoCallback(LogLevel.MoreInfo, msg);
 
                 evalRoundsCompleted++;
@@ -290,7 +297,14 @@ namespace AlphaSharp
 
         private void Train(List<TrainingData> trainingData)
         {
+            string trainingSamplesPath = Path.Combine(_param.OutputFolder, FilenameTrainingSamplesLatest);
+            _param.TextInfoCallback(LogLevel.MoreInfo, $"Saving current training samples ({_trainingSamples.Count}) to {trainingSamplesPath}");
+
+            string json = JsonSerializer.Serialize(_trainingSamples);
+            File.WriteAllText(trainingSamplesPath, json);
+
             string oldModelPath = Path.Combine(_param.OutputFolder, FilenamePreTrainingSkynet);
+            _param.TextInfoCallback(LogLevel.MoreInfo, $"Saving skynet model before training to {oldModelPath}");
             _skynet.SaveModel(oldModelPath);
 
             _skynet.Train(trainingData);

@@ -1,6 +1,6 @@
-﻿namespace TixyGame
+﻿namespace TicTacToeGame
 {
-    public class TixyParameters
+    public class TicTacToeParameters
     {
         /// <summary>
         /// Neural network training parameters.

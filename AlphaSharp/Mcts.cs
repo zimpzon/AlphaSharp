@@ -13,6 +13,7 @@ namespace AlphaSharp
         public class SimStats
         {
             public int MaxMovesReached { get; set; }
+            public int NoValidActions { get; set; }
             public int NodesCreated { get; set; }
             public int NodesRevisited { get; set; }
             public int TotalSims { get; set; }
@@ -35,7 +36,7 @@ namespace AlphaSharp
         private readonly IGame _game;
         private readonly ISkynet _skynet;
         private readonly AlphaParameters _param;
-        private StateNode[] _stateNodes = new StateNode[100000];
+        private StateNode[] _stateNodes = new StateNode[200000];
         private int _stateIdx = 0;
         private readonly float[] _actionProbsTemp;
         private readonly float[] _noiseTemp;
@@ -124,6 +125,18 @@ namespace AlphaSharp
                 var stateNode = _stateNodes[idxStateNode];
                 stateNode.VisitCount++;
 
+                if (!isLeafNode)
+                {
+                    int numberOfValidActionsRevisited = ActionUtil.CountValidActions(stateNode.Actions);
+                    if (numberOfValidActionsRevisited == 0)
+                    {
+                        // no valid actions in this revisited node, consider this a draw
+                        BacktrackAndUpdate(_selectedActions, 0);
+                        Stats.NoValidActions++;
+                        break;
+                    }
+                }
+
                 if (stateNode.GameOver == int.MinValue)
                     stateNode.GameOver = _game.GetGameEnded(_state);
 
@@ -144,6 +157,14 @@ namespace AlphaSharp
                     Stats.SkynetCalls++;
 
                     _game.GetValidActions(_state, _validActionsTemp);
+                    int numberOfLeafValidActions = ArrayUtil.CountNonZero(_validActionsTemp);
+                    if (numberOfLeafValidActions == 0)
+                    {
+                        // no valid actions in leaf, consider this a draw
+                        BacktrackAndUpdate(_selectedActions, 0);
+                        Stats.NoValidActions++;
+                        break;
+                    }
 
                     ArrayUtil.FilterProbsByValidActions(_actionProbsTemp, _validActionsTemp);
                     ArrayUtil.Normalize(_actionProbsTemp);

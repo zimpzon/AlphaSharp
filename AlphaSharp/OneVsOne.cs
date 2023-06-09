@@ -8,6 +8,7 @@ namespace AlphaSharp
         private readonly IGame _game;
         private readonly IPlayer _player1;
         private readonly IPlayer _player2;
+        private bool _abort;
 
         public OneVsOne(IGame game, IPlayer player1, IPlayer player2)
         {
@@ -16,7 +17,10 @@ namespace AlphaSharp
             _player2 = player2;
         }
 
-        public int Run(int maxMoves, bool verbose = false)
+        public void Abort()
+            => _abort = true;
+
+        public int Run(int maxMoves)
         {
             var state = new byte[_game.StateSize];
             var actions = new byte[_game.ActionCount];
@@ -30,29 +34,30 @@ namespace AlphaSharp
 
             while (true)
             {
+                if (_abort)
+                    return int.MinValue;
+
                 if (moves++ >= maxMoves)
+                {
+                    // reaching maxMoves is considered a draw
                     return 0;
+                }
 
                 _game.GetValidActions(state, actions);
+                int validActionCount = ArrayUtil.CountNonZero(actions);
+                if (validActionCount == 0)
+                {
+                    // no valid actions is considered a draw
+                    return 0;
+                }
+
                 int selectedAction = currentPlayer.PickAction(state);
 
                 _game.ExecutePlayerAction(state, selectedAction);
 
                 int gameResult = _game.GetGameEnded(state);
                 if (gameResult != 0)
-                {
-                    if (verbose)
-                    {
-                        Console.Write("last move: ");
-                        _game.PrintDisplayTextForAction(selectedAction, Console.WriteLine);
-                        Console.Write("from state: ");
-                        _game.PrintState(prevState, Console.WriteLine);
-                        Console.Write("to state: ");
-                        _game.PrintState(state, Console.WriteLine);
-                    }
-
                     return currentPlayer == _player1 ? 1 : -1;
-                }
 
                 _game.FlipStateToNextPlayer(state);
                 Array.Copy(state, prevState, state.Length);

@@ -12,6 +12,17 @@ namespace AlphaSharp
             return ArrayUtil.FindNthNonZeroIndex(validActions, selectedNo + 1);
         }
 
+        public static int CountValidActions(StateNode.Action[] actions)
+        {
+            int count = 0;
+            for (int i = 0; i < actions.Length; ++i)
+            {
+                if (actions[i].IsValidMove > 0)
+                    count++;
+            }
+            return count;
+        }
+
         public static int PickActionByHighestVisitCount(StateNode.Action[] actions)
         {
             var rnd = new Random();
