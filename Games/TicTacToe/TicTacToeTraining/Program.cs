@@ -15,26 +15,25 @@ namespace TicTacToeTraining
                 Iterations = 1000,
                 MaxWorkerThreads = 4, // diminishing returns, 4 threads seems optimal'ish on home pc with 12/24 cores
                 MaxTrainingExamples = 100000,
-                Cpuct = 1.0f,
                 OutputFolder = "c:\\temp\\zerosharp\\TicTacToe",
 
                 // self-play
-                SelfPlaySimulationCount = 100,
-                SelfPlaySimulationMaxMoves = 100,
-                SelfPlayEpisodeMaxMoves = 100,
+                SelfPlaySimulationCount = 1000,
+                SelfPlaySimulationMaxMoves = 500,
+                SelfPlayEpisodeMaxMoves = 10,
                 SelfPlayEpisodes = 30,
 
                 // evaluation
                 EvaluationRounds = 20,
-                EvaluationSimulationCount = 100,
-                EvaluationSimulationMaxMoves = 100,
-                EvaluationMaxMoves = 100,
+                EvaluationSimulationCount = 1000,
+                EvaluationSimulationMaxMoves = 10,
+                EvaluationMaxMoves = 10,
             };
 
             var TicTacToeParam = new TicTacToeParameters
             {
                 TrainingEpochs = 10,
-                TrainingBatchSize = 64,
+                TrainingBatchSize = 10,
                 TrainingLearningRate = 0.001f,
             };
 

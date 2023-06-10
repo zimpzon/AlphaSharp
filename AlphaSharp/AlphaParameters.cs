@@ -7,14 +7,14 @@ namespace AlphaSharp
         public AlphaParameters()
         {
             TextInfoCallback = (logLevel, msg) => { DefaultLogging.Log(logLevel, MaxLogLevel, LogTimestamps, msg); };
-            ProgressCallback = (progress) => { DefaultLogging.LogProgress(progress, LogTimestamps); };
+            ProgressCallback = (progress, additionalInfo) => { DefaultLogging.LogProgress(progress, LogTimestamps, additionalInfo); };
         }
 
         /// <summary>
         /// Callbacks for logging and progress.
         /// </summary>
         public Action<LogLevel, string> TextInfoCallback { get; set; }
-        public Action<ProgressInfo> ProgressCallback { get; set; }
+        public Action<ProgressInfo, string> ProgressCallback { get; set; }
         public LogLevel MaxLogLevel { get; set; } = LogLevel.Info;
         public bool LogTimestamps { get; set; } = true;
 
@@ -47,6 +47,7 @@ namespace AlphaSharp
         /// </summary>
         public int EvaluationRounds { get; set; } = 20;
         public int EvaluationMaxMoves { get; set; } = 100;
+        public EvaluationPlayers EvaluationPlayers { get; set; } = EvaluationPlayers.NewModelAlternating;
 
         /// <summary>
         /// New model evaluation parameters, MCTS simulation.

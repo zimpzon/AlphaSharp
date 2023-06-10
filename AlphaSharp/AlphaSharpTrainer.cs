@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
+using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using System.Threading;
 
@@ -32,7 +32,7 @@ namespace AlphaSharp
         private class EvaluationParam
         {
             public ProgressInfo Progress { get; set; }
-            public bool NewModelIsPlayer1 { get; set; }
+            public int Round { get; set; }
             public ISkynet OldSkynet { get; set; }
         }
 
@@ -86,13 +86,13 @@ namespace AlphaSharp
 
             var iterationProgress = ProgressInfo.Create(ProgressInfo.Phase.Iteration, _param.Iterations);
             _param.TextInfoCallback(LogLevel.Info, "");
-            _param.TextInfoCallback(LogLevel.Info, $"Starting {_param.Iterations} iterations of self-play / train / evaluate cycle of game {_game.Name}");
+            _param.TextInfoCallback(LogLevel.Info, $"Starting {_param.Iterations} iterations of [self-play / train / evaluate] cycle of game {_game.Name}");
 
             for (int iter = 0; iter < _param.Iterations; iter++)
             {
                 _iteration = iter;
 
-                _param.ProgressCallback(iterationProgress.Update(iter + 1));
+                _param.ProgressCallback(iterationProgress.Update(iter + 1), string.Empty);
 
                 // Self-play episodes
                 var episodeProgress = ProgressInfo.Create(ProgressInfo.Phase.SelfPlay, _param.SelfPlayEpisodes);
@@ -131,8 +131,6 @@ namespace AlphaSharp
 
                 EvaluateNewModel();
             }
-
-            _param.ProgressCallback(iterationProgress.Completed());
         }
 
         int episodesCompleted = 0;
@@ -198,7 +196,7 @@ namespace AlphaSharp
             lock (_lock)
             {
                 episodesCompleted++;
-                _param.ProgressCallback(param.Progress.Update(episodesCompleted));
+                _param.ProgressCallback(param.Progress.Update(episodesCompleted), string.Empty);
             }
 
             return trainingData;
@@ -213,6 +211,9 @@ namespace AlphaSharp
 
         private int RunEvalRound(EvaluationParam param)
         {
+            if (Interlocked.Read(ref stoppedEarly) > 0)
+                return NotUsed;
+
             // Is result decided yet?
             long roundsLeft = _param.EvaluationRounds - (winOld + winNew + draw);
             long roundsToCatchUp = Math.Abs(winOld - winNew);
@@ -226,8 +227,23 @@ namespace AlphaSharp
             var mctsPlayerOld = new MctsPlayer(_game, param.OldSkynet, _param);
             var mctsPlayerNew = new MctsPlayer(_game, _skynet, _param);
 
-            var player1 = param.NewModelIsPlayer1 ? mctsPlayerNew : mctsPlayerOld;
-            var player2 = param.NewModelIsPlayer1 ? mctsPlayerOld : mctsPlayerNew;
+            IPlayer player1 = null;
+            IPlayer player2 = null;
+            if (_param.EvaluationPlayers == EvaluationPlayers.NewModelAlwaysPlayer1)
+            {
+                player1 = mctsPlayerNew;
+                player2 = mctsPlayerOld;
+            }
+            else if (_param.EvaluationPlayers == EvaluationPlayers.NewModelAlwaysPlayer2)
+            {
+                player1 = mctsPlayerOld;
+                player2 = mctsPlayerNew;
+            }
+            else if (_param.EvaluationPlayers == EvaluationPlayers.NewModelAlternating)
+            {
+                player1 = param.Round % 2 == 0 ? mctsPlayerNew : mctsPlayerOld;
+                player2 = param.Round % 2 == 0 ? mctsPlayerOld : mctsPlayerNew;
+            }
 
             if (Interlocked.Read(ref stoppedEarly) > 0)
                 return NotUsed;
@@ -237,9 +253,8 @@ namespace AlphaSharp
 
             if (Interlocked.Read(ref stoppedEarly) > 0)
                 return NotUsed;
-
-            int winValueNew = param.NewModelIsPlayer1 ? 1 : -1;
-            int winValueOld = param.NewModelIsPlayer1 ? -1 : 1;
+            int winValueNew = player1 == mctsPlayerNew ? 1 : -1;
+            int winValueOld = player1 == mctsPlayerNew ? -1 : 1;
 
             string resultStr;
             if (result == 0)
@@ -264,11 +279,10 @@ namespace AlphaSharp
 
             lock (_lock)
             {
-                string msg = $"Round done ({resultStr}), new model: {winNew}, old model: {winOld}, draw: {draw}";
-                _param.TextInfoCallback(LogLevel.MoreInfo, msg);
-
                 evalRoundsCompleted++;
-                _param.ProgressCallback(param.Progress.Update(evalRoundsCompleted));
+
+                string additionalInfo = $"Round done ({resultStr}), new model: {winNew}, old model: {winOld}, draw: {draw}";
+                _param.ProgressCallback(param.Progress.Update(evalRoundsCompleted), additionalInfo);
             }
 
             return NotUsed;
@@ -291,7 +305,7 @@ namespace AlphaSharp
 
             var countNumbers = Enumerable.Range(0, _param.EvaluationRounds).ToList();
             var evalParam = countNumbers.Select(e => new EvaluationParam {
-                NewModelIsPlayer1 = e % 2 == 0,
+                Round = e,
                 OldSkynet = oldSkynet,
                 Progress = progress
             }).ToList();
@@ -342,6 +356,8 @@ namespace AlphaSharp
             }
         }
 
+        public delegate void TrainingProgressCallback(int currentValue, int numberOfValues, string additionalInfo = null);
+
         private void Train(List<TrainingData> trainingData)
         {
             string trainingSamplesPath = Path.Combine(_param.OutputFolder, _filenameTrainingSamplesLatest);
@@ -354,7 +370,19 @@ namespace AlphaSharp
             _param.TextInfoCallback(LogLevel.MoreInfo, $"Saving skynet model before training to {oldModelPath}");
             _skynet.SaveModel(oldModelPath);
 
-            _skynet.Train(trainingData);
+            var trainingProgress = ProgressInfo.Create(ProgressInfo.Phase.Train);
+
+            void ProgressCallback(int currentValue, int numberOfValues, string additionalInfo = null)
+            {
+                if (!string.IsNullOrWhiteSpace(additionalInfo))
+                    _param.TextInfoCallback(LogLevel.MoreInfo, $"Info from Skynet: {additionalInfo}");
+
+                _param.ProgressCallback(trainingProgress.Update(currentValue, numberOfValues), additionalInfo);
+            }
+
+            var callback = new TrainingProgressCallback(ProgressCallback);
+
+            _skynet.Train(trainingData, callback);
         }
     }
 }

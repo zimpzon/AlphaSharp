@@ -23,10 +23,10 @@ namespace TicTacToeGame
             for (int i = 0; i < _game.ActionCount; i++)
             {
                 if (validActions[i] != 0)
-                    list.Add(i.ToString());
+                    list.Add((i + 1).ToString());
             }
 
-            Console.WriteLine($"Pick a move: {string.Join(", ", list)}");
+            Console.WriteLine($"Pick a move (1-9 for cell number): {string.Join(", ", list)}");
 
             while (true)
             {
@@ -38,7 +38,7 @@ namespace TicTacToeGame
                     continue;
                 }
 
-                int action = int.Parse(inputMove);
+                int action = int.Parse(inputMove) - 1;
                 return action;
             }
         }

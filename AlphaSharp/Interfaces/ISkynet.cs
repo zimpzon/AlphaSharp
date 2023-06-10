@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using static AlphaSharp.AlphaSharpTrainer;
 
 namespace AlphaSharp.Interfaces
 {
@@ -7,6 +8,6 @@ namespace AlphaSharp.Interfaces
         void LoadModel(string modelPath);
         void SaveModel(string modelPath);
         void Suggest(byte[] state, float[] dstActionsProbs, out float v);
-        void Train(List<TrainingData> trainingData);
+        void Train(List<TrainingData> trainingData, TrainingProgressCallback progressCallback);
     }
 }

@@ -1,6 +1,7 @@
 ﻿using AlphaSharp;
 using AlphaSharp.Interfaces;
 using TorchSharp;
+using static AlphaSharp.AlphaSharpTrainer;
 
 namespace TicTacToeGame
 {
@@ -64,7 +65,18 @@ namespace TicTacToeGame
             return oneHotEncoded;
         }
 
-        public void Train(List<TrainingData> trainingData)
+        private static torch.Tensor LossProbs(torch.Tensor targets, torch.Tensor outputs)
+        {
+            // add a tiny amount to targets to avoid multiplying by zero
+            return -((targets + 0.00001f) * outputs).sum() / targets.shape[0];
+        }
+
+        private static torch.Tensor LossV(torch.Tensor targets, torch.Tensor outputs)
+        {
+            return (targets - outputs.view(-1)).pow(2).sum() / targets.shape[0];
+        }
+
+        public void Train(List<TrainingData> trainingData, TrainingProgressCallback progressCallback)
         {
             var optimizer = torch.optim.Adam(_model.parameters(), lr: _param.TrainingLearningRate);
 
@@ -74,8 +86,8 @@ namespace TicTacToeGame
 
                 int batchCount = trainingData.Count / _param.TrainingBatchSize;
 
-                float totalLossV = 0;
-                float totalLossProbs = 0;
+                float latestLossV = 0;
+                float latestLossProbs = 0;
 
                 var meanSquaredError = torch.nn.MSELoss();
                 var crossEntropy = torch.nn.CrossEntropyLoss();
@@ -95,17 +107,21 @@ namespace TicTacToeGame
 
                     var (logProbs, vt) = _model.forward(oneHotBatchTensor);
 
-                    var lossV = meanSquaredError.forward(vt.view(-1), desiredVsBatchTensor);
-                    var lossProbs = crossEntropy.forward(logProbs, desiredProbsBatchTensor);
+                    var lossV = LossV(desiredVsBatchTensor, vt);
+                    var lossProbs = LossProbs(desiredProbsBatchTensor, logProbs);
+                    //var lossV = meanSquaredError.forward(vt.view(-1), desiredVsBatchTensor);
+                    //var lossProbs = crossEntropy.forward(logProbs, desiredProbsBatchTensor);
                     var totalLoss = lossV + lossProbs;
 
                     optimizer.zero_grad();
                     totalLoss.backward();
                     optimizer.step();
 
-                    totalLossV += lossV.ToSingle();
-                    totalLossProbs += lossProbs.ToSingle();
+                    latestLossV = lossV.ToSingle();
+                    latestLossProbs = lossProbs.ToSingle();
                 }
+
+                progressCallback(epoch + 1, _param.TrainingEpochs, $"lossV: {latestLossV}, lossProbs: {latestLossProbs}");
             }
         }
     }

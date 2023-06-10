@@ -1,6 +1,7 @@
 ﻿using AlphaSharp;
 using AlphaSharp.Interfaces;
 using TorchSharp;
+using static AlphaSharp.AlphaSharpTrainer;
 
 namespace TixyGame
 {
@@ -76,7 +77,7 @@ namespace TixyGame
             return (targets - outputs.view(-1)).pow(2).sum() / targets.shape[0];
         }
 
-        public void Train(List<TrainingData> trainingData)
+        public void Train(List<TrainingData> trainingData, TrainingProgressCallback progressCallback)
         {
             var optimizer = torch.optim.Adam(_model.parameters(), lr: _param.TrainingLearningRate);
 
@@ -86,8 +87,8 @@ namespace TixyGame
 
                 int batchCount = trainingData.Count / _param.TrainingBatchSize;
 
-                float totalLossV = 0;
-                float totalLossProbs = 0;
+                float latestLossV = 0;
+                float latestLossProbs = 0;
 
                 for (int b = 0; b < batchCount; ++b)
                 {
@@ -112,9 +113,11 @@ namespace TixyGame
                     totalLoss.backward();
                     optimizer.step();
 
-                    totalLossV += lossV.ToSingle();
-                    totalLossProbs += lossProbs.ToSingle();
+                    latestLossV = lossV.ToSingle();
+                    latestLossProbs = lossProbs.ToSingle();
                 }
+
+                progressCallback(epoch + 1, _param.TrainingEpochs, $"lossV: {latestLossV}, lossProbs: {latestLossProbs}");
             }
         }
 

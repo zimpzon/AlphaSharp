@@ -23,19 +23,18 @@ namespace TixyGameCmd
                 Iterations = 1000,
                 MaxWorkerThreads = 4, // diminishing returns, 4 threads seems optimal'ish on home pc with 12/24 cores
                 MaxTrainingExamples = 100000,
-                Cpuct = 1.0f,
                 OutputFolder = "c:\\temp\\zerosharp\\tixy",
 
                 // self-play
-                SelfPlaySimulationCount = 100,
-                SelfPlaySimulationMaxMoves = 100,
+                SelfPlaySimulationCount = 1000,
+                SelfPlaySimulationMaxMoves = 500,
                 SelfPlayEpisodeMaxMoves = 150,
-                SelfPlayEpisodes = 10,
+                SelfPlayEpisodes = 30,
 
                 // evaluation
-                EvaluationRounds = 10,
-                EvaluationSimulationCount = 100,
-                EvaluationSimulationMaxMoves = 100,
+                EvaluationRounds = 20,
+                EvaluationSimulationCount = 1000,
+                EvaluationSimulationMaxMoves = 500,
                 EvaluationMaxMoves = 150,
             };
 
