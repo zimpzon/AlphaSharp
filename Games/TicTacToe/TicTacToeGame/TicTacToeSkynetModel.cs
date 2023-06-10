@@ -24,8 +24,8 @@ namespace TicTacToeGame
         public TicTacToeSkynetModel(int inputSize, int outputSize) : base("tictactoe")
         {
             const float DropOut = 0.5f;
-            const int size1 = 512;
-            const int size2 = 256;
+            const int size1 = 32;
+            const int size2 = 16;
 
             _lin1 = torch.nn.Linear(inputSize, size1);
             _bn1 = torch.nn.BatchNorm1d(size1);

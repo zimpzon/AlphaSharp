@@ -25,7 +25,7 @@ namespace TicTacToeVsHuman
             var game = new TicTacToe();
             var skynet = new TicTacToeSkynet(game, ticTacToeParam);
 
-            string modelPath = "c:\\temp\\zerosharp\\TicTacToe\\best.skynet";
+            string modelPath = "c:\\temp\\zerosharp\\TicTacToe\\tic-tac-toe-best.skynet";
             Console.WriteLine($"Loading model at {modelPath}...");
 
             skynet.LoadModel(modelPath);
