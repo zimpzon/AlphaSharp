@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 
 namespace TixyGame
 {
-    public class TixyHumanPlayer : IPlayer
+    public partial class TixyHumanPlayer : IPlayer
     {
         private readonly IGame _game;
         private readonly Dictionary<string, int> colMapping = new ()

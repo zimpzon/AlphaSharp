@@ -3,9 +3,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading;
-using static AlphaSharp.StateNode;
 
 namespace AlphaSharp
 {
@@ -18,9 +18,11 @@ namespace AlphaSharp
         private readonly Func<ISkynet> _skynetCreator;
         private readonly AlphaParameters _param;
 
-        private const string FilenameBestSkynet = "best.skynet";
-        private const string FilenamePreTrainingSkynet = "pre-training.skynet";
-        private const string FilenameTrainingSamplesLatest = "training-samples-latest.json";
+        private readonly string _filenameBestSkynet = "{NAME}-best.skynet";
+        private readonly string _filenamePreTrainingSkynet = "{NAME}-pre-training.skynet";
+        private readonly string _filenameTrainingSamplesLatest = "{NAME}-training-samples-latest.json";
+
+        private int _iteration;
 
         private class EpisodeParam
         {
@@ -40,6 +42,10 @@ namespace AlphaSharp
             _skynetCreator = skynetCreator;
             _param = param;
 
+            _filenameBestSkynet = _filenameBestSkynet.Replace("{NAME}", _game.Name);
+            _filenamePreTrainingSkynet = _filenamePreTrainingSkynet.Replace("{NAME}", _game.Name);
+            _filenameTrainingSamplesLatest = _filenameTrainingSamplesLatest.Replace("{NAME}", _game.Name);
+
             _skynet = skynetCreator();
 
             if (!Directory.Exists(param.OutputFolder))
@@ -55,43 +61,47 @@ namespace AlphaSharp
             {
                 _param.TextInfoCallback(LogLevel.Info, "Resuming from latest checkpoint...");
 
-                var trainingSamplesPath = Path.Combine(_param.OutputFolder, FilenameTrainingSamplesLatest);
+                var trainingSamplesPath = Path.Combine(_param.OutputFolder, _filenameTrainingSamplesLatest);
                 if (File.Exists(trainingSamplesPath))
                 {
                     _trainingSamples = JsonSerializer.Deserialize<List<TrainingData>>(File.ReadAllText(trainingSamplesPath));
-                    _param.TextInfoCallback(LogLevel.Info, $"  {_trainingSamples.Count} training samples loaded from {trainingSamplesPath}");
+                    _param.TextInfoCallback(LogLevel.Info, $"{_trainingSamples.Count} training samples loaded from {trainingSamplesPath}");
                 }
                 else
                 {
-                    _param.TextInfoCallback(LogLevel.Info, "  no existing training samples found");
+                    _param.TextInfoCallback(LogLevel.Info, "no existing training samples found");
                 }
 
-                var skynetModelFile = Path.Combine(_param.OutputFolder, FilenameBestSkynet);
+                var skynetModelFile = Path.Combine(_param.OutputFolder, _filenameBestSkynet);
                 if (File.Exists(skynetModelFile))
                 {
                     _skynet.LoadModel(skynetModelFile);
-                    _param.TextInfoCallback(LogLevel.Info, $"  best skynet model loaded from {skynetModelFile}");
+                    _param.TextInfoCallback(LogLevel.Info, $"best skynet model loaded from {skynetModelFile}");
                 }
                 else
                 {
-                    _param.TextInfoCallback(LogLevel.Info, "  no existing skynet model found");
+                    _param.TextInfoCallback(LogLevel.Info, "no existing skynet model found");
                 }
             }
 
-            var iterationProgress = ProgressInfo.Create(ProgressInfo.Phase.Iterations, _param.Iterations);
-            _param.TextInfoCallback(LogLevel.Info, $"Starting {_param.Iterations} iterations of self-play / train / evaluate cycle");
+            var iterationProgress = ProgressInfo.Create(ProgressInfo.Phase.Iteration, _param.Iterations);
+            _param.TextInfoCallback(LogLevel.Info, "");
+            _param.TextInfoCallback(LogLevel.Info, $"Starting {_param.Iterations} iterations of self-play / train / evaluate cycle of game {_game.Name}");
 
             for (int iter = 0; iter < _param.Iterations; iter++)
             {
+                _iteration = iter;
+
                 _param.ProgressCallback(iterationProgress.Update(iter + 1));
 
                 // Self-play episodes
-                var episodeProgress = ProgressInfo.Create(ProgressInfo.Phase.SelfPlayEpisodes, _param.SelfPlayEpisodes);
+                var episodeProgress = ProgressInfo.Create(ProgressInfo.Phase.SelfPlay, _param.SelfPlayEpisodes);
 
                 var episodeNumbers = Enumerable.Range(0, _param.SelfPlayEpisodes).ToList();
                 var episodeParam = episodeNumbers.Select(e => new EpisodeParam { Progress = episodeProgress }).ToList();
                 var consumer = new ThreadedConsumer<EpisodeParam, List<TrainingData>>(RunEpisode, _param.MaxWorkerThreads);
 
+                _param.TextInfoCallback(LogLevel.Info, "");
                 _param.TextInfoCallback(LogLevel.Info, $"Starting {_param.SelfPlayEpisodes} episodes of self-play using {_param.MaxWorkerThreads} worker thread{(_param.MaxWorkerThreads == 1 ? "" : "s")}");
 
                 episodesCompleted = 0;
@@ -110,9 +120,12 @@ namespace AlphaSharp
                     _trainingSamples.RemoveRange(0, removeCount);
                 }
 
+                _param.TextInfoCallback(LogLevel.Info, "");
                 _param.TextInfoCallback(LogLevel.Info, $"Starting training with {_trainingSamples.Count} samples of training data");
                 Train(_trainingSamples);
+                _param.TextInfoCallback(LogLevel.Info, $"Training complete");
 
+                _param.TextInfoCallback(LogLevel.Info, "");
                 string msg = $"Comparing new model to old model in {_param.EvaluationRounds} rounds using {_param.MaxWorkerThreads} worker thread{(_param.MaxWorkerThreads == 1 ? "" : "s")}";
                 _param.TextInfoCallback(LogLevel.Info, msg);
 
@@ -194,7 +207,7 @@ namespace AlphaSharp
         long winNew = 0;
         long winOld = 0;
         long draw = 0;
-
+        long stoppedEarly = 0;
         int evalRoundsCompleted = 0;
         const int NotUsed = 0;
 
@@ -205,6 +218,7 @@ namespace AlphaSharp
             long roundsToCatchUp = Math.Abs(winOld - winNew);
             if (roundsToCatchUp >= roundsLeft)
             {
+                Interlocked.Increment(ref stoppedEarly);
                 _param.TextInfoCallback(LogLevel.Info, $"Outcome is determined, stopping evaluation early");
                 return NotUsed;
             }
@@ -215,8 +229,14 @@ namespace AlphaSharp
             var player1 = param.NewModelIsPlayer1 ? mctsPlayerNew : mctsPlayerOld;
             var player2 = param.NewModelIsPlayer1 ? mctsPlayerOld : mctsPlayerNew;
 
+            if (Interlocked.Read(ref stoppedEarly) > 0)
+                return NotUsed;
+
             var oneVsOne = new OneVsOne(_game, player1, player2);
             int result = oneVsOne.Run(_param.EvaluationSimulationMaxMoves);
+
+            if (Interlocked.Read(ref stoppedEarly) > 0)
+                return NotUsed;
 
             int winValueNew = param.NewModelIsPlayer1 ? 1 : -1;
             int winValueOld = param.NewModelIsPlayer1 ? -1 : 1;
@@ -259,14 +279,15 @@ namespace AlphaSharp
             winNew = 0;
             winOld = 0;
             draw = 0;
+            stoppedEarly = 0;
 
             var oldSkynet = _skynetCreator();
-            string oldModelPath = Path.Combine(_param.OutputFolder, FilenamePreTrainingSkynet);
+            string oldModelPath = Path.Combine(_param.OutputFolder, _filenamePreTrainingSkynet);
 
             _param.TextInfoCallback(LogLevel.MoreInfo, $"Loading old model from {oldModelPath}");
             oldSkynet.LoadModel(oldModelPath);
 
-            var progress = ProgressInfo.Create(ProgressInfo.Phase.EvaluationRounds, _param.EvaluationRounds);
+            var progress = ProgressInfo.Create(ProgressInfo.Phase.Eval, _param.EvaluationRounds);
 
             var countNumbers = Enumerable.Range(0, _param.EvaluationRounds).ToList();
             var evalParam = countNumbers.Select(e => new EvaluationParam {
@@ -279,31 +300,57 @@ namespace AlphaSharp
 
             evalRoundsCompleted = 0;
             var episodesTrainingData = consumer.Run(evalParam);
+            string score = $"new: {winNew}, old: {winOld}, draw: {draw}";
 
             bool newIsBetter = winNew > winOld;
             if (newIsBetter)
             {
-                string bestModelPath = Path.Combine(_param.OutputFolder, FilenameBestSkynet);
-                _param.TextInfoCallback(LogLevel.Info, $"New model is better, keeping it as {bestModelPath}");
+                _param.TextInfoCallback(LogLevel.Info, "");
+
+                string bestModelPath = Path.Combine(_param.OutputFolder, _filenameBestSkynet);
+                _param.TextInfoCallback(LogLevel.Info, $"--- New model is BETTER ({score}), keeping it as {bestModelPath} ---");
                 _skynet.SaveModel(bestModelPath);
+
+                _param.TextInfoCallback(LogLevel.Info, "");
             }
             else
             {
-                string prevModelPath = Path.Combine(_param.OutputFolder, FilenamePreTrainingSkynet);
-                _param.TextInfoCallback(LogLevel.Info, $"New model is NOT better, reloading previous model at {prevModelPath}");
+                _param.TextInfoCallback(LogLevel.Info, "");
+
+                string prevModelPath = Path.Combine(_param.OutputFolder, _filenamePreTrainingSkynet);
+                _param.TextInfoCallback(LogLevel.Info, $"--- New model is NOT better ({score}), reloading previous model at {prevModelPath} ---");
                 _skynet.LoadModel(prevModelPath);
+
+                _param.TextInfoCallback(LogLevel.Info, "");
+            }
+
+            if (_param.SaveBackupAfterIteration)
+            {
+                if (newIsBetter)
+                {
+                    string backupModelPath = Path.Combine(_param.OutputFolder, $"{_filenameBestSkynet}.{_iteration}.backup");
+                    _param.TextInfoCallback(LogLevel.Info, $"Saving backup of model at {backupModelPath}");
+                    _skynet.SaveModel(backupModelPath);
+                }
+
+                string backupTrainingDataPath = Path.Combine(_param.OutputFolder, $"{_filenameTrainingSamplesLatest}.{_iteration}.backup");
+                _param.TextInfoCallback(LogLevel.Info, $"Saving backup of training data at {backupTrainingDataPath}");
+                string json = JsonSerializer.Serialize(_trainingSamples);
+                File.WriteAllText(backupTrainingDataPath, json);
+
+                _param.TextInfoCallback(LogLevel.Info, "");
             }
         }
 
         private void Train(List<TrainingData> trainingData)
         {
-            string trainingSamplesPath = Path.Combine(_param.OutputFolder, FilenameTrainingSamplesLatest);
+            string trainingSamplesPath = Path.Combine(_param.OutputFolder, _filenameTrainingSamplesLatest);
             _param.TextInfoCallback(LogLevel.MoreInfo, $"Saving current training samples ({_trainingSamples.Count}) to {trainingSamplesPath}");
 
             string json = JsonSerializer.Serialize(_trainingSamples);
             File.WriteAllText(trainingSamplesPath, json);
 
-            string oldModelPath = Path.Combine(_param.OutputFolder, FilenamePreTrainingSkynet);
+            string oldModelPath = Path.Combine(_param.OutputFolder, _filenamePreTrainingSkynet);
             _param.TextInfoCallback(LogLevel.MoreInfo, $"Saving skynet model before training to {oldModelPath}");
             _skynet.SaveModel(oldModelPath);
 

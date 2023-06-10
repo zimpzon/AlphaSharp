@@ -6,6 +6,11 @@ namespace AlphaSharp.Interfaces
     public interface IGame
     {
         /// <summary>
+        /// The name of the game for display purposes.
+        /// </summary>
+        string Name { get; }
+
+        /// <summary>
         /// Width of the game board
         /// </summary>
         int W { get; }

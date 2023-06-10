@@ -6,6 +6,8 @@ namespace TixyGame
 {
     public class Tixy : IGame
     {
+        public string Name => "Tixy";
+
         public int W { get; }
         public int H { get; }
         public int ActionCount => W * H * MoveDirections;

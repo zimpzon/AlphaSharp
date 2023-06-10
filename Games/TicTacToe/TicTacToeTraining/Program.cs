@@ -19,15 +19,15 @@ namespace TicTacToeTraining
                 OutputFolder = "c:\\temp\\zerosharp\\TicTacToe",
 
                 // self-play
-                SelfPlaySimulationCount = 1000,
-                SelfPlaySimulationMaxMoves = 200,
+                SelfPlaySimulationCount = 100,
+                SelfPlaySimulationMaxMoves = 100,
                 SelfPlayEpisodeMaxMoves = 100,
-                SelfPlayEpisodes = 40,
+                SelfPlayEpisodes = 30,
 
                 // evaluation
                 EvaluationRounds = 20,
-                EvaluationSimulationCount = 1000,
-                EvaluationSimulationMaxMoves = 200,
+                EvaluationSimulationCount = 100,
+                EvaluationSimulationMaxMoves = 100,
                 EvaluationMaxMoves = 100,
             };
 

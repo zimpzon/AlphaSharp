@@ -6,10 +6,10 @@ namespace AlphaSharp
     {
         public enum Phase
         {
-            Iterations,
-            SelfPlayEpisodes,
-            TrainingEpochs,
-            EvaluationRounds,
+            Iteration,
+            SelfPlay,
+            Epoch,
+            Eval,
         }
 
         public Phase CurrentPhase { get; private set; }

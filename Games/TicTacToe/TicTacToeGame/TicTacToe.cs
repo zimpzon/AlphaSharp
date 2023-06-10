@@ -4,6 +4,8 @@ namespace TicTacToeGame
 {
     public class TicTacToe : IGame
     {
+        public string Name => "tic-tac-toe";
+
         public int W => 3;
         public int H => 3;
 

@@ -8,6 +8,8 @@ namespace TixyGameCmd
     {
         static void Run()
         {
+            // tictac evaluation looks very weird. most of the time exactly 10-10, often 0-10, and then some 0-x-y with draws. mixed wins are rare or possibly non-existent.
+            // training still crashes some times, very often with tictac
             // +progress callback
             // progress print helpers
             // tic tac from py
@@ -19,28 +21,28 @@ namespace TixyGameCmd
                 // global
                 ResumeFromCheckpoint = true,
                 Iterations = 1000,
-                MaxWorkerThreads = 1, // diminishing returns, 4 threads seems optimal'ish on home pc with 12/24 cores
+                MaxWorkerThreads = 4, // diminishing returns, 4 threads seems optimal'ish on home pc with 12/24 cores
                 MaxTrainingExamples = 100000,
                 Cpuct = 1.0f,
                 OutputFolder = "c:\\temp\\zerosharp\\tixy",
 
                 // self-play
-                SelfPlaySimulationCount = 800,
-                SelfPlaySimulationMaxMoves = 300,
+                SelfPlaySimulationCount = 100,
+                SelfPlaySimulationMaxMoves = 100,
                 SelfPlayEpisodeMaxMoves = 150,
-                SelfPlayEpisodes = 30,
+                SelfPlayEpisodes = 10,
 
                 // evaluation
                 EvaluationRounds = 10,
-                EvaluationSimulationCount = 500,
-                EvaluationSimulationMaxMoves = 200,
+                EvaluationSimulationCount = 100,
+                EvaluationSimulationMaxMoves = 100,
                 EvaluationMaxMoves = 150,
             };
 
             var tixyParam = new TixyParameters
             {
                 TrainingEpochs = 10,
-                TrainingBatchSize = 64,
+                TrainingBatchSize = 200,
                 TrainingLearningRate = 0.001f,
             };
 
