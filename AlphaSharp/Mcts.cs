@@ -43,6 +43,10 @@ namespace AlphaSharp
         private readonly byte[] _validActionsTemp;
         private readonly List<SelectedAction> _selectedActions = new();
         private readonly byte[] _state;
+
+        // could use Zobrist hashing instead of base64 key. https://en.wikipedia.org/wiki/Zobrist_hashing
+        // however, this requires the game to expose the number of possible values per cell.
+        // right now bottleneck is nn inference anyways.
         private readonly Dictionary<string, int> _stateNodeLookup = new();
 
         public Mcts(IGame game, ISkynet skynet, AlphaParameters args)
@@ -107,8 +111,6 @@ namespace AlphaSharp
             Array.Copy(startingState, _state, _state.Length);
 
             _selectedActions.Clear();
-
-            const float DirichletAmount = 0.25f;
 
             int round = 0;
             while (true)
@@ -188,7 +190,7 @@ namespace AlphaSharp
                 bool isFirstMove = _selectedActions.Count == 0;
 
                 if (isFirstMove && isSelfPlay)
-                    Noise.CreateDirichlet(_noiseTemp, DirichletAmount);
+                    Noise.CreateDirichlet(_noiseTemp, _param.DirichletNoiseShape);
 
                 for (int i = 0; i < stateNode.Actions.Length; i++)
                 {
@@ -197,7 +199,7 @@ namespace AlphaSharp
                     {
                         float actionProbability = action.ActionProbability;
                         if (isFirstMove && isSelfPlay)
-                            actionProbability = (1 - DirichletAmount) * action.ActionProbability + DirichletAmount * _noiseTemp[i];
+                            actionProbability = (1 - _param.DirichletNoiseAmount) * action.ActionProbability + _param.DirichletNoiseAmount * _noiseTemp[i];
 
                         // if no Q value yet calc confidence without Q
                         float upperConfidence = action.Q == 0 ?

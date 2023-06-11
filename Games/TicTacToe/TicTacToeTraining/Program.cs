@@ -18,22 +18,22 @@ namespace TicTacToeTraining
                 OutputFolder = "c:\\temp\\zerosharp\\TicTacToe",
 
                 // self-play
-                SelfPlaySimulationCount = 1000,
-                SelfPlaySimulationMaxMoves = 500,
+                SelfPlaySimulationCount = 500,
+                SelfPlaySimulationMaxMoves = 100,
                 SelfPlayEpisodeMaxMoves = 10,
-                SelfPlayEpisodes = 30,
+                SelfPlayEpisodes = 40,
 
                 // evaluation
-                EvaluationRounds = 20,
-                EvaluationSimulationCount = 1000,
-                EvaluationSimulationMaxMoves = 10,
+                EvaluationRounds = 10,
+                EvaluationSimulationCount = 300,
+                EvaluationSimulationMaxMoves = 50,
                 EvaluationMaxMoves = 10,
             };
 
             var TicTacToeParam = new TicTacToeParameters
             {
                 TrainingEpochs = 10,
-                TrainingBatchSize = 10,
+                TrainingBatchSize = 200,
                 TrainingLearningRate = 0.001f,
             };
 

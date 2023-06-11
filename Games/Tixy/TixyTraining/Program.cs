@@ -8,13 +8,17 @@ namespace TixyGameCmd
     {
         static void Run()
         {
+            // getGameEnded cannot handle a draw. that requires 4 states, p1, p2, draw, still going.
+            // a draw in tictac can be determined by state alone, but not so in Tixy.
+            // also, no valid moves is a draw in tictac, but could be loss or valid in other games.
+
+            // actually... doesn't it make a huge difference for the value of a state if next player i pl1 or pl2?
+            // NO? because it is always players1 turn?
+            //  should probably be encoded in it's own plane just like AlphaZero does!
+
             // tictac evaluation looks very weird. most of the time exactly 10-10, often 0-10, and then some 0-x-y with draws. mixed wins are rare or possibly non-existent.
+
             // training still crashes some times, very often with tictac
-            // +progress callback
-            // progress print helpers
-            // tic tac from py
-            // subfolders in project
-            // beautiful progress, something. with stats for all iterations.
 
             var alphaParam = new AlphaParameters
             {
@@ -29,26 +33,26 @@ namespace TixyGameCmd
                 SelfPlaySimulationCount = 1000,
                 SelfPlaySimulationMaxMoves = 500,
                 SelfPlayEpisodeMaxMoves = 150,
-                SelfPlayEpisodes = 30,
+                SelfPlayEpisodes = 20,
 
                 // evaluation
                 EvaluationRounds = 20,
-                EvaluationSimulationCount = 1000,
-                EvaluationSimulationMaxMoves = 500,
+                EvaluationSimulationCount = 800,
+                EvaluationSimulationMaxMoves = 300,
                 EvaluationMaxMoves = 150,
             };
 
             var tixyParam = new TixyParameters
             {
                 TrainingEpochs = 10,
-                TrainingBatchSize = 200,
+                TrainingBatchSize = 64,
                 TrainingLearningRate = 0.001f,
             };
 
             // setting threads to 1 seems to be rather important. more than 1 *always* slows down torch in my testing.
             torch.set_num_threads(1);
 
-            var game = new Tixy(6, 6);
+            var game = new Tixy(5, 5);
             var skynetCreator = () => new TixySkynet(game, tixyParam);
             var skynet = new TixySkynet(game, tixyParam);
             var evaluationSkynet = new TixySkynet(game, tixyParam);

@@ -4,11 +4,11 @@ namespace AlphaSharp
 {
     internal static class Noise
     {
-        public static void CreateDirichlet(float[] noiseTempArray, float amount)
+        public static void CreateDirichlet(float[] noiseTempArray, float shape)
         {
             // ]0..1[ for this implementation
-            amount = Math.Min(amount, 0.9999f);
-            amount = Math.Max(amount, 0.0001f);
+            shape = Math.Min(shape, 0.9999f);
+            shape = Math.Max(shape, 0.0001f);
 
             var random = new Random();
 
@@ -16,7 +16,7 @@ namespace AlphaSharp
 
             for (int i = 0; i < noiseTempArray.Length; i++)
             {
-                noiseTempArray[i] = SampleGamma(random, amount, 1);
+                noiseTempArray[i] = SampleGamma(random, shape, 1);
                 noiseSum += noiseTempArray[i];
             }
 

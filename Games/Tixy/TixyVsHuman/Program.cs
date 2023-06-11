@@ -10,15 +10,15 @@ namespace TixyGameCmd
             var args = new AlphaParameters
             {
                 // evaluation
-                EvaluationSimulationCount = 200,
-                EvaluationSimulationMaxMoves = 150,
+                EvaluationSimulationCount = 500,
+                EvaluationSimulationMaxMoves = 250,
                 EvaluationMaxMoves = 150,
             };
 
-            var game = new Tixy(6, 6);
+            var game = new Tixy(5, 5);
             var skynet = new TixySkynet(game, new TixyParameters());
 
-            string modelPath = "c:\\temp\\zerosharp\\tixy\\best.skynet";
+            string modelPath = "c:\\temp\\zerosharp\\tixy\\tixy-best.skynet";
             Console.WriteLine($"Loading model at {modelPath}...");
 
             skynet.LoadModel(modelPath);

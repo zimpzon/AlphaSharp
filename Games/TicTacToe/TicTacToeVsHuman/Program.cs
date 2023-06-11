@@ -15,15 +15,8 @@ namespace TicTacToeVsHuman
                 EvaluationMaxMoves = 150,
             };
 
-            var ticTacToeParam = new TicTacToeParameters
-            {
-                TrainingEpochs = 10,
-                TrainingBatchSize = 64,
-                TrainingLearningRate = 0.001f,
-            };
-
             var game = new TicTacToe();
-            var skynet = new TicTacToeSkynet(game, ticTacToeParam);
+            var skynet = new TicTacToeSkynet(game, new TicTacToeParameters());
 
             string modelPath = "c:\\temp\\zerosharp\\TicTacToe\\tic-tac-toe-best.skynet";
             Console.WriteLine($"Loading model at {modelPath}...");

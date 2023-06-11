@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using System.Threading;
 
@@ -217,7 +216,7 @@ namespace AlphaSharp
             // Is result decided yet?
             long roundsLeft = _param.EvaluationRounds - (winOld + winNew + draw);
             long roundsToCatchUp = Math.Abs(winOld - winNew);
-            if (roundsToCatchUp >= roundsLeft)
+            if (roundsToCatchUp > roundsLeft)
             {
                 Interlocked.Increment(ref stoppedEarly);
                 _param.TextInfoCallback(LogLevel.Info, $"Outcome is determined, stopping evaluation early");

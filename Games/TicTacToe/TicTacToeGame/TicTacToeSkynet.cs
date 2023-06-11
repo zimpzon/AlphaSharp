@@ -89,8 +89,8 @@ namespace TicTacToeGame
                 float latestLossV = 0;
                 float latestLossProbs = 0;
 
-                var meanSquaredError = torch.nn.MSELoss();
-                var crossEntropy = torch.nn.CrossEntropyLoss();
+                //var meanSquaredError = torch.nn.MSELoss();
+                //var crossEntropy = torch.nn.CrossEntropyLoss();
 
                 for (int b = 0; b < batchCount; ++b)
                 {

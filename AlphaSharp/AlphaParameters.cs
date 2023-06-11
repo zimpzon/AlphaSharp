@@ -26,6 +26,8 @@ namespace AlphaSharp
         public int MaxWorkerThreads { get; set; } = 1;
         public int MaxTrainingExamples { get; set; } = 100000;
         public float Cpuct { get; set; } = 1;
+        public float DirichletNoiseShape = 0.03f;
+        public float DirichletNoiseAmount = 0.25f;
         public string OutputFolder { get; set; }
         public bool ResumeOnError { get; set; } = true;
         public bool SaveBackupAfterIteration { get; set; } = true;
