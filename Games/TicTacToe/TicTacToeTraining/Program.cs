@@ -16,17 +16,14 @@ namespace TicTacToeTraining
                 MaxWorkerThreads = 4, // diminishing returns, 4 threads seems optimal'ish on home pc with 12/24 cores
                 MaxTrainingExamples = 100000,
                 OutputFolder = "c:\\temp\\zerosharp\\TicTacToe",
+                SimulationIterations = 500,
+                SimulationMaxMoves = 100,
+                TemperatureThresholdMoves = 10,
 
-                // self-play
-                SelfPlaySimulationCount = 500,
-                SelfPlaySimulationMaxMoves = 100,
                 SelfPlayEpisodeMaxMoves = 10,
                 SelfPlayEpisodes = 40,
 
-                // evaluation
                 EvaluationRounds = 10,
-                EvaluationSimulationCount = 300,
-                EvaluationSimulationMaxMoves = 50,
                 EvaluationMaxMoves = 10,
             };
 

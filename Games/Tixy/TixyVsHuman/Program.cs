@@ -10,8 +10,8 @@ namespace TixyGameCmd
             var args = new AlphaParameters
             {
                 // evaluation
-                EvaluationSimulationCount = 500,
-                EvaluationSimulationMaxMoves = 250,
+                SimulationIterations = 500,
+                SimulationMaxMoves = 250,
                 EvaluationMaxMoves = 150,
             };
 

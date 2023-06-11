@@ -10,8 +10,8 @@ namespace TicTacToeVsHuman
             var args = new AlphaParameters
             {
                 // evaluation
-                EvaluationSimulationCount = 200,
-                EvaluationSimulationMaxMoves = 150,
+                SimulationIterations = 200,
+                SimulationMaxMoves = 150,
                 EvaluationMaxMoves = 150,
             };
 

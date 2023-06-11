@@ -40,6 +40,7 @@ namespace AlphaSharp
         private int _stateIdx = 0;
         private readonly float[] _actionProbsTemp;
         private readonly float[] _noiseTemp;
+        private readonly double[] _actionsVisitCountTemp;
         private readonly byte[] _validActionsTemp;
         private readonly List<SelectedAction> _selectedActions = new();
         private readonly byte[] _state;
@@ -58,6 +59,7 @@ namespace AlphaSharp
             _actionProbsTemp = new float[_game.ActionCount];
             _noiseTemp = new float[_game.ActionCount];
             _validActionsTemp = new byte[_game.ActionCount];
+            _actionsVisitCountTemp = new double[_game.ActionCount];
             _state = new byte[_game.StateSize];
         }
         
@@ -69,16 +71,16 @@ namespace AlphaSharp
             Stats = new SimStats();
         }
 
-        public float[] GetActionProbs(byte[] state, bool isSelfPlay)
+        public float[] GetActionProbs(byte[] state)
         {
             var sw = Stopwatch.StartNew();
 
-            int simCount = isSelfPlay ? _param.SelfPlaySimulationCount : _param.EvaluationSimulationCount;
-            int explorationMaxMoves = isSelfPlay ? _param.SelfPlaySimulationMaxMoves: _param.EvaluationSimulationMaxMoves;
+            int simCount = _param.SimulationIterations;
+            int simMaxMoves = _param.SimulationMaxMoves;
 
             for (int i = 0; i < simCount; i++)
             {
-                ExploreGameTree(state, explorationMaxMoves, isSelfPlay);
+                ExploreGameTree(state, simMaxMoves, addNoiseToFirstMove: false);
                 Stats.TotalSims++;
             }
 
@@ -88,25 +90,40 @@ namespace AlphaSharp
             var stateNode = _stateNodes[nodeIdx];
 
             var probs = new float[stateNode.Actions.Length];
-            if (!isSelfPlay)
-            {
-                int selectedAction = ActionUtil.PickActionByHighestVisitCount(stateNode.Actions);
-                probs[selectedAction] = 1.0f;
-                return probs;
-            }
-
-            int visitCountSum = stateNode.Actions.Sum(a => a.VisitCount);
-            if (visitCountSum == 0)
-                throw new InvalidOperationException($"no actions of the current state has any visit counts");
-
-            // normalize visit counts to probs that sum to 1
-            for (int i = 0; i < probs.Length; i++)
-                probs[i] = stateNode.Actions[i].VisitCount / (float)visitCountSum;
-
+            int selectedAction = ActionUtil.PickActionByHighestVisitCount(stateNode.Actions);
+            probs[selectedAction] = 1.0f;
             return probs;
         }
 
-        private void ExploreGameTree(byte[] startingState, int maxMoves, bool isSelfPlay)
+        public float[] GetActionProbsForSelfPlay(byte[] state, float temperature)
+        {
+            var sw = Stopwatch.StartNew();
+
+            int simCount = _param.SimulationIterations;
+            int simMaxMoves = _param.SimulationMaxMoves;
+
+            for (int i = 0; i < simCount; i++)
+            {
+                ExploreGameTree(state, simMaxMoves, addNoiseToFirstMove: true);
+                Stats.TotalSims++;
+            }
+
+            Stats.MsInSimulation = sw.Elapsed.TotalMilliseconds;
+
+            int nodeIdx = GetOrCreateStateNodeFromState(state, out _);
+            var stateNode = _stateNodes[nodeIdx];
+
+            var probs = new float[stateNode.Actions.Length];
+
+            // adjust by temperature
+            for (int i = 0; i < _actionsVisitCountTemp.Length; i++)
+                probs[i] = (float)Math.Pow(stateNode.Actions[i].VisitCount, 1.0f / temperature);
+
+            ArrayUtil.Normalize(probs);
+            return probs;
+        }
+
+        private void ExploreGameTree(byte[] startingState, int maxMoves, bool addNoiseToFirstMove)
         {
             Array.Copy(startingState, _state, _state.Length);
 
@@ -189,7 +206,7 @@ namespace AlphaSharp
 
                 bool isFirstMove = _selectedActions.Count == 0;
 
-                if (isFirstMove && isSelfPlay)
+                if (isFirstMove && addNoiseToFirstMove)
                     Noise.CreateDirichlet(_noiseTemp, _param.DirichletNoiseShape);
 
                 for (int i = 0; i < stateNode.Actions.Length; i++)
@@ -198,7 +215,7 @@ namespace AlphaSharp
                     if (action.IsValidMove != 0)
                     {
                         float actionProbability = action.ActionProbability;
-                        if (isFirstMove && isSelfPlay)
+                        if (isFirstMove && addNoiseToFirstMove)
                             actionProbability = (1 - _param.DirichletNoiseAmount) * action.ActionProbability + _param.DirichletNoiseAmount * _noiseTemp[i];
 
                         // if no Q value yet calc confidence without Q

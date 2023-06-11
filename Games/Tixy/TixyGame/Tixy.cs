@@ -144,11 +144,6 @@ namespace TixyGame
             }
 
             int dstIdxInLayer = idxInLayer + dx + dy * W;
-
-            //int dstPiece = state[dstIdxInLayer];
-            //if (TixyPieces.IsPlayer2(dstPiece))
-            //    Debug.WriteLine($"capture: {dstPiece}");
-
             state[dstIdxInLayer] = piece;
             state[idxInLayer] = 0;
         }

@@ -27,25 +27,26 @@ namespace TixyGameCmd
                 Iterations = 1000,
                 MaxWorkerThreads = 4, // diminishing returns, 4 threads seems optimal'ish on home pc with 12/24 cores
                 MaxTrainingExamples = 100000,
-                OutputFolder = "c:\\temp\\zerosharp\\tixy",
+                OutputFolder = "c:\\temp\\zerosharp\\Tixy",
+                TemperatureThresholdMoves = 20,
+                SimulationIterations = 1000,
+                SimulationMaxMoves = 300,
+                DirichletNoiseAmount = 0.25f,
+                DirichletNoiseShape = 0.3f,
 
                 // self-play
-                SelfPlaySimulationCount = 1000,
-                SelfPlaySimulationMaxMoves = 500,
                 SelfPlayEpisodeMaxMoves = 150,
-                SelfPlayEpisodes = 20,
+                SelfPlayEpisodes = 30,
 
                 // evaluation
-                EvaluationRounds = 20,
-                EvaluationSimulationCount = 800,
-                EvaluationSimulationMaxMoves = 300,
+                EvaluationRounds = 10,
                 EvaluationMaxMoves = 150,
             };
 
             var tixyParam = new TixyParameters
             {
                 TrainingEpochs = 10,
-                TrainingBatchSize = 64,
+                TrainingBatchSize = 200,
                 TrainingLearningRate = 0.001f,
             };
 
@@ -54,8 +55,6 @@ namespace TixyGameCmd
 
             var game = new Tixy(5, 5);
             var skynetCreator = () => new TixySkynet(game, tixyParam);
-            var skynet = new TixySkynet(game, tixyParam);
-            var evaluationSkynet = new TixySkynet(game, tixyParam);
 
             var trainer = new AlphaSharpTrainer(game, skynetCreator, alphaParam);
             trainer.Run();

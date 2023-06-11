@@ -163,11 +163,12 @@ namespace AlphaSharp
                     gameResult = 0;
 
                     // just keep a few samples from draws, the ones in the end probably caused the draw
-                    trainingData = trainingData.TakeLast(20).ToList();
+                    //trainingData = trainingData.TakeLast(20).ToList();
                     break;
                 }
 
-                var probs = mcts.GetActionProbs(state, isSelfPlay: true);
+                float temperature = moves > _param.TemperatureThresholdMoves ? 0.2f : 1.0f;
+                var probs = mcts.GetActionProbsForSelfPlay(state, temperature);
 
                 var sym = _game.GetStateSymmetries(state, probs);
                 foreach (var s in sym)
@@ -248,7 +249,7 @@ namespace AlphaSharp
                 return NotUsed;
 
             var oneVsOne = new OneVsOne(_game, player1, player2);
-            int result = oneVsOne.Run(_param.EvaluationSimulationMaxMoves);
+            int result = oneVsOne.Run(_param.SimulationMaxMoves);
 
             if (Interlocked.Read(ref stoppedEarly) > 0)
                 return NotUsed;
