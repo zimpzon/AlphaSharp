@@ -44,12 +44,12 @@ namespace AlphaSharp
 
         public static void Normalize(float[] values)
         {
-            float sum = values.Sum();
+            double sum = values.Sum();
             if (sum == 0)
                 throw new ArgumentException("cannot normalize, sum of array is 0");
 
             for (int i = 0; i < values.Length; i++)
-                values[i] /= sum;
+                values[i] = (float)(values[i] / sum);
         }
 
         public static void FilterProbsByValidActions(float[] probs, byte[] validActions)

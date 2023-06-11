@@ -14,7 +14,6 @@ namespace TixyGameCmd
 
             // actually... doesn't it make a huge difference for the value of a state if next player i pl1 or pl2?
             // NO? because it is always players1 turn?
-            //  should probably be encoded in it's own plane just like AlphaZero does!
 
             // tictac evaluation looks very weird. most of the time exactly 10-10, often 0-10, and then some 0-x-y with draws. mixed wins are rare or possibly non-existent.
 
@@ -28,15 +27,15 @@ namespace TixyGameCmd
                 MaxWorkerThreads = 4, // diminishing returns, 4 threads seems optimal'ish on home pc with 12/24 cores
                 MaxTrainingExamples = 100000,
                 OutputFolder = "c:\\temp\\zerosharp\\Tixy",
-                TemperatureThresholdMoves = 20,
-                SimulationIterations = 1000,
-                SimulationMaxMoves = 300,
+                TemperatureThresholdMoves = 30,
+                SimulationIterations = 2000,
+                SimulationMaxMoves = 1000,
                 DirichletNoiseAmount = 0.25f,
-                DirichletNoiseShape = 0.3f,
+                DirichletNoiseShape = 0.1f,
 
                 // self-play
                 SelfPlayEpisodeMaxMoves = 150,
-                SelfPlayEpisodes = 30,
+                SelfPlayEpisodes = 40,
 
                 // evaluation
                 EvaluationRounds = 10,

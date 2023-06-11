@@ -119,6 +119,13 @@ namespace AlphaSharp
             for (int i = 0; i < _actionsVisitCountTemp.Length; i++)
                 probs[i] = (float)Math.Pow(stateNode.Actions[i].VisitCount, 1.0f / temperature);
 
+            for (int i = 0; i < probs.Length; i++)
+            {
+                // When visitcounts get really high (millions) the Math.Pow can exceed float max and is then Infinity. Fix this :-)
+                if (float.IsNaN(probs[i]) || float.IsInfinity(probs[i]) || float.IsNegativeInfinity(probs[i]))
+                    probs[i] = float.MaxValue;
+            }
+
             ArrayUtil.Normalize(probs);
             return probs;
         }
