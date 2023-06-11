@@ -64,7 +64,7 @@ namespace TicTacToeGame
                 bool lineHasThreeInARow = state[line[0]] != 0 && state[line[0]] == state[line[1]] && state[line[1]] == state[line[2]];
                 if (lineHasThreeInARow)
                 {
-                    int winner = line[0] == PieceX ? 1 : -1;
+                    int winner = state[line[0]] == PieceX ? 1 : -1;
                     return winner;
                 }
             }
