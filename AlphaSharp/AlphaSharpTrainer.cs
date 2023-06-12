@@ -143,31 +143,20 @@ namespace AlphaSharp
 
             _game.GetStartingState(state);
 
-            int moves = 0;
             float currentPlayer = 1;
-            float gameResult;
+            GameOver.Status gameResult;
 
             var rnd = new Random();
 
             var prevState = new byte[_game.StateSize];
             var validActions = new byte[_game.ActionCount];
+            int moves = 0;
 
             while (true)
             {
                 _game.GetValidActions(state, validActions);
-                int validActionCount = ArrayUtil.CountNonZero(validActions);
 
-                bool isDraw = validActionCount == 0 || moves++ > _param.SelfPlayEpisodeMaxMoves;
-                if (isDraw)
-                {
-                    gameResult = 0;
-
-                    // just keep a few samples from draws, the ones in the end probably caused the draw
-                    //trainingData = trainingData.TakeLast(20).ToList();
-                    break;
-                }
-
-                float temperature = moves > _param.TemperatureThresholdMoves ? 0.2f : 1.0f;
+                float temperature = moves > _param.TemperatureThresholdMoves ? 0.1f : 1.0f;
                 var probs = mcts.GetActionProbsForSelfPlay(state, temperature);
 
                 var sym = _game.GetStateSymmetries(state, probs);
@@ -176,13 +165,11 @@ namespace AlphaSharp
 
                 int selectedAction = ArrayUtil.WeightedChoice(rnd, probs);
                 _game.ExecutePlayerAction(state, selectedAction);
+                moves++;
 
-                gameResult = _game.GetGameEnded(state);
-                if (gameResult != 0)
-                {
-                    gameResult = currentPlayer;
+                gameResult = _game.GetGameEnded(state, moves, isSimulation: false);
+                if (gameResult != GameOver.Status.GameIsNotOver)
                     break;
-                }
 
                 _game.FlipStateToNextPlayer(state);
                 Array.Copy(state, prevState, state.Length);
@@ -191,7 +178,7 @@ namespace AlphaSharp
             }
 
             for (int i = 0; i < trainingData.Count; i++)
-                trainingData[i].Player1Value *= gameResult;
+                trainingData[i].Player1Value = GameOver.ValueForPlayer1(gameResult);
 
             lock (_lock)
             {
@@ -249,32 +236,32 @@ namespace AlphaSharp
                 return NotUsed;
 
             var oneVsOne = new OneVsOne(_game, player1, player2);
-            int result = oneVsOne.Run(_param.SimulationMaxMoves);
+            var gameResult = oneVsOne.Run();
 
             if (Interlocked.Read(ref stoppedEarly) > 0)
                 return NotUsed;
-            int winValueNew = player1 == mctsPlayerNew ? 1 : -1;
-            int winValueOld = player1 == mctsPlayerNew ? -1 : 1;
 
             string resultStr;
-            if (result == 0)
+            if (gameResult == GameOver.Status.Draw)
             {
                 resultStr = "draw";
                 Interlocked.Increment(ref draw);
             }
-            else if (result == winValueOld)
-            {
-                resultStr = "old model won";
-                Interlocked.Increment(ref winOld);
-            }
-            else if (result == winValueNew)
-            {
-                resultStr = "new model won";
-                Interlocked.Increment(ref winNew);
-            }
             else
             {
-                throw new Exception($"Unexpected result from evaluation round: {result}");
+                bool newWon = player1 == mctsPlayerNew && gameResult == GameOver.Status.Player1Won ||
+                              player2 == mctsPlayerNew && gameResult == GameOver.Status.Player2Won;
+
+                if (newWon)
+                {
+                    resultStr = "new model won";
+                    Interlocked.Increment(ref winNew);
+                }
+                else
+                {
+                    resultStr = "old model won";
+                    Interlocked.Increment(ref winOld);
+                }
             }
 
             lock (_lock)

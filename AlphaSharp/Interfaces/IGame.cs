@@ -40,9 +40,9 @@ namespace AlphaSharp.Interfaces
         void GetValidActions(byte[] state, byte[] dstValidActions);
 
         /// <summary>
-        /// Given this state, has the game ended? 0 = no, 1 = player 1 won, -1 = player 2 won
+        /// Given this state and number of moves left, has the game ended?
         /// </summary>
-        int GetGameEnded(byte[] state);
+        GameOver.Status GetGameEnded(byte[] state, int movesMade, bool isSimulation);
 
         /// <summary>
         /// Execute the given action on the given state. The state is modified in-place to the new state.

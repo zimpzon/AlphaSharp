@@ -11,8 +11,6 @@ namespace TicTacToeVsHuman
             {
                 // evaluation
                 SimulationIterations = 200,
-                SimulationMaxMoves = 150,
-                EvaluationMaxMoves = 150,
             };
 
             var game = new TicTacToe();
@@ -27,7 +25,7 @@ namespace TicTacToeVsHuman
             var humanPlayer = new TicTacToeHumanPlayer(game);
 
             var fight = new OneVsOne(game, humanPlayer, ticTacToePlayer);
-            var res = fight.Run(50);
+            var res = fight.Run();
             Console.WriteLine($"Game over, result: {res}\n");
         }
 

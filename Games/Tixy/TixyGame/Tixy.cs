@@ -1,4 +1,5 @@
-﻿using AlphaSharp.Interfaces;
+﻿using AlphaSharp;
+using AlphaSharp.Interfaces;
 using System.Data;
 using System.Text;
 
@@ -10,6 +11,8 @@ namespace TixyGame
 
         public int W { get; }
         public int H { get; }
+        public int MaxMoves = 50;
+
         public int ActionCount => W * H * MoveDirections;
         public int StateSize => W * H;
 
@@ -34,25 +37,25 @@ namespace TixyGame
         {
             ClearPieces(state);
 
-            Set(state, 0, 0, TixyPieces.P2.X);
-            Set(state, 1, 0, TixyPieces.P2.T);
+            Set(state, 0, 0, TixyPieces.P2.T);
+            Set(state, 1, 0, TixyPieces.P2.X);
             Set(state, 2, 0, TixyPieces.P2.Y);
             Set(state, 3, 0, TixyPieces.P2.I);
             Set(state, 4, 0, TixyPieces.P2.Y);
-            //Set(state, 5, 0, TixyPieces.P2.T);
-            //Set(state, 6, 0, TixyPieces.P2.X);
 
-            Set(state, 0, H - 1, TixyPieces.P1.X);
-            Set(state, 1, H - 1, TixyPieces.P1.T);
+            Set(state, 0, H - 1, TixyPieces.P1.T);
+            Set(state, 1, H - 1, TixyPieces.P1.X);
             Set(state, 2, H - 1, TixyPieces.P1.Y);
             Set(state, 3, H - 1, TixyPieces.P1.I);
             Set(state, 4, H - 1, TixyPieces.P1.Y);
-            //Set(state, 5, H - 1, TixyPieces.P1.T);
-            //Set(state, 6, H - 1, TixyPieces.P1.X);
         }
 
-        public int GetGameEnded(byte[] state)
+        public GameOver.Status GetGameEnded(byte[] state, int movesMade, bool isSimulation)
         {
+            int maxMoves = isSimulation ? MaxMoves * 4 : MaxMoves;
+            if (movesMade >= maxMoves)
+                return GameOver.Status.Draw;
+
             int countQueenP1AtTop = 0;
             int countQueenP2AtBottom = 0;
             int countQueenP1 = 0;
@@ -76,13 +79,13 @@ namespace TixyGame
 
             bool p1Wins = countQueenP1AtTop > 0 || countQueenP2 == 0;
             if (p1Wins)
-                return 1;
+                return GameOver.Status.Player1Won;
 
             bool p2Wins = countQueenP2AtBottom > 0 || countQueenP1 == 0;
             if (p2Wins)
-                return -1;
+                return GameOver.Status.Player2Won;
 
-            return 0;
+            return GameOver.Status.GameIsNotOver;
         }
 
         public void GetValidActions(byte[] state, byte[] validActions)

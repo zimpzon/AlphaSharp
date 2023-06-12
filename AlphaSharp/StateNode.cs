@@ -13,15 +13,15 @@
 				=> $"Q: {Q}, VisitCount: {VisitCount}, IsValidMove: {IsValidMove}, ActionProbability: {ActionProbability}";
         }
 
-		public StateNode(int actionCount)
+		public StateNode(int actionCount, int idx)
 		{
-			GameOver = int.MinValue;
 			Actions = new Action[actionCount];
+			Idx = idx;
 		}
 
-		public long Lock;
+		public int Idx;
 		public int VisitCount;
-		public int GameOver;
+		public GameOver.Status GameOver;
 		public Action[] Actions;
 	}
 }

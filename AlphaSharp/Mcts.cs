@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Text.Json;
 using AlphaSharp.Interfaces;
 using Math = System.Math;
@@ -12,8 +11,6 @@ namespace AlphaSharp
     {
         public class SimStats
         {
-            public int MaxMovesReached { get; set; }
-            public int NoValidActions { get; set; }
             public int NodesCreated { get; set; }
             public int NodesRevisited { get; set; }
             public int TotalSims { get; set; }
@@ -76,11 +73,10 @@ namespace AlphaSharp
             var sw = Stopwatch.StartNew();
 
             int simCount = _param.SimulationIterations;
-            int simMaxMoves = _param.SimulationMaxMoves;
 
             for (int i = 0; i < simCount; i++)
             {
-                ExploreGameTree(state, simMaxMoves, addNoiseToFirstMove: false);
+                ExploreGameTree(state, isSimulation: false);
                 Stats.TotalSims++;
             }
 
@@ -100,11 +96,10 @@ namespace AlphaSharp
             var sw = Stopwatch.StartNew();
 
             int simCount = _param.SimulationIterations;
-            int simMaxMoves = _param.SimulationMaxMoves;
 
             for (int i = 0; i < simCount; i++)
             {
-                ExploreGameTree(state, simMaxMoves, addNoiseToFirstMove: true);
+                ExploreGameTree(state, isSimulation: true);
                 Stats.TotalSims++;
             }
 
@@ -130,50 +125,27 @@ namespace AlphaSharp
             return probs;
         }
 
-        private void ExploreGameTree(byte[] startingState, int maxMoves, bool addNoiseToFirstMove)
+        private void ExploreGameTree(byte[] startingState, bool isSimulation)
         {
             Array.Copy(startingState, _state, _state.Length);
 
             _selectedActions.Clear();
 
-            int round = 0;
             while (true)
             {
-                if (round++ >= maxMoves)
-                {
-                    // too many moves = draw
-                    BacktrackAndUpdate(_selectedActions, 0);
-                    Stats.MaxMovesReached++;
-                    break;
-                }
-
-                int idxStateNode = GetOrCreateStateNodeFromState(_state, out bool isLeafNode);
+                int idxStateNode = GetOrCreateStateNodeFromState(_state, out bool wasCreated);
                 var stateNode = _stateNodes[idxStateNode];
                 stateNode.VisitCount++;
 
-                if (!isLeafNode)
+                if (stateNode.GameOver != GameOver.Status.GameIsNotOver)
                 {
-                    int numberOfValidActionsRevisited = ActionUtil.CountValidActions(stateNode.Actions);
-                    if (numberOfValidActionsRevisited == 0)
-                    {
-                        // no valid actions in this revisited node, consider this a draw
-                        BacktrackAndUpdate(_selectedActions, 0);
-                        Stats.NoValidActions++;
-                        break;
-                    }
-                }
-
-                if (stateNode.GameOver == int.MinValue)
-                    stateNode.GameOver = _game.GetGameEnded(_state);
-
-                if (stateNode.GameOver != 0)
-                {
-                    // game result is always 1 for a won game. the winner was the opponent since player was already switched
+                    // Revisiting a game over state. We can get here when simulation is over and
+                    // the "real" game makes a winning move that was visited during the simulation.
                     BacktrackAndUpdate(_selectedActions, 1);
                     break;
                 }
 
-                if (isLeafNode)
+                if (wasCreated)
                 {
                     // get and save suggestions from Skynet, then backtrack to root using suggested v
                     var sw = Stopwatch.StartNew();
@@ -183,17 +155,17 @@ namespace AlphaSharp
                     Stats.SkynetCalls++;
 
                     _game.GetValidActions(_state, _validActionsTemp);
-                    int numberOfLeafValidActions = ArrayUtil.CountNonZero(_validActionsTemp);
-                    if (numberOfLeafValidActions == 0)
-                    {
-                        // no valid actions in leaf, consider this a draw
-                        BacktrackAndUpdate(_selectedActions, 0);
-                        Stats.NoValidActions++;
-                        break;
-                    }
 
                     ArrayUtil.FilterProbsByValidActions(_actionProbsTemp, _validActionsTemp);
                     ArrayUtil.Normalize(_actionProbsTemp);
+
+                    bool hasValidActions = ArrayUtil.CountNonZero(_actionProbsTemp) > 0;
+                    if (!hasValidActions)
+                    {
+                        // no valid actions in leaf, consider this a draw, ex TicTacToe: board is full
+                        BacktrackAndUpdate(_selectedActions, 0);
+                        break;
+                    }
 
                     for (int i = 0; i < stateNode.Actions.Length; ++i)
                     {
@@ -213,7 +185,7 @@ namespace AlphaSharp
 
                 bool isFirstMove = _selectedActions.Count == 0;
 
-                if (isFirstMove && addNoiseToFirstMove)
+                if (isFirstMove && isSimulation)
                     Noise.CreateDirichlet(_noiseTemp, _param.DirichletNoiseShape);
 
                 for (int i = 0; i < stateNode.Actions.Length; i++)
@@ -222,7 +194,7 @@ namespace AlphaSharp
                     if (action.IsValidMove != 0)
                     {
                         float actionProbability = action.ActionProbability;
-                        if (isFirstMove && addNoiseToFirstMove)
+                        if (isFirstMove && isSimulation)
                             actionProbability = (1 - _param.DirichletNoiseAmount) * action.ActionProbability + _param.DirichletNoiseAmount * _noiseTemp[i];
 
                         // if no Q value yet calc confidence without Q
@@ -242,6 +214,16 @@ namespace AlphaSharp
                 _selectedActions.Add(new SelectedAction { NodeIdx = idxStateNode, ActionIdx = selectedAction });
 
                 _game.ExecutePlayerAction(_state, selectedAction);
+                stateNode.GameOver = _game.GetGameEnded(_state, _selectedActions.Count, isSimulation);
+
+                if (stateNode.GameOver != GameOver.Status.GameIsNotOver)
+                {
+                    // no matter who won the value for current player is 1 (or 0 for draw).
+                    float v = Math.Abs(GameOver.ValueForPlayer1(stateNode.GameOver));
+                    BacktrackAndUpdate(_selectedActions, v);
+                    break;
+                }
+
                 _game.FlipStateToNextPlayer(_state);
 
                 Stats.TotalSimMoves++;
@@ -266,7 +248,7 @@ namespace AlphaSharp
                 Array.Resize(ref _stateNodes, newSize);
             }
 
-            _stateNodes[_stateIdx] = new StateNode(_game.ActionCount);
+            _stateNodes[_stateIdx] = new StateNode(_game.ActionCount, _stateIdx);
             _stateNodeLookup.Add(key, _stateIdx);
 
             _stateIdx++;
@@ -285,7 +267,7 @@ namespace AlphaSharp
                 ref var action = ref node.Actions[a];
                 action.VisitCount++;
 
-                action.Q = action.Q == 0.0f ? v : (action.VisitCount * action.Q + v) / (action.VisitCount + 1);
+                action.Q = action.Q == 0.0f ? (v + float.Epsilon) : (action.VisitCount * action.Q + v) / (action.VisitCount + 1);
 
                 // switch to the other players perspective
                 v = -v;

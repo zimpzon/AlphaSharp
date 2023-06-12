@@ -1,4 +1,5 @@
-﻿using AlphaSharp.Interfaces;
+﻿using AlphaSharp;
+using AlphaSharp.Interfaces;
 
 namespace TicTacToeGame
 {
@@ -55,21 +56,23 @@ namespace TicTacToeGame
             }
         }
 
-        public int GetGameEnded(byte[] state)
+        public GameOver.Status GetGameEnded(byte[] state, int movesMade, bool _)
         {
+            // could be optimized to return draw when it is clear no winner can be found
+            bool allCellsFilled = movesMade == W * H;
+            if (allCellsFilled)
+                return GameOver.Status.Draw;
+
             for (int l = 0; l < WinningLines.Count; l++)
             {
                 var line = WinningLines[l];
 
                 bool lineHasThreeInARow = state[line[0]] != 0 && state[line[0]] == state[line[1]] && state[line[1]] == state[line[2]];
                 if (lineHasThreeInARow)
-                {
-                    int winner = state[line[0]] == PieceX ? 1 : -1;
-                    return winner;
-                }
+                    return state[line[0]] == PieceX ? GameOver.Status.Player1Won : GameOver.Status.Player2Won;
             }
 
-            return 0;
+            return GameOver.Status.GameIsNotOver;
         }
 
         public void GetStartingState(byte[] dstState)

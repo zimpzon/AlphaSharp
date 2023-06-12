@@ -11,8 +11,6 @@ namespace TixyGameCmd
             {
                 // evaluation
                 SimulationIterations = 500,
-                SimulationMaxMoves = 250,
-                EvaluationMaxMoves = 150,
             };
 
             var game = new Tixy(5, 5);
@@ -27,7 +25,7 @@ namespace TixyGameCmd
             var humanPlayer = new TixyHumanPlayer(game);
 
             var fight = new OneVsOne(game, humanPlayer, tixyPlayer);
-            var res = fight.Run(50);
+            var res = fight.Run();
             Console.WriteLine($"Game over, result: {res}");
         }
 

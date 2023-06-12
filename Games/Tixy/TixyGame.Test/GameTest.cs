@@ -17,7 +17,7 @@ namespace TixyGame.Test
                 var player2 = new RandomPlayer(game);
                 var oneVsOne = new OneVsOne(game, player1, player2);
 
-                oneVsOne.Run(maxMoves: 100);
+                oneVsOne.Run();
             }
         }
 
@@ -91,9 +91,9 @@ namespace TixyGame.Test
             var player2 = new RandomPlayer(game);
 
             var pit = new OneVsOne(game, player1, player2);
-            int result = pit.Run(1000);
+            var result = pit.Run();
 
-            Assert.InRange(result, -1, 1);
+            Assert.NotEqual(GameOver.Status.GameIsNotOver, result);
         }
     }
 }

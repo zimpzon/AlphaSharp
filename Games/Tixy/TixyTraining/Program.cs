@@ -8,12 +8,8 @@ namespace TixyGameCmd
     {
         static void Run()
         {
-            // getGameEnded cannot handle a draw. that requires 4 states, p1, p2, draw, still going.
-            // a draw in tictac can be determined by state alone, but not so in Tixy.
-            // also, no valid moves is a draw in tictac, but could be loss or valid in other games.
-
-            // actually... doesn't it make a huge difference for the value of a state if next player i pl1 or pl2?
-            // NO? because it is always players1 turn?
+            // reintroduce greedy!! (optional)
+            // !!! look at python 'game ended at step 14' and print some more mcts debug!!! should be comparable.
 
             // tictac evaluation looks very weird. most of the time exactly 10-10, often 0-10, and then some 0-x-y with draws. mixed wins are rare or possibly non-existent.
 
@@ -28,14 +24,12 @@ namespace TixyGameCmd
                 MaxTrainingExamples = 100000,
                 OutputFolder = "c:\\temp\\zerosharp\\Tixy",
                 TemperatureThresholdMoves = 30,
-                SimulationIterations = 2000,
-                SimulationMaxMoves = 1000,
-                DirichletNoiseAmount = 0.25f,
+                SimulationIterations = 1000,
+                DirichletNoiseAmount = 0.5f,
                 DirichletNoiseShape = 0.1f,
 
                 // self-play
-                SelfPlayEpisodeMaxMoves = 150,
-                SelfPlayEpisodes = 40,
+                SelfPlayEpisodes = 20,
 
                 // evaluation
                 EvaluationRounds = 10,
