@@ -17,7 +17,6 @@ namespace TicTacToeTraining
                 OutputFolder = "c:\\temp\\zerosharp\\TicTacToe",
                 SimulationIterations = 100,
                 TemperatureThresholdMoves = 4,
-
                 SelfPlayEpisodes = 40,
 
                 EvaluationRounds = 10,

@@ -11,7 +11,7 @@ namespace TixyGame
 
         public int W { get; }
         public int H { get; }
-        public int MaxMoves = 50;
+        public int MaxMoves = 30;
 
         public int ActionCount => W * H * MoveDirections;
         public int StateSize => W * H;
@@ -54,7 +54,7 @@ namespace TixyGame
         {
             int maxMoves = isSimulation ? MaxMoves * 4 : MaxMoves;
             if (movesMade >= maxMoves)
-                return GameOver.Status.Draw;
+                return GameOver.Status.DrawDueToMaxMovesReached;
 
             int countQueenP1AtTop = 0;
             int countQueenP2AtBottom = 0;

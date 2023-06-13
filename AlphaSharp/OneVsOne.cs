@@ -39,13 +39,20 @@ namespace AlphaSharp
                 }
 
                 int selectedAction = currentPlayer.PickAction(state);
-
                 _game.ExecutePlayerAction(state, selectedAction);
+                //_game.PrintDisplayTextForAction(selectedAction, Console.WriteLine);
+                //_game.PrintState(state, Console.WriteLine);
                 moves++;
 
                 var gameResult = _game.GetGameEnded(state, moves, isSimulation: false);
                 if (gameResult != GameOver.Status.GameIsNotOver)
+                {
+                    // moves are always done by player1 so invert result if current player is actually player2
+                    if (currentPlayer == _player2)
+                        gameResult = GameOver.InvertResult(gameResult);
+
                     return gameResult;
+                }
 
                 _game.FlipStateToNextPlayer(state);
                 Array.Copy(state, prevState, state.Length);

@@ -99,7 +99,7 @@ namespace TicTacToeGame
 
                     var oneHotArray = batch.Select(td => OneHotEncode(td.State)).ToArray();
                     var desiredProbsArray = batch.Select(td => td.ActionProbs).ToArray();
-                    var desiredVsArray = batch.Select(td => td.Player1Value).ToArray();
+                    var desiredVsArray = batch.Select(td => td.ValueForPlayer1).ToArray();
 
                     using var oneHotBatchTensor = torch.stack(oneHotArray.Select(a => torch.from_array(a))).reshape(_param.TrainingBatchSize, -1);
                     using var desiredProbsBatchTensor = torch.stack(desiredProbsArray.Select(p => torch.from_array(p))).reshape(_param.TrainingBatchSize, -1);

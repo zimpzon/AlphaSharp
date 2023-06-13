@@ -116,8 +116,8 @@ namespace AlphaSharp
 
             for (int i = 0; i < probs.Length; i++)
             {
-                // When visitcounts get really high (millions) the Math.Pow can exceed float max and is then Infinity. Fix this :-)
-                if (float.IsNaN(probs[i]) || float.IsInfinity(probs[i]) || float.IsNegativeInfinity(probs[i]))
+                // When visitcounts get really high (millions) the Math.Pow can exceed float max and is then Infinity. Clamp to max float.
+                if (float.IsInfinity(probs[i]))
                     probs[i] = float.MaxValue;
             }
 
@@ -130,12 +130,10 @@ namespace AlphaSharp
             Array.Copy(startingState, _state, _state.Length);
 
             _selectedActions.Clear();
-
             while (true)
             {
                 int idxStateNode = GetOrCreateStateNodeFromState(_state, out bool wasCreated);
                 var stateNode = _stateNodes[idxStateNode];
-                stateNode.VisitCount++;
 
                 if (stateNode.GameOver != GameOver.Status.GameIsNotOver)
                 {
@@ -213,13 +211,27 @@ namespace AlphaSharp
                 // an action was selected
                 _selectedActions.Add(new SelectedAction { NodeIdx = idxStateNode, ActionIdx = selectedAction });
 
-                _game.ExecutePlayerAction(_state, selectedAction);
-                stateNode.GameOver = _game.GetGameEnded(_state, _selectedActions.Count, isSimulation);
+                stateNode.VisitCount++;
 
-                if (stateNode.GameOver != GameOver.Status.GameIsNotOver)
+                _game.ExecutePlayerAction(_state, selectedAction);
+                var gameState = _game.GetGameEnded(_state, _selectedActions.Count, isSimulation);
+
+                if (gameState != GameOver.Status.GameIsNotOver)
                 {
-                    // no matter who won the value for current player is 1 (or 0 for draw).
-                    float v = Math.Abs(GameOver.ValueForPlayer1(stateNode.GameOver));
+                    if (stateNode.GameOver == GameOver.Status.DrawDueToMaxMovesReached)
+                    {
+                        // do not mark state as a draw, we could get here later without having reached max moves
+                        BacktrackAndUpdate(_selectedActions, 0);
+                        break;
+                    }
+
+                    // mark state with the game over result
+                    stateNode.GameOver = gameState;
+
+                    // moves are always made as player1. the latest added actions
+                    // belongs to current player, no matter if this is pl1 or pl2.
+                    // so we want score from p1 perspective.
+                    float v = GameOver.ValueForPlayer1(stateNode.GameOver);
                     BacktrackAndUpdate(_selectedActions, v);
                     break;
                 }

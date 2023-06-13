@@ -4,7 +4,7 @@
     {
         public byte[] State { get; set; }
         public float[] ActionProbs { get; set; }
-        public float Player1Value { get; set; }
+        public float ValueForPlayer1 { get; set; }
 
         public TrainingData() { }
 
@@ -12,7 +12,7 @@
         {
             State = state;
             ActionProbs = actionProbs;
-            Player1Value = player1Score;
+            ValueForPlayer1 = player1Score;
         }
     }
 }

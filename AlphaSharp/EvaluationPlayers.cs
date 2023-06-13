@@ -5,6 +5,6 @@ namespace AlphaSharp
     {
         NewModelAlwaysPlayer1,
         NewModelAlwaysPlayer2,
-        NewModelAlternating,
+        AlternatingModels,
     }
 }

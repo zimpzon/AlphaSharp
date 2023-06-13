@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading;
+using System.Threading.Tasks.Sources;
 
 namespace AlphaSharp
 {
@@ -159,9 +160,12 @@ namespace AlphaSharp
                 float temperature = moves > _param.TemperatureThresholdMoves ? 0.1f : 1.0f;
                 var probs = mcts.GetActionProbsForSelfPlay(state, temperature);
 
-                var sym = _game.GetStateSymmetries(state, probs);
-                foreach (var s in sym)
-                    trainingData.Add(new TrainingData(s.Item1, s.Item2, currentPlayer));
+                trainingData.Add(new TrainingData(state, probs, currentPlayer));
+
+                // Skipping symmetries for now
+                //var sym = _game.GetStateSymmetries(state, probs);
+                //foreach (var s in sym)
+                //    trainingData.Add(new TrainingData(s.Item1, s.Item2, currentPlayer));
 
                 int selectedAction = ArrayUtil.WeightedChoice(rnd, probs);
                 _game.ExecutePlayerAction(state, selectedAction);
@@ -177,8 +181,13 @@ namespace AlphaSharp
                 currentPlayer *= -1;
             }
 
+            // moves are always done by player1 so invert result if current player is actually player2
+            float value = GameOver.ValueForPlayer1(gameResult);
+            if (value != 0)
+                value *= currentPlayer;
+
             for (int i = 0; i < trainingData.Count; i++)
-                trainingData[i].Player1Value = GameOver.ValueForPlayer1(gameResult);
+                trainingData[i].ValueForPlayer1 *= value;
 
             lock (_lock)
             {
@@ -226,7 +235,7 @@ namespace AlphaSharp
                 player1 = mctsPlayerOld;
                 player2 = mctsPlayerNew;
             }
-            else if (_param.EvaluationPlayers == EvaluationPlayers.NewModelAlternating)
+            else if (_param.EvaluationPlayers == EvaluationPlayers.AlternatingModels)
             {
                 player1 = param.Round % 2 == 0 ? mctsPlayerNew : mctsPlayerOld;
                 player2 = param.Round % 2 == 0 ? mctsPlayerOld : mctsPlayerNew;
