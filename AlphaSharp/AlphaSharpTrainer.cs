@@ -159,6 +159,8 @@ namespace AlphaSharp
 
                 float temperature = moves > _param.TemperatureThresholdMoves ? 0.1f : 1.0f;
                 var probs = mcts.GetActionProbsForSelfPlay(state, temperature);
+                ArrayUtil.FilterProbsByValidActions(probs, validActions);
+                ArrayUtil.Normalize(probs);
 
                 trainingData.Add(new TrainingData(state, probs, currentPlayer));
 

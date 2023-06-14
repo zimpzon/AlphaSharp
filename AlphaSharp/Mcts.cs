@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text.Json;
 using AlphaSharp.Interfaces;
-using static AlphaSharp.StateNode;
 using Math = System.Math;
 
 namespace AlphaSharp
@@ -116,13 +115,6 @@ namespace AlphaSharp
                 probs[i] = stateNode.Actions[i].VisitCount;
 
             ArrayUtil.Softmax(probs, temperature);
-
-            float sum0 = probs.Sum();
-            if (sum0 == 0.0f)
-            {
-                Console.WriteLine("WARNING: sum0 == 0.0f");
-            }
-
             return probs;
         }
 
@@ -152,7 +144,6 @@ namespace AlphaSharp
                     double ms = sw.Elapsed.TotalMilliseconds;
                     Stats.MsInSkynet += ms;
                     Stats.SkynetCalls++;
-                    // HERRE!!!!! V is always positive from untrained network!!! should be -1 to 1.
                     _game.GetValidActions(_state, _validActionsTemp);
 
                     ArrayUtil.FilterProbsByValidActions(_actionProbsTemp, _validActionsTemp);
@@ -192,7 +183,8 @@ namespace AlphaSharp
                     for (int i = 0; i < stateNode.Actions.Length; i++)
                     {
                         ref StateNode.Action action = ref stateNode.Actions[i];
-                        action.ActionProbability = (1 - _param.DirichletNoiseAmount) * action.ActionProbability + _param.DirichletNoiseAmount * _noiseTemp[i];
+                        if (action.IsValidMove != 0)
+                            action.ActionProbability = (1 - _param.DirichletNoiseAmount) * action.ActionProbability + _param.DirichletNoiseAmount * _noiseTemp[i];
                     }
                 }
 
@@ -279,8 +271,6 @@ namespace AlphaSharp
                 int a = selectedActions[i].ActionIdx;
                 ref var action = ref node.Actions[a];
                 action.VisitCount++;
-                if (node.Idx == 0)
-                    Console.WriteLine(action.VisitCount.ToString());
 
                 action.Q = ((action.VisitCount - 1) * action.Q + v) / action.VisitCount;
 
