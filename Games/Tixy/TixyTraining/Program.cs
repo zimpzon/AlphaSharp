@@ -20,27 +20,26 @@ namespace TixyGameCmd
                 // global
                 ResumeFromCheckpoint = true,
                 Iterations = 1000,
-                MaxWorkerThreads = 4, // diminishing returns, 4 threads seems optimal'ish on home pc with 12/24 cores
+                MaxWorkerThreads = 1, // diminishing returns, 4 threads seems optimal'ish on home pc with 12/24 cores
                 MaxTrainingExamples = 100000,
                 OutputFolder = "c:\\temp\\zerosharp\\Tixy",
-                TemperatureThresholdMoves = 40,
-                SimulationIterations = 2000,
+                TemperatureThresholdMoves = 10000,
+                SimulationIterations = 500,
                 DirichletNoiseAmount = 0.5f,
                 DirichletNoiseShape = 0.1f,
                 EvaluationPlayers = EvaluationPlayers.AlternatingModels,
 
                 // self-play
-                SelfPlayEpisodes = 40,
+                SelfPlayEpisodes = 30,
 
                 // evaluation
                 EvaluationRounds = 20,
-                EvaluationMaxMoves = 150,
             };
 
             var tixyParam = new TixyParameters
             {
                 TrainingEpochs = 10,
-                TrainingBatchSize = 200,
+                TrainingBatchSize = 64,
                 TrainingLearningRate = 0.001f,
             };
 

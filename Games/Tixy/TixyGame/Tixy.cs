@@ -11,7 +11,8 @@ namespace TixyGame
 
         public int W { get; }
         public int H { get; }
-        public int MaxMoves = 30;
+        private const int MaxMoves = 150;
+        private const int SimulationMaxMoves = 150;
 
         public int ActionCount => W * H * MoveDirections;
         public int StateSize => W * H;
@@ -33,26 +34,26 @@ namespace TixyGame
         public byte Get(byte[] state, int x, int y)
             => state[y * W + x];
 
-        public void GetStartingState(byte[] state)
+        public void GetStartingState(byte[] dstState)
         {
-            ClearPieces(state);
+            ClearPieces(dstState);
 
-            Set(state, 0, 0, TixyPieces.P2.T);
-            Set(state, 1, 0, TixyPieces.P2.X);
-            Set(state, 2, 0, TixyPieces.P2.Y);
-            Set(state, 3, 0, TixyPieces.P2.I);
-            Set(state, 4, 0, TixyPieces.P2.Y);
+            Set(dstState, 0, 0, TixyPieces.P2.T);
+            Set(dstState, 1, 0, TixyPieces.P2.X);
+            Set(dstState, 2, 0, TixyPieces.P2.Y);
+            Set(dstState, 3, 0, TixyPieces.P2.I);
+            Set(dstState, 4, 0, TixyPieces.P2.Y);
 
-            Set(state, 0, H - 1, TixyPieces.P1.T);
-            Set(state, 1, H - 1, TixyPieces.P1.X);
-            Set(state, 2, H - 1, TixyPieces.P1.Y);
-            Set(state, 3, H - 1, TixyPieces.P1.I);
-            Set(state, 4, H - 1, TixyPieces.P1.Y);
+            Set(dstState, 0, H - 1, TixyPieces.P1.T);
+            Set(dstState, 1, H - 1, TixyPieces.P1.X);
+            Set(dstState, 2, H - 1, TixyPieces.P1.Y);
+            Set(dstState, 3, H - 1, TixyPieces.P1.I);
+            Set(dstState, 4, H - 1, TixyPieces.P1.Y);
         }
 
         public GameOver.Status GetGameEnded(byte[] state, int movesMade, bool isSimulation)
         {
-            int maxMoves = isSimulation ? MaxMoves * 4 : MaxMoves;
+            int maxMoves = isSimulation ? SimulationMaxMoves : MaxMoves;
             if (movesMade >= maxMoves)
                 return GameOver.Status.DrawDueToMaxMovesReached;
 
@@ -88,9 +89,9 @@ namespace TixyGame
             return GameOver.Status.GameIsNotOver;
         }
 
-        public void GetValidActions(byte[] state, byte[] validActions)
+        public void GetValidActions(byte[] state, byte[] dstValidActions)
         {
-            Array.Clear(validActions);
+            Array.Clear(dstValidActions);
 
             for (int i = 0; i < W * H; i++)
             {
@@ -117,7 +118,7 @@ namespace TixyGame
                         if (isLegalTarget)
                         {
                             int planeIdx = TixyPieces.DeltasToPlaneIdx(dx, dy);
-                            validActions[planeSize * planeIdx + idxInPlane] = 1;
+                            dstValidActions[planeSize * planeIdx + idxInPlane] = 1;
                         }
                     }
                 }

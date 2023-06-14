@@ -47,7 +47,6 @@ namespace AlphaSharp
         /// New model evaluation parameters.
         /// </summary>
         public int EvaluationRounds { get; set; } = 20;
-        public int EvaluationMaxMoves { get; set; } = 100;
         public EvaluationPlayers EvaluationPlayers { get; set; } = EvaluationPlayers.AlternatingModels;
     }
 }

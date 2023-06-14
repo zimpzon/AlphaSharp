@@ -20,7 +20,6 @@ namespace TicTacToeTraining
                 SelfPlayEpisodes = 40,
 
                 EvaluationRounds = 10,
-                EvaluationMaxMoves = 10,
             };
 
             var TicTacToeParam = new TicTacToeParameters

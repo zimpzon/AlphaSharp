@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Text.Json;
 using AlphaSharp.Interfaces;
+using static AlphaSharp.StateNode;
 using Math = System.Math;
 
 namespace AlphaSharp
@@ -110,18 +112,17 @@ namespace AlphaSharp
 
             var probs = new float[stateNode.Actions.Length];
 
-            // adjust by temperature
             for (int i = 0; i < _actionsVisitCountTemp.Length; i++)
-                probs[i] = (float)Math.Pow(stateNode.Actions[i].VisitCount, 1.0f / temperature);
+                probs[i] = stateNode.Actions[i].VisitCount;
 
-            for (int i = 0; i < probs.Length; i++)
+            ArrayUtil.Softmax(probs, temperature);
+
+            float sum0 = probs.Sum();
+            if (sum0 == 0.0f)
             {
-                // When visitcounts get really high (millions) the Math.Pow can exceed float max and is then Infinity. Clamp to max float.
-                if (float.IsInfinity(probs[i]))
-                    probs[i] = float.MaxValue;
+                Console.WriteLine("WARNING: sum0 == 0.0f");
             }
 
-            ArrayUtil.Normalize(probs);
             return probs;
         }
 
@@ -151,7 +152,7 @@ namespace AlphaSharp
                     double ms = sw.Elapsed.TotalMilliseconds;
                     Stats.MsInSkynet += ms;
                     Stats.SkynetCalls++;
-
+                    // HERRE!!!!! V is always positive from untrained network!!! should be -1 to 1.
                     _game.GetValidActions(_state, _validActionsTemp);
 
                     ArrayUtil.FilterProbsByValidActions(_actionProbsTemp, _validActionsTemp);
@@ -171,6 +172,8 @@ namespace AlphaSharp
                         stateNode.Actions[i].IsValidMove = _validActionsTemp[i];
                     }
 
+                    stateNode.VisitCount = 1;
+
                     // latest recorded action was the opponents, but v is for me, so negate v
                     BacktrackAndUpdate(_selectedActions, -v);
                     break;
@@ -184,7 +187,14 @@ namespace AlphaSharp
                 bool isFirstMove = _selectedActions.Count == 0;
 
                 if (isFirstMove && isSimulation)
+                {
                     Noise.CreateDirichlet(_noiseTemp, _param.DirichletNoiseShape);
+                    for (int i = 0; i < stateNode.Actions.Length; i++)
+                    {
+                        ref StateNode.Action action = ref stateNode.Actions[i];
+                        action.ActionProbability = (1 - _param.DirichletNoiseAmount) * action.ActionProbability + _param.DirichletNoiseAmount * _noiseTemp[i];
+                    }
+                }
 
                 for (int i = 0; i < stateNode.Actions.Length; i++)
                 {
@@ -192,14 +202,7 @@ namespace AlphaSharp
                     if (action.IsValidMove != 0)
                     {
                         float actionProbability = action.ActionProbability;
-                        if (isFirstMove && isSimulation)
-                            actionProbability = (1 - _param.DirichletNoiseAmount) * action.ActionProbability + _param.DirichletNoiseAmount * _noiseTemp[i];
-
-                        // if no Q value yet calc confidence without Q
-                        float upperConfidence = action.Q == 0 ?
-                            _param.Cpuct * actionProbability * (float)Math.Sqrt(stateNode.VisitCount + float.Epsilon) :
-                            action.Q + _param.Cpuct * actionProbability * (float)Math.Sqrt(stateNode.VisitCount) / (1.0f + action.VisitCount);
-
+                        float upperConfidence = action.Q + _param.Cpuct * actionProbability * (float)Math.Sqrt(stateNode.VisitCount) / (1.0f + action.VisitCount);
                         if (upperConfidence > bestUpperConfidence)
                         {
                             bestUpperConfidence = upperConfidence;
@@ -210,8 +213,6 @@ namespace AlphaSharp
 
                 // an action was selected
                 _selectedActions.Add(new SelectedAction { NodeIdx = idxStateNode, ActionIdx = selectedAction });
-
-                stateNode.VisitCount++;
 
                 _game.ExecutePlayerAction(_state, selectedAction);
                 var gameState = _game.GetGameEnded(_state, _selectedActions.Count, isSimulation);
@@ -278,8 +279,10 @@ namespace AlphaSharp
                 int a = selectedActions[i].ActionIdx;
                 ref var action = ref node.Actions[a];
                 action.VisitCount++;
+                if (node.Idx == 0)
+                    Console.WriteLine(action.VisitCount.ToString());
 
-                action.Q = action.Q == 0.0f ? (v + float.Epsilon) : (action.VisitCount * action.Q + v) / (action.VisitCount + 1);
+                action.Q = ((action.VisitCount - 1) * action.Q + v) / action.VisitCount;
 
                 // switch to the other players perspective
                 v = -v;

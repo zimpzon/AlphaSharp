@@ -22,6 +22,21 @@ namespace AlphaSharp
             throw new InvalidOperationException("Invalid probabilities");
         }
 
+        public static float[] Softmax(float[] values, float temperature)
+        {
+            // Subtract max for numerical stability
+            float maxProb = values.Max();
+            for (int i = 0; i < values.Length; i++)
+                values[i] -= maxProb;
+
+            // Apply temperature and exponentiate
+            for (int i = 0; i < values.Length; i++)
+                values[i] = (float)Math.Exp(values[i] / temperature);
+
+            Normalize(values);
+            return values;
+        }
+
         public static int ArgMax(float[] arr)
         {
             if (arr.Length == 0)
