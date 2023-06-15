@@ -6,5 +6,6 @@
         Info,
         MoreInfo,
         Verbose,
+        Debug,
     }
 }

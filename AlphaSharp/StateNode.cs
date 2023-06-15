@@ -21,7 +21,8 @@
 
 		public int Idx;
 		public int VisitCount;
-		public GameOver.Status GameOver;
+        public bool HasNoise;
+        public GameOver.Status GameOver;
 		public Action[] Actions;
 	}
 }
