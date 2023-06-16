@@ -111,7 +111,7 @@ namespace AlphaSharp
 
         private void ExploreGameTree(byte[] startingState, bool isSimulation)
         {
-            int player = 1;
+            int playerTurn = 1;
             Array.Copy(startingState, _currentState, _currentState.Length);
 
             _selectedActions.Clear();
@@ -126,34 +126,34 @@ namespace AlphaSharp
                     cachedState.VisitCount++;
 
                     // This may repeat many times at the end of a simulation loop since the remaining simulations will just exploit this known winning state over and over.
-                    _param.TextInfoCallback(LogLevel.Debug, $"revisiting a cached game over: {cachedState.GameOver}, nodeIdx: {cachedState.Idx}, player: {player}, moves: {_selectedActions.Count}");
-                    BacktrackAndUpdate(_selectedActions, 1, currentPlayer: player);
+                    _param.TextInfoCallback(LogLevel.Debug, $"revisiting a cached game over: {cachedState.GameOver}, nodeIdx: {cachedState.Idx}, player: {playerTurn}, moves: {_selectedActions.Count}");
+                    BacktrackAndUpdate(_selectedActions, 1, currentPlayer: playerTurn);
                     break;
                 }
 
                 if (wasCreated)
                 {
-                    float expandV = ExpandState(ref cachedState, player);
+                    float expandV = ExpandState(ref cachedState, playerTurn);
 
                     // latest recorded action was the opponents, but v is for me, so negate v
-                    BacktrackAndUpdate(_selectedActions, -expandV, currentPlayer: player);
+                    BacktrackAndUpdate(_selectedActions, -expandV, currentPlayer: playerTurn);
                     break;
                 }
 
-                int selectedAction = RevisitNode(ref cachedState, isSimulation, player);
+                int selectedAction = RevisitNode(ref cachedState, isSimulation, playerTurn);
 
                 _game.ExecutePlayerAction(_currentState, selectedAction);
 
-                if (IsGameOver(ref cachedState, isSimulation, player, out float gameOverV))
+                if (IsGameOver(ref cachedState, isSimulation, playerTurn, out float gameOverV))
                 {
-                    BacktrackAndUpdate(_selectedActions, 0, currentPlayer: player);
+                    BacktrackAndUpdate(_selectedActions, 0, currentPlayer: playerTurn);
                     break;
                 }
 
                 _game.FlipStateToNextPlayer(_currentState);
 
-                player = -player;
-                _param.TextInfoCallback(LogLevel.Debug, $"player switched from {-player} to {player}, nodeIdx: {cachedState.Idx}, player: {player}, moves: {_selectedActions.Count}");
+                playerTurn = -playerTurn;
+                //_param.TextInfoCallback(LogLevel.Debug, $"player switched from {-playerTurn} to {playerTurn}, nodeIdx: {cachedState.Idx}, player: {playerTurn}, moves: {_selectedActions.Count}");
             }
         }
 
@@ -185,7 +185,7 @@ namespace AlphaSharp
 
         private int RevisitNode(ref CachedState cachedState, bool isSimulation, int player)
         {
-            _param.TextInfoCallback(LogLevel.Debug, $"revisiting a cached state, nodeIdx: {cachedState.Idx}, player: {player}, moves: {_selectedActions.Count}");
+            _param.TextInfoCallback(LogLevel.Debug, $"revisiting a cached state with visitCount {cachedState.VisitCount}, nodeIdx: {cachedState.Idx}, player: {player}, moves: {_selectedActions.Count}");
 
             // Pick action with highest UCB
             float bestUpperConfidence = float.NegativeInfinity;
@@ -230,22 +230,22 @@ namespace AlphaSharp
             return selectedAction;
         }
 
-        private float ExpandState(ref CachedState cachedState, int player)
+        private float ExpandState(ref CachedState cachedState, int playerTurn)
         {
             // get and save suggestions from Skynet, then backtrack to root using suggested v
-            _skynet.Suggest(_currentState, player, _actionProbsReused, out float v);
+            _skynet.Suggest(_currentState, playerTurn, _actionProbsReused, out float v);
             _game.GetValidActions(_currentState, _validActionsReused);
 
             ArrayUtil.FilterProbsByValidActions(_actionProbsReused, _validActionsReused);
             ArrayUtil.Normalize(_actionProbsReused);
 
-            _param.TextInfoCallback(LogLevel.Debug, $"new state node created, nodeIdx: {cachedState.Idx}, network v: {v}, player: {player}, moves: {_selectedActions.Count}");
+            _param.TextInfoCallback(LogLevel.Debug, $"new state node created, nodeIdx: {cachedState.Idx}, network v: {v}, player: {playerTurn}, moves: {_selectedActions.Count}");
 
             bool hasValidActions = ArrayUtil.CountNonZero(_actionProbsReused) > 0;
             if (!hasValidActions)
             {
                 // no valid actions in leaf, consider this a draw, ex TicTacToe: board is full
-                _param.TextInfoCallback(LogLevel.Debug, $"no valid actions in new state node, nodeIdx: {cachedState.Idx}, player: {player}, moves: {_selectedActions.Count}");
+                _param.TextInfoCallback(LogLevel.Debug, $"no valid actions in new state node, nodeIdx: {cachedState.Idx}, player: {playerTurn}, moves: {_selectedActions.Count}");
                 return 0;
             }
 
