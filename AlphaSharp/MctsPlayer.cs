@@ -13,7 +13,7 @@ namespace AlphaSharp
 
         public int PickAction(byte[] state)
         {
-            var probs = _mcts.GetActionProbs(state);
+            var probs = _mcts.GetActionPolicy(state);
             return ArrayUtil.ArgMax(probs);
         }
     }

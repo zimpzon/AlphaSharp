@@ -12,7 +12,7 @@ namespace AlphaSharp
             return ArrayUtil.FindNthNonZeroIndex(validActions, selectedNo + 1);
         }
 
-        public static int CountValidActions(StateNode.Action[] actions)
+        public static int CountValidActions(Mcts.Action[] actions)
         {
             int count = 0;
             for (int i = 0; i < actions.Length; ++i)
@@ -23,7 +23,7 @@ namespace AlphaSharp
             return count;
         }
 
-        public static int PickActionByHighestVisitCount(StateNode.Action[] actions)
+        public static int PickActionByHighestVisitCount(Mcts.Action[] actions)
         {
             var rnd = new Random();
             int maxVisitCount = actions.Max(a => a.VisitCount);
@@ -33,10 +33,9 @@ namespace AlphaSharp
             int counter = 0;
             for (int i = 0; i < actions.Length; ++i)
             {
-                if (actions[i].VisitCount == maxVisitCount)
+                if (actions[i].VisitCount == maxVisitCount && counter++ == selectedCandiate)
                 {
-                    if (counter++ == selectedCandiate)
-                        return i;
+                    return i;
                 }
             }
             return -1;

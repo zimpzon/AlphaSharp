@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Numerics;
-using System.Text.Json;
 using AlphaSharp.Interfaces;
 using Math = System.Math;
 
@@ -10,44 +7,51 @@ namespace AlphaSharp
 {
     public class Mcts
     {
-        public class SimStats
+        public struct Action
         {
-            public int NodesCreated { get; set; }
-            public int NodesRevisited { get; set; }
-            public int TotalSims { get; set; }
-            public int TotalSimMoves { get; set; }
-            public int SkynetCalls { get; set; }
-            public double MsInSkynet { get; set; }
-            public double MsInSimulation { get; set; }
+            public float Q { get; set; }
+            public int VisitCount { get; set; }
+            public byte IsValidMove { get; set; }
+            public float ActionProbability { get; set; }
 
-            public override string ToString() => JsonSerializer.Serialize(this);
+            public override readonly string ToString()
+                => $"Q: {Q}, VisitCount: {VisitCount}, IsValidMove: {IsValidMove}, ActionProbability: {ActionProbability}";
         }
 
         private sealed class SelectedAction
         {
-            public int NodeIdx;
-            public int ActionIdx;
-            public float Player;
+            public int NodeIdx { get; set; }
+            public int ActionIdx { get; set; }
+            public float Player { get; set; }
         }
 
-        public SimStats Stats { get; private set; } = new();
+        public class CachedState
+        {
+            public CachedState(int actionCount, int idx)
+            {
+                Actions = new Action[actionCount];
+                Idx = idx;
+            }
+
+            public int Idx { get; set; }
+            public int VisitCount { get; set; }
+            public GameOver.Status GameOver { get; set; }
+            public Action[] Actions { get; set; }
+        }
 
         private readonly IGame _game;
         private readonly ISkynet _skynet;
         private readonly AlphaParameters _param;
-        private StateNode[] _stateNodes = new StateNode[200000];
+        private CachedState[] _cachedStates = new CachedState[200000];
         private int _stateIdx = 0;
-        private readonly float[] _actionProbsTemp;
-        private readonly float[] _noiseTemp;
-        private readonly double[] _actionsVisitCountTemp;
-        private readonly byte[] _validActionsTemp;
+        private readonly float[] _actionProbsReused;
+        private readonly float[] _noiseReused;
+        private readonly double[] _actionsVisitCountReused;
+        private readonly byte[] _validActionsReused;
         private readonly List<SelectedAction> _selectedActions = new();
-        private readonly byte[] _state;
+        private readonly byte[] _currentState;
 
-        // could use Zobrist hashing instead of base64 key. https://en.wikipedia.org/wiki/Zobrist_hashing
-        // however, this requires the game to expose the number of possible values per cell.
-        // right now bottleneck is nn inference anyways.
-        private readonly Dictionary<string, int> _stateNodeLookup = new();
+        private readonly Dictionary<string, int> _cachedStateLookup = new();
 
         public Mcts(IGame game, ISkynet skynet, AlphaParameters args)
         {
@@ -55,228 +59,201 @@ namespace AlphaSharp
             _skynet = skynet;
             _param = args;
 
-            _actionProbsTemp = new float[_game.ActionCount];
-            _noiseTemp = new float[_game.ActionCount];
-            _validActionsTemp = new byte[_game.ActionCount];
-            _actionsVisitCountTemp = new double[_game.ActionCount];
-            _state = new byte[_game.StateSize];
+            _actionProbsReused = new float[_game.ActionCount];
+            _noiseReused = new float[_game.ActionCount];
+            _validActionsReused = new byte[_game.ActionCount];
+            _actionsVisitCountReused = new double[_game.ActionCount];
+            _currentState = new byte[_game.StateSize];
         }
         
-        public void Reset()
-        {
-            _stateNodeLookup.Clear();
-            _stateIdx = 0;
-            Array.Clear(_stateNodes);
-            Stats = new SimStats();
-        }
+        public float[] GetActionPolicy(byte[] state)
+            => GetActionPolicyInternal(state, isSelfPlay: false);
 
-        public float[] GetActionProbs(byte[] state)
-        {
-            var sw = Stopwatch.StartNew();
+        public float[] GetActionPolicyForSelfPlay(byte[] state, float temperature)
+            => GetActionPolicyInternal(state, isSelfPlay: true, temperature);
 
+        private float[] GetActionPolicyInternal(byte[] state, bool isSelfPlay, float temperature = 0.0f)
+        {
             int simCount = _param.SimulationIterations;
 
             for (int i = 0; i < simCount; i++)
             {
-                ExploreGameTree(state, isSimulation: false);
-                Stats.TotalSims++;
+                ExploreGameTree(state, isSimulation: isSelfPlay);
             }
 
-            Stats.MsInSimulation = sw.Elapsed.TotalMilliseconds;
+            int nodeIdx = GetOrCreateCachedState(state, out bool wasCreated);
+            if (wasCreated)
+                throw new ArgumentException("BUG: after exploring this state should have been cached");
 
-            int nodeIdx = GetOrCreateStateNodeFromState(state, out _);
-            var stateNode = _stateNodes[nodeIdx];
+            var cachedState = _cachedStates[nodeIdx];
 
-            var probs = new float[stateNode.Actions.Length];
-            int selectedAction = ActionUtil.PickActionByHighestVisitCount(stateNode.Actions);
-            probs[selectedAction] = 1.0f;
-            return probs;
-        }
+            var policy = new float[cachedState.Actions.Length];
 
-        public float[] GetActionProbsForSelfPlay(byte[] state, float temperature)
-        {
-            var sw = Stopwatch.StartNew();
-
-            int simCount = _param.SimulationIterations;
-
-            for (int i = 0; i < simCount; i++)
+            if (isSelfPlay)
             {
-                ExploreGameTree(state, isSimulation: true);
-                Stats.TotalSims++;
+                for (int i = 0; i < _actionsVisitCountReused.Length; i++)
+                {
+                    policy[i] = cachedState.Actions[i].VisitCount;
+                }
+
+                ArrayUtil.Softmax(policy, temperature);
+
+                return policy;
             }
-
-            Stats.MsInSimulation = sw.Elapsed.TotalMilliseconds;
-
-            int nodeIdx = GetOrCreateStateNodeFromState(state, out _);
-            var stateNode = _stateNodes[nodeIdx];
-
-            var probs = new float[stateNode.Actions.Length];
-
-            for (int i = 0; i < _actionsVisitCountTemp.Length; i++)
-                probs[i] = stateNode.Actions[i].VisitCount;
-
-            ArrayUtil.Softmax(probs, temperature);
-            return probs;
-        }
-
-        private int GetOrCreateStateNodeFromState(byte[] state, out bool wasCreated)
-        {
-            string key = Convert.ToBase64String(state);
-            if (_stateNodeLookup.TryGetValue(key, out int idx))
+            else
             {
-                Stats.NodesRevisited++;
-                wasCreated = false;
-                return idx;
+                int selectedAction = ActionUtil.PickActionByHighestVisitCount(cachedState.Actions);
+                policy[selectedAction] = 1.0f;
+
+                return policy;
             }
-
-            if (_stateIdx >= _stateNodes.Length)
-            {
-                int newSize = (int)(_stateNodes.Length * 1.5);
-                _param.TextInfoCallback(LogLevel.MoreInfo, $"expanding stateNode array from {_stateNodes.Length} to {newSize}");
-
-                Array.Resize(ref _stateNodes, newSize);
-            }
-
-            _stateNodes[_stateIdx] = new StateNode(_game.ActionCount, _stateIdx);
-            _stateNodeLookup.Add(key, _stateIdx);
-
-            _stateIdx++;
-            Stats.NodesCreated++;
-            wasCreated = true;
-
-            return _stateIdx - 1;
         }
 
         private void ExploreGameTree(byte[] startingState, bool isSimulation)
         {
-            float player = 1;
-            Array.Copy(startingState, _state, _state.Length);
+            int player = 1;
+            Array.Copy(startingState, _currentState, _currentState.Length);
 
             _selectedActions.Clear();
             while (true)
             {
-                int idxStateNode = GetOrCreateStateNodeFromState(_state, out bool wasCreated);
-                var stateNode = _stateNodes[idxStateNode];
+                int idxStateNode = GetOrCreateCachedState(_currentState, out bool wasCreated);
+                var cachedState = _cachedStates[idxStateNode];
 
-                if (stateNode.GameOver != GameOver.Status.GameIsNotOver)
+                bool revisitedGameOver = cachedState.GameOver != GameOver.Status.GameIsNotOver;
+                if (revisitedGameOver)
                 {
-                    // Revisiting a game over state. We can get here when simulation is over and
-                    // the "real" game makes a winning move that was visited during the simulation.
-                    _param.TextInfoCallback(LogLevel.Debug, $"revisiting a cached game state: {stateNode.GameOver}, nodeIdx: {stateNode.Idx}, player: {player}, moves: {_selectedActions.Count}");
+                    _param.TextInfoCallback(LogLevel.Debug, $"revisiting a cached game over: {cachedState.GameOver}, nodeIdx: {cachedState.Idx}, player: {player}, moves: {_selectedActions.Count}");
                     BacktrackAndUpdate(_selectedActions, 1, currentPlayer: player);
                     break;
                 }
 
                 if (wasCreated)
                 {
-                    // get and save suggestions from Skynet, then backtrack to root using suggested v
-                    var sw = Stopwatch.StartNew();
-                    _skynet.Suggest(_state, _actionProbsTemp, out float v);
-                    double ms = sw.Elapsed.TotalMilliseconds;
-                    Stats.MsInSkynet += ms;
-                    Stats.SkynetCalls++;
-                    _game.GetValidActions(_state, _validActionsTemp);
-
-                    ArrayUtil.FilterProbsByValidActions(_actionProbsTemp, _validActionsTemp);
-                    ArrayUtil.Normalize(_actionProbsTemp);
-
-                    _param.TextInfoCallback(LogLevel.Debug, $"new state node created, nodeIdx: {stateNode.Idx}, network v: {v}, player: {player}, moves: {_selectedActions.Count}");
-
-                    bool hasValidActions = ArrayUtil.CountNonZero(_actionProbsTemp) > 0;
-                    if (!hasValidActions)
-                    {
-                        // no valid actions in leaf, consider this a draw, ex TicTacToe: board is full
-                        _param.TextInfoCallback(LogLevel.Debug, $"no valid actions in new state node, nodeIdx: {stateNode.Idx}, player: {player}, moves: {_selectedActions.Count}");
-                        BacktrackAndUpdate(_selectedActions, 0, currentPlayer: player);
-                        break;
-                    }
-
-                    for (int i = 0; i < stateNode.Actions.Length; ++i)
-                    {
-                        stateNode.Actions[i].ActionProbability = _actionProbsTemp[i];
-                        stateNode.Actions[i].IsValidMove = _validActionsTemp[i];
-                    }
-
-                    stateNode.VisitCount = 1;
+                    float expandV = ExpandState(ref cachedState, player);
 
                     // latest recorded action was the opponents, but v is for me, so negate v
-                    BacktrackAndUpdate(_selectedActions, -v, currentPlayer: player);
+                    BacktrackAndUpdate(_selectedActions, -expandV, currentPlayer: player);
                     break;
                 }
 
-                // revisited node, pick the action with the highest upper confidence bound
+                int selectedAction = RevisitNode(ref cachedState, isSimulation, player);
 
-                float bestUpperConfidence = float.NegativeInfinity;
-                int selectedAction = -1;
+                _game.ExecutePlayerAction(_currentState, selectedAction);
 
-                bool isFirstMove = _selectedActions.Count == 0;
-
-                if (isFirstMove && isSimulation && !stateNode.HasNoise)
+                if (IsGameOver(ref cachedState, isSimulation, player, out float gameOverV))
                 {
-                    Noise.CreateDirichlet(_noiseTemp, _param.DirichletNoiseShape);
-                    for (int i = 0; i < stateNode.Actions.Length; i++)
-                    {
-                        ref StateNode.Action action = ref stateNode.Actions[i];
-                        if (action.IsValidMove != 0)
-                            action.ActionProbability = (1 - _param.DirichletNoiseAmount) * action.ActionProbability + _param.DirichletNoiseAmount * _noiseTemp[i];
-                    }
-
-                    stateNode.HasNoise = true;
-                }
-
-                for (int i = 0; i < stateNode.Actions.Length; i++)
-                {
-                    ref StateNode.Action action = ref stateNode.Actions[i];
-                    if (action.IsValidMove != 0)
-                    {
-                        _param.TextInfoCallback(LogLevel.Debug, $"considering action: {i}, nodeIdx: {stateNode.Idx}, visitcount: {action.VisitCount}, q: {action.Q}, prob: {action.ActionProbability}, player: {player}, moves: {_selectedActions.Count}");
-
-                        float actionProbability = action.ActionProbability;
-                        float upperConfidence = action.Q + _param.Cpuct * actionProbability * (float)Math.Sqrt(stateNode.VisitCount) / (1.0f + action.VisitCount);
-                        if (upperConfidence > bestUpperConfidence)
-                        {
-                            bestUpperConfidence = upperConfidence;
-                            selectedAction = i;
-                        }
-                    }
-                }
-
-                // an action was selected
-                _selectedActions.Add(new SelectedAction { NodeIdx = idxStateNode, ActionIdx = selectedAction, Player = player });
-
-                _param.TextInfoCallback(LogLevel.Debug, $"executing selected action: {selectedAction}, nodeIdx: {stateNode.Idx}, confidence: {bestUpperConfidence}, player: {player}, moves: {_selectedActions.Count}");
-
-                _game.ExecutePlayerAction(_state, selectedAction);
-                var gameState = _game.GetGameEnded(_state, _selectedActions.Count, isSimulation);
-
-                if (gameState != GameOver.Status.GameIsNotOver)
-                {
-                    if (gameState == GameOver.Status.DrawDueToMaxMovesReached)
-                    {
-                        // do not mark state as a draw, we could get here later without having reached max moves
-                        _param.TextInfoCallback(LogLevel.Debug, $"max moves reached, game over: {stateNode.GameOver}, nodeIdx: {stateNode.Idx}, player: {player}, moves: {_selectedActions.Count}");
-                        BacktrackAndUpdate(_selectedActions, 0, currentPlayer: player);
-                        break;
-                    }
-
-                    // mark state with the game over result
-                    stateNode.GameOver = gameState;
-
-                    // moves are always made as player1. the latest added actions
-                    // belongs to current player, no matter if this is pl1 or pl2.
-                    // so we want score from p1 perspective.
-                    float v = GameOver.ValueForPlayer1(stateNode.GameOver);
-                    _param.TextInfoCallback(LogLevel.Debug, $"game over after executing action, game over: {stateNode.GameOver}, nodeIdx: {stateNode.Idx}, player: {player}, moves: {_selectedActions.Count}, game v: {v}");
-                    BacktrackAndUpdate(_selectedActions, v, currentPlayer: player);
+                    BacktrackAndUpdate(_selectedActions, 0, currentPlayer: player);
                     break;
                 }
 
-                _game.FlipStateToNextPlayer(_state);
+                _game.FlipStateToNextPlayer(_currentState);
+
                 player = -player;
-                _param.TextInfoCallback(LogLevel.Debug, $"player switched from {-player} to {player}, nodeIdx: {stateNode.Idx}, player: {player}, moves: {_selectedActions.Count}");
-
-                Stats.TotalSimMoves++;
+                _param.TextInfoCallback(LogLevel.Debug, $"player switched from {-player} to {player}, nodeIdx: {cachedState.Idx}, player: {player}, moves: {_selectedActions.Count}");
             }
+        }
+
+        private bool IsGameOver(ref CachedState cachedState, bool isSimulation, int player, out float v)
+        {
+            var gameOverStatus = _game.GetGameEnded(_currentState, _selectedActions.Count, isSimulation);
+            if (gameOverStatus == GameOver.Status.GameIsNotOver)
+            {
+                v = 0;
+                return false;
+            }
+
+            if (gameOverStatus == GameOver.Status.DrawDueToMaxMovesReached)
+            {
+                // do not mark this state as a draw. It is not the state itself that is game over, we just ran out of moves.
+                _param.TextInfoCallback(LogLevel.Debug, $"max moves reached, game over: {gameOverStatus}, nodeIdx: {cachedState.Idx}, player: {player}, moves: {_selectedActions.Count}");
+                v = 0;
+                return true;
+            }
+
+            cachedState.GameOver = gameOverStatus;
+
+            // moves are always made as player1. the latest added actions
+            // belongs to current player, no matter if this is pl1 or pl2.
+            // so we want score from p1 perspective.
+            v = GameOver.ValueForPlayer1(cachedState.GameOver);
+            return true;
+        }
+
+        private int RevisitNode(ref CachedState cachedState, bool isSimulation, int player)
+        {
+            _param.TextInfoCallback(LogLevel.Debug, $"revisiting a cached state, nodeIdx: {cachedState.Idx}, player: {player}, moves: {_selectedActions.Count}");
+
+            // Pick action with highest UCB
+            float bestUpperConfidence = float.NegativeInfinity;
+            int selectedAction = -1;
+
+            bool isFirstMove = _selectedActions.Count == 0;
+
+            bool addNoise = isFirstMove && isSimulation;
+            if (addNoise)
+            {
+                Noise.CreateDirichlet(_noiseReused, _param.DirichletNoiseShape);
+            }
+            else
+            {
+                Array.Clear(_noiseReused, 0, _noiseReused.Length);
+            }
+
+            for (int i = 0; i < cachedState.Actions.Length; i++)
+            {
+                ref Action action = ref cachedState.Actions[i];
+                if (action.IsValidMove != 0)
+                {
+                    float actionProbability = addNoise ? (1 - _param.DirichletNoiseAmount) * action.ActionProbability + _param.DirichletNoiseAmount * _noiseReused[i] : action.ActionProbability;
+                    _param.TextInfoCallback(LogLevel.Debug, $"considering action: {i}, nodeIdx: {cachedState.Idx}, visitcount: {action.VisitCount}, q: {action.Q}, prob: {action.ActionProbability}, player: {player}, moves: {_selectedActions.Count}, noise: {action.ActionProbability} -> {_noiseReused[i]} = {actionProbability}");
+
+                    float upperConfidence = action.Q + _param.Cpuct * actionProbability * (float)Math.Sqrt(cachedState.VisitCount) / (1.0f + action.VisitCount);
+                    if (upperConfidence > bestUpperConfidence)
+                    {
+                        bestUpperConfidence = upperConfidence;
+                        selectedAction = i;
+                    }
+                }
+            }
+
+            // an action was selected
+            _selectedActions.Add(new SelectedAction { NodeIdx = cachedState.Idx, ActionIdx = selectedAction, Player = player });
+
+            _param.TextInfoCallback(LogLevel.Debug, $"action selected: {selectedAction}, nodeIdx: {cachedState.Idx}, confidence: {bestUpperConfidence}, player: {player}, moves: {_selectedActions.Count}");
+
+            cachedState.VisitCount++;
+
+            return selectedAction;
+        }
+
+        private float ExpandState(ref CachedState cachedState, int player)
+        {
+            // get and save suggestions from Skynet, then backtrack to root using suggested v
+            _skynet.Suggest(_currentState, _actionProbsReused, out float v);
+            _game.GetValidActions(_currentState, _validActionsReused);
+
+            ArrayUtil.FilterProbsByValidActions(_actionProbsReused, _validActionsReused);
+            ArrayUtil.Normalize(_actionProbsReused);
+
+            _param.TextInfoCallback(LogLevel.Debug, $"new state node created, nodeIdx: {cachedState.Idx}, network v: {v}, player: {player}, moves: {_selectedActions.Count}");
+
+            bool hasValidActions = ArrayUtil.CountNonZero(_actionProbsReused) > 0;
+            if (!hasValidActions)
+            {
+                // no valid actions in leaf, consider this a draw, ex TicTacToe: board is full
+                _param.TextInfoCallback(LogLevel.Debug, $"no valid actions in new state node, nodeIdx: {cachedState.Idx}, player: {player}, moves: {_selectedActions.Count}");
+                return 0;
+            }
+
+            for (int i = 0; i < cachedState.Actions.Length; ++i)
+            {
+                cachedState.Actions[i].ActionProbability = _actionProbsReused[i];
+                cachedState.Actions[i].IsValidMove = _validActionsReused[i];
+            }
+
+            cachedState.VisitCount = 1;
+            return v;
         }
 
         private void BacktrackAndUpdate(List<SelectedAction> selectedActions, float v, float currentPlayer)
@@ -286,7 +263,7 @@ namespace AlphaSharp
             {
                 currentPlayer = -currentPlayer;
 
-                var node = _stateNodes[selectedActions[i].NodeIdx];
+                var node = _cachedStates[selectedActions[i].NodeIdx];
                 int a = selectedActions[i].ActionIdx;
                 ref var action = ref node.Actions[a];
                 action.VisitCount++;
@@ -298,6 +275,32 @@ namespace AlphaSharp
                 // switch to the other players perspective
                 v = -v;
             }
+        }
+
+        private int GetOrCreateCachedState(byte[] state, out bool wasCreated)
+        {
+            string key = Convert.ToBase64String(state);
+            if (_cachedStateLookup.TryGetValue(key, out int idx))
+            {
+                wasCreated = false;
+                return idx;
+            }
+
+            if (_stateIdx >= _cachedStates.Length)
+            {
+                int newSize = (int)(_cachedStates.Length * 1.5);
+                _param.TextInfoCallback(LogLevel.MoreInfo, $"expanding cachedStates array from {_cachedStates.Length} to {newSize}");
+
+                Array.Resize(ref _cachedStates, newSize);
+            }
+
+            _cachedStates[_stateIdx] = new CachedState(_game.ActionCount, _stateIdx);
+            _cachedStateLookup.Add(key, _stateIdx);
+
+            _stateIdx++;
+            wasCreated = true;
+
+            return _stateIdx - 1;
         }
     }
 }

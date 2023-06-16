@@ -158,7 +158,7 @@ namespace AlphaSharp
                 _game.GetValidActions(state, validActions);
 
                 float temperature = moves > _param.TemperatureThresholdMoves ? 0.1f : 1.0f;
-                var probs = mcts.GetActionProbsForSelfPlay(state, temperature);
+                var probs = mcts.GetActionPolicyForSelfPlay(state, temperature);
                 ArrayUtil.FilterProbsByValidActions(probs, validActions);
                 ArrayUtil.Normalize(probs);
 
