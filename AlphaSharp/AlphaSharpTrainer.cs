@@ -144,7 +144,7 @@ namespace AlphaSharp
 
             _game.GetStartingState(state);
 
-            float currentPlayer = 1;
+            int currentPlayer = 1;
             GameOver.Status gameResult;
 
             var rnd = new Random();
@@ -162,7 +162,7 @@ namespace AlphaSharp
                 ArrayUtil.FilterProbsByValidActions(probs, validActions);
                 ArrayUtil.Normalize(probs);
 
-                trainingData.Add(new TrainingData(state, probs, currentPlayer));
+                trainingData.Add(new TrainingData(state, probs, currentPlayer, currentPlayer));
 
                 // Skipping symmetries for now
                 //var sym = _game.GetStateSymmetries(state, probs);

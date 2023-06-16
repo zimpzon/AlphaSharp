@@ -35,8 +35,8 @@ namespace AlphaSharp
         public int SimulationIterations { get; set; } = 100;
         public float Cpuct { get; set; } = 1;
         public float TemperatureThresholdMoves { get; set; } = 10;
-        public float DirichletNoiseShape = 0.03f;
-        public float DirichletNoiseAmount = 0.25f;
+        public float DirichletNoiseShape { get; set; } = 0.03f;
+        public float DirichletNoiseAmount { get; set; } = 0.25f;
 
         /// <summary>
         /// Self-play parameters.

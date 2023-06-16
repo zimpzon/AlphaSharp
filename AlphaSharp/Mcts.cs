@@ -123,6 +123,9 @@ namespace AlphaSharp
                 bool revisitedGameOver = cachedState.GameOver != GameOver.Status.GameIsNotOver;
                 if (revisitedGameOver)
                 {
+                    cachedState.VisitCount++;
+
+                    // This may repeat many times at the end of a simulation loop since the remaining simulations will just exploit this known winning state over and over.
                     _param.TextInfoCallback(LogLevel.Debug, $"revisiting a cached game over: {cachedState.GameOver}, nodeIdx: {cachedState.Idx}, player: {player}, moves: {_selectedActions.Count}");
                     BacktrackAndUpdate(_selectedActions, 1, currentPlayer: player);
                     break;
@@ -206,9 +209,9 @@ namespace AlphaSharp
                 if (action.IsValidMove != 0)
                 {
                     float actionProbability = addNoise ? (1 - _param.DirichletNoiseAmount) * action.ActionProbability + _param.DirichletNoiseAmount * _noiseReused[i] : action.ActionProbability;
-                    _param.TextInfoCallback(LogLevel.Debug, $"considering action: {i}, nodeIdx: {cachedState.Idx}, visitcount: {action.VisitCount}, q: {action.Q}, prob: {action.ActionProbability}, player: {player}, moves: {_selectedActions.Count}, noise: {action.ActionProbability} -> {_noiseReused[i]} = {actionProbability}");
-
                     float upperConfidence = action.Q + _param.Cpuct * actionProbability * (float)Math.Sqrt(cachedState.VisitCount) / (1.0f + action.VisitCount);
+
+                    _param.TextInfoCallback(LogLevel.Debug, $"considering action: {i}, nodeIdx: {cachedState.Idx}, visitcount: {action.VisitCount}, q: {action.Q}, ucb: {upperConfidence}, prob: {action.ActionProbability}, player: {player}, moves: {_selectedActions.Count}, noise: {action.ActionProbability} -> {_noiseReused[i]} = {actionProbability}");
                     if (upperConfidence > bestUpperConfidence)
                     {
                         bestUpperConfidence = upperConfidence;
@@ -230,7 +233,7 @@ namespace AlphaSharp
         private float ExpandState(ref CachedState cachedState, int player)
         {
             // get and save suggestions from Skynet, then backtrack to root using suggested v
-            _skynet.Suggest(_currentState, _actionProbsReused, out float v);
+            _skynet.Suggest(_currentState, player, _actionProbsReused, out float v);
             _game.GetValidActions(_currentState, _validActionsReused);
 
             ArrayUtil.FilterProbsByValidActions(_actionProbsReused, _validActionsReused);
