@@ -9,7 +9,7 @@ namespace FakeGame
             var args = new AlphaParameters
             {
                 DirichletNoiseAmount = 0,
-                Iterations = 5,
+                Iterations = 10000,
                 SelfPlayEpisodes = 10,
                 SimulationIterations = 4,
                 TemperatureThresholdMoves = 10000,
@@ -20,7 +20,14 @@ namespace FakeGame
             var game = new FakeGame();
 
             var trainer = new AlphaSharpTrainer(game, () => new FakeGameSkynet(game), args);
-            trainer.Run();
+            try
+            {
+                trainer.Run();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
         }
     }
 }

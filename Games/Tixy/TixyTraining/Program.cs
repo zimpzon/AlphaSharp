@@ -1,4 +1,5 @@
 ﻿using AlphaSharp;
+using System.Runtime.CompilerServices;
 using TixyGame;
 using TorchSharp;
 
@@ -11,14 +12,12 @@ namespace TixyGameCmd
             // reintroduce greedy!! (optional)
             // !!! look at python 'game ended at step 14' and print some more mcts debug!!! should be comparable.
 
-            // tictac evaluation looks very weird. most of the time exactly 10-10, often 0-10, and then some 0-x-y with draws. mixed wins are rare or possibly non-existent.
-
+            // FIX THE CRASHING BUG!!! MIGHT DISTURB RESULTS
             // training still crashes some times, very often with tictac
 
             // TRAINING ALGO: when game is won, track back a number of states (random around half of avg count?) and start from there, NOT picking the same action again.
             // Forwards and backwards meets at the middle'ish? Better endgame? I Assume endgame can be weak due to not always reaching it?
 
-            // ACTION CONSIDER: print state and considered moves. for debug.
             var alphaParam = new AlphaParameters
             {
                 // global
