@@ -15,25 +15,30 @@ namespace TixyGameCmd
 
             // training still crashes some times, very often with tictac
 
+            // TRAINING ALGO: when game is won, track back a number of states (random around half of avg count?) and start from there, NOT picking the same action again.
+            // Forwards and backwards meets at the middle'ish? Better endgame? I Assume endgame can be weak due to not always reaching it?
+
+            // ACTION CONSIDER: print state and considered moves. for debug.
             var alphaParam = new AlphaParameters
             {
                 // global
                 ResumeFromCheckpoint = true,
                 Iterations = 1000,
-                MaxWorkerThreads = 4, // diminishing returns, 4 threads seems optimal'ish on home pc with 12/24 cores
+                MaxWorkerThreads = 1, // diminishing returns, 4 threads seems optimal'ish on home pc with 12/24 cores
                 MaxTrainingExamples = 100000,
                 OutputFolder = "c:\\temp\\zerosharp\\Tixy",
                 TemperatureThresholdMoves = 10000,
-                SimulationIterations = 500,
+                SimulationIterations = 300,
                 DirichletNoiseAmount = 0.5f,
-                DirichletNoiseShape = 0.1f,
+                DirichletNoiseShape = 0.03f,
                 EvaluationPlayers = EvaluationPlayers.AlternatingModels,
+                MaxLogLevel = LogLevel.Debug,
 
                 // self-play
-                SelfPlayEpisodes = 30,
+                SelfPlayEpisodes = 40,
 
                 // evaluation
-                EvaluationRounds = 20,
+                EvaluationRounds = 10,
             };
 
             var tixyParam = new TixyParameters

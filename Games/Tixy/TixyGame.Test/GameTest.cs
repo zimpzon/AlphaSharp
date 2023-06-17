@@ -95,5 +95,21 @@ namespace TixyGame.Test
 
             Assert.NotEqual(GameOver.Status.GameIsNotOver, result);
         }
+
+        [Fact]
+        public void TestRotate180()
+        {
+            var arr = new byte[] { 1, 2, 3, 4 };
+            Util.Rotate180(arr, 2, 2);
+            Assert.Equal(new byte[] { 4, 3, 2, 1 }, arr);
+            Util.Rotate180(arr, 2, 2);
+            Assert.Equal(new byte[] { 1, 2, 3, 4 }, arr);
+
+            arr = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+            Util.Rotate180(arr, 3, 3);
+            Assert.Equal(new byte[] { 9, 8, 7, 6, 5, 4, 3, 2, 1 }, arr);
+            Util.Rotate180(arr, 3, 3);
+            Assert.Equal(new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9 }, arr);
+        }
     }
 }

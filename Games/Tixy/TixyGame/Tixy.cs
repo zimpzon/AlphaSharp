@@ -11,8 +11,8 @@ namespace TixyGame
 
         public int W { get; }
         public int H { get; }
-        private const int MaxMoves = 150;
-        private const int SimulationMaxMoves = 150;
+        private const int MaxMoves = 50;
+        private const int SimulationMaxMoves = 80;
 
         public int ActionCount => W * H * MoveDirections;
         public int StateSize => W * H;

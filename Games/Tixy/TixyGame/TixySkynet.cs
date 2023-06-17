@@ -18,7 +18,7 @@ namespace TixyGame
             _game = game;
             _param = param;
 
-            _oneHotEncodedInputSize = _game.W * _game.H * TixyPieces.NumberOfPieces;
+            _oneHotEncodedInputSize = _game.W * _game.H * (TixyPieces.NumberOfPieces + 1); // +1 is player layer
             _model = new TixySkynetModel(_oneHotEncodedInputSize, _game.ActionCount);
         }
 
@@ -32,9 +32,11 @@ namespace TixyGame
             _model.save(modelPath);
         }
 
-        private float[] OneHotEncode(byte[] state)
+        private float[] OneHotEncode(byte[] state, int playerTurn)
         {
             var oneHotEncoded = new float[_oneHotEncodedInputSize];
+
+            int layerSize = _game.StateSize;
 
             for (int i = 0; i < _game.StateSize; i++)
             {
@@ -42,8 +44,19 @@ namespace TixyGame
                 {
                     int idxInLayer = i;
                     int pieceLayer = TixyPieces.PieceToPlaneIdx(state[i]);
-                    oneHotEncoded[pieceLayer * _game.StateSize + idxInLayer] = 1;
+                    oneHotEncoded[pieceLayer * layerSize + idxInLayer] = 1;
                 }
+            }
+
+            // Fill last layer with player 1 or -1
+            int layerCount = oneHotEncoded.Length / layerSize;
+            int lastLayer = layerCount - 1;
+
+            float playerVal = playerTurn == 1 ? 1 : -1;
+
+            for (int i = 0; i < layerSize; ++i)
+            {
+                oneHotEncoded[lastLayer * layerSize + i] = playerVal;
             }
 
             // verify one-hot encoding
@@ -95,7 +108,7 @@ namespace TixyGame
                     var batchIndices = torch.randint(trainingData.Count, _param.TrainingBatchSize).data<long>().ToList();
                     var batch = batchIndices.Select(i => trainingData[(int)i]);
 
-                    var oneHotArray = batch.Select(td => OneHotEncode(td.State)).ToArray();
+                    var oneHotArray = batch.Select(td => OneHotEncode(td.State, td.PlayerTurn)).ToArray();
                     var desiredProbsArray = batch.Select(td => td.ActionProbs).ToArray();
                     var desiredVsArray = batch.Select(td => td.ValueForPlayer1).ToArray();
 
@@ -121,12 +134,12 @@ namespace TixyGame
             }
         }
 
-        public void Suggest(byte[] state, float[] dstActionsProbs, out float v)
+        public void Suggest(byte[] state, int playerTurn, float[] dstActionsProbs, out float v)
         {
             _model.eval();
             using var x = torch.no_grad();
 
-            var oneHotEncoded = OneHotEncode(state);
+            var oneHotEncoded = OneHotEncode(state, playerTurn);
             var oneHotTensor = torch.from_array(oneHotEncoded).reshape(1, oneHotEncoded.Length);
             var (logProbs, vt) = _model.forward(oneHotTensor);
 

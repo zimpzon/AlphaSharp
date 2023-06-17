@@ -21,11 +21,15 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TixyVsHuman", "Games\Tixy\T
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TicTacToeTraining", "Games\TicTacToe\TicTacToeTraining\TicTacToeTraining.csproj", "{E5B15B20-E1D9-4071-AD73-BE93DE58E8B6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TicTacToeGame", "Games\TicTacToe\TicTacToeGame\TicTacToeGame.csproj", "{919E06E8-CCFC-4C91-B78A-24DDAD74057C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TicTacToeGame", "Games\TicTacToe\TicTacToeGame\TicTacToeGame.csproj", "{919E06E8-CCFC-4C91-B78A-24DDAD74057C}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TixyTraining", "Games\Tixy\TixyTraining\TixyTraining.csproj", "{7DDBB898-61FA-488B-8A2E-1636D50A6095}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TicTacToeVsHuman", "Games\TicTacToe\TicTacToeVsHuman\TicTacToeVsHuman.csproj", "{919206F6-3A06-4A5D-9656-6EE9FE78AF45}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TicTacToeVsHuman", "Games\TicTacToe\TicTacToeVsHuman\TicTacToeVsHuman.csproj", "{919206F6-3A06-4A5D-9656-6EE9FE78AF45}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "FakeGame", "FakeGame", "{357A223E-FD9D-4CE3-A8D2-A0333BF79F10}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FakeGame", "Games\FakeGame\FakeGame\FakeGame.csproj", "{0EC12FBC-FDD7-4AF5-BE77-7FB0927AD67C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -69,6 +73,10 @@ Global
 		{919206F6-3A06-4A5D-9656-6EE9FE78AF45}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{919206F6-3A06-4A5D-9656-6EE9FE78AF45}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{919206F6-3A06-4A5D-9656-6EE9FE78AF45}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0EC12FBC-FDD7-4AF5-BE77-7FB0927AD67C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0EC12FBC-FDD7-4AF5-BE77-7FB0927AD67C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0EC12FBC-FDD7-4AF5-BE77-7FB0927AD67C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0EC12FBC-FDD7-4AF5-BE77-7FB0927AD67C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -83,6 +91,8 @@ Global
 		{919E06E8-CCFC-4C91-B78A-24DDAD74057C} = {3818A4E1-C6B9-46A1-847E-CBE7671439AF}
 		{7DDBB898-61FA-488B-8A2E-1636D50A6095} = {972A567C-6C9A-452B-8250-64F5B1F81957}
 		{919206F6-3A06-4A5D-9656-6EE9FE78AF45} = {3818A4E1-C6B9-46A1-847E-CBE7671439AF}
+		{357A223E-FD9D-4CE3-A8D2-A0333BF79F10} = {2E3B07A1-A0FB-4FBE-BA56-0E4F664B3081}
+		{0EC12FBC-FDD7-4AF5-BE77-7FB0927AD67C} = {357A223E-FD9D-4CE3-A8D2-A0333BF79F10}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {8227C336-4C60-491C-8D29-3F30908097AD}

@@ -32,7 +32,7 @@ namespace TicTacToeGame
             _model.save(modelPath);
         }
 
-        public void Suggest(byte[] state, float[] dstActionsProbs, out float v)
+        public void Suggest(byte[] state, int playerTurn, float[] dstActionsProbs, out float v)
         {
             _model.eval();
             using var x = torch.no_grad();
