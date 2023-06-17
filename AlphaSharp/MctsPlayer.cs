@@ -11,9 +11,9 @@ namespace AlphaSharp
             _mcts = new Mcts(game, skynet, args);
         }
 
-        public int PickAction(byte[] state)
+        public int PickAction(byte[] state, int playerTurn)
         {
-            var probs = _mcts.GetActionPolicy(state);
+            var probs = _mcts.GetActionPolicy(state, playerTurn);
             return ArrayUtil.ArgMax(probs);
         }
     }

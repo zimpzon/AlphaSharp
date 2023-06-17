@@ -13,7 +13,8 @@ namespace FakeGame
                 SelfPlayEpisodes = 10,
                 SimulationIterations = 4,
                 TemperatureThresholdMoves = 10000,
-                OutputFolder = "c:\\temp\\zerosharp\\fakegame",
+                OutputFolder = "c:\\temp\\zerosharp\\Fakegame",
+                MaxLogLevel = LogLevel.Info,
             };
 
             var game = new FakeGame();

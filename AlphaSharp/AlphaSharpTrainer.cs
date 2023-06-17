@@ -5,7 +5,6 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading;
-using System.Threading.Tasks.Sources;
 
 namespace AlphaSharp
 {
@@ -24,12 +23,12 @@ namespace AlphaSharp
 
         private int _iteration;
 
-        private class EpisodeParam
+        private sealed class EpisodeParam
         {
             public ProgressInfo Progress { get; set; }
         }
 
-        private class EvaluationParam
+        private sealed class EvaluationParam
         {
             public ProgressInfo Progress { get; set; }
             public int Round { get; set; }
@@ -158,20 +157,17 @@ namespace AlphaSharp
                 _game.GetValidActions(state, validActions);
 
                 float temperature = moves > _param.TemperatureThresholdMoves ? 0.1f : 1.0f;
-                var probs = mcts.GetActionPolicyForSelfPlay(state, temperature);
+                var probs = mcts.GetActionPolicyForSelfPlay(state, currentPlayer, temperature);
                 ArrayUtil.FilterProbsByValidActions(probs, validActions);
                 ArrayUtil.Normalize(probs);
 
                 trainingData.Add(new TrainingData(state, probs, currentPlayer, currentPlayer));
 
-                // Skipping symmetries for now
-                //var sym = _game.GetStateSymmetries(state, probs);
-                //foreach (var s in sym)
-                //    trainingData.Add(new TrainingData(s.Item1, s.Item2, currentPlayer));
-
                 int selectedAction = ArrayUtil.WeightedChoice(rnd, probs);
                 _game.ExecutePlayerAction(state, selectedAction);
                 moves++;
+
+                // TODO: could easily discard the part of the tree that is before current move. Just move from new root to idx 0?
 
                 gameResult = _game.GetGameEnded(state, moves, isSimulation: false);
                 if (gameResult != GameOver.Status.GameIsNotOver)
@@ -189,7 +185,7 @@ namespace AlphaSharp
                 value *= currentPlayer;
 
             for (int i = 0; i < trainingData.Count; i++)
-                trainingData[i].ValueForPlayer1 *= value;
+                trainingData[i].ValueForCurrentPlayer *= value;
 
             lock (_lock)
             {

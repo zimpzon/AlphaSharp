@@ -1,5 +1,6 @@
 ﻿using AlphaSharp;
 using AlphaSharp.Interfaces;
+using System.Text;
 
 namespace FakeGame
 {
@@ -66,15 +67,20 @@ namespace FakeGame
             }
         }
 
-
         public void PrintState(byte[] state, Action<string> print)
         {
-            print("none");
+            var sb = new StringBuilder();
+            for (int i = 0; i < state.Length; ++i)
+            {
+                sb.Append(state[i]);
+                sb.Append(" ");
+            }
+            print(sb.ToString());
         }
 
         public void PrintDisplayTextForAction(int action, Action<string> print)
         {
-            print("none");
+            print("(print move not supported)");
         }
 
         public List<(byte[], float[])> GetStateSymmetries(byte[] state, float[] probs)

@@ -11,7 +11,7 @@ namespace AlphaSharp
             _game = game;
         }
 
-        public int PickAction(byte[] state)
+        public int PickAction(byte[] state, int _)
         {
             var validActions = new byte[_game.ActionCount];
             _game.GetValidActions(state, validActions);

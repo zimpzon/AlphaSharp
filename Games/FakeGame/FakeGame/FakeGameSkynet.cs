@@ -45,11 +45,9 @@ namespace FakeGame
                 }
             }
 
-            float playerVal = playerTurn == 1 ? 1 : -1;
-
             for (int i = 0; i < layerSize; ++i)
             {
-                oneHotEncoded[2 * layerSize + i] = playerVal;
+                oneHotEncoded[2 * layerSize + i] = playerTurn;
             }
 
             return oneHotEncoded;
@@ -88,7 +86,7 @@ namespace FakeGame
 
                     var oneHotArray = batch.Select(td => OneHotEncode(td.State, td.PlayerTurn)).ToArray();
                     var desiredProbsArray = batch.Select(td => td.ActionProbs).ToArray();
-                    var desiredVsArray = batch.Select(td => td.ValueForPlayer1).ToArray();
+                    var desiredVsArray = batch.Select(td => td.ValueForCurrentPlayer).ToArray();
 
                     using var oneHotBatchTensor = torch.stack(oneHotArray.Select(a => torch.from_array(a))).reshape(BatchSize, -1);
                     using var desiredProbsBatchTensor = torch.stack(desiredProbsArray.Select(p => torch.from_array(p))).reshape(BatchSize, -1);

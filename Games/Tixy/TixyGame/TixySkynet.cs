@@ -52,11 +52,9 @@ namespace TixyGame
             int layerCount = oneHotEncoded.Length / layerSize;
             int lastLayer = layerCount - 1;
 
-            float playerVal = playerTurn == 1 ? 1 : -1;
-
             for (int i = 0; i < layerSize; ++i)
             {
-                oneHotEncoded[lastLayer * layerSize + i] = playerVal;
+                oneHotEncoded[lastLayer * layerSize + i] = playerTurn;
             }
 
             // verify one-hot encoding
@@ -110,7 +108,7 @@ namespace TixyGame
 
                     var oneHotArray = batch.Select(td => OneHotEncode(td.State, td.PlayerTurn)).ToArray();
                     var desiredProbsArray = batch.Select(td => td.ActionProbs).ToArray();
-                    var desiredVsArray = batch.Select(td => td.ValueForPlayer1).ToArray();
+                    var desiredVsArray = batch.Select(td => td.ValueForCurrentPlayer).ToArray();
 
                     using var oneHotBatchTensor = torch.stack(oneHotArray.Select(a => torch.from_array(a))).reshape(_param.TrainingBatchSize, -1);
                     using var desiredProbsBatchTensor = torch.stack(desiredProbsArray.Select(p => torch.from_array(p))).reshape(_param.TrainingBatchSize, -1);

@@ -24,7 +24,7 @@ namespace AlphaSharp
             _game.GetStartingState(state);
 
             var currentPlayer = _player1;
-
+            int playerTurn = 1;
             int moves = 0;
             var prevState = new byte[_game.StateSize];
 
@@ -38,7 +38,7 @@ namespace AlphaSharp
                     return 0;
                 }
 
-                int selectedAction = currentPlayer.PickAction(state);
+                int selectedAction = currentPlayer.PickAction(state, playerTurn);
                 _game.ExecutePlayerAction(state, selectedAction);
                 //_game.PrintDisplayTextForAction(selectedAction, Console.WriteLine);
                 //_game.PrintState(state, Console.WriteLine);
@@ -57,6 +57,7 @@ namespace AlphaSharp
                 _game.FlipStateToNextPlayer(state);
                 Array.Copy(state, prevState, state.Length);
 
+                playerTurn = -playerTurn;
                 currentPlayer = currentPlayer == _player1 ? _player2 : _player1;
             }
         }

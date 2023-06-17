@@ -66,19 +66,19 @@ namespace AlphaSharp
             _currentState = new byte[_game.StateSize];
         }
         
-        public float[] GetActionPolicy(byte[] state)
-            => GetActionPolicyInternal(state, isSelfPlay: false);
+        public float[] GetActionPolicy(byte[] state, int playerTurn)
+            => GetActionPolicyInternal(state, playerTurn, isSelfPlay: false);
 
-        public float[] GetActionPolicyForSelfPlay(byte[] state, float temperature)
-            => GetActionPolicyInternal(state, isSelfPlay: true, temperature);
+        public float[] GetActionPolicyForSelfPlay(byte[] state, int playerTurn, float temperature)
+            => GetActionPolicyInternal(state, playerTurn, isSelfPlay: true, temperature);
 
-        private float[] GetActionPolicyInternal(byte[] state, bool isSelfPlay, float temperature = 0.0f)
+        private float[] GetActionPolicyInternal(byte[] state, int playerTurn, bool isSelfPlay, float temperature = 0.0f)
         {
             int simCount = _param.SimulationIterations;
 
             for (int i = 0; i < simCount; i++)
             {
-                ExploreGameTree(state, isSimulation: isSelfPlay);
+                ExploreGameTree(state, isSimulation: isSelfPlay, playerTurn, i, simCount);
             }
 
             int nodeIdx = GetOrCreateCachedState(state, out bool wasCreated);
@@ -109,12 +109,12 @@ namespace AlphaSharp
             }
         }
 
-        private void ExploreGameTree(byte[] startingState, bool isSimulation)
+        private void ExploreGameTree(byte[] startingState, bool isSimulation, int playerTurn, int simNo, int simCount)
         {
-            int playerTurn = 1;
             Array.Copy(startingState, _currentState, _currentState.Length);
-
             _selectedActions.Clear();
+
+            _param.TextInfoCallback(LogLevel.Verbose, $"--- starting simulation from root as player {playerTurn} ({simNo + 1}/{simCount}) ---");
             while (true)
             {
                 int idxStateNode = GetOrCreateCachedState(_currentState, out bool wasCreated);
@@ -126,8 +126,10 @@ namespace AlphaSharp
                     cachedState.VisitCount++;
 
                     // This may repeat many times at the end of a simulation loop since the remaining simulations will just exploit this known winning state over and over.
-                    _param.TextInfoCallback(LogLevel.Debug, $"revisiting a cached game over: {cachedState.GameOver}, nodeIdx: {cachedState.Idx}, player: {playerTurn}, moves: {_selectedActions.Count}");
-                    BacktrackAndUpdate(_selectedActions, 1, currentPlayer: playerTurn);
+                    _param.TextInfoCallback(LogLevel.Verbose, $"revisiting a cached game over: {cachedState.GameOver}, nodeIdx: {cachedState.Idx}, player: {playerTurn}, moves: {_selectedActions.Count}");
+
+                    // the latest move made was by the opponent, so they should receive a negative reward for moving
+                    BacktrackAndUpdate(_selectedActions, -1, currentPlayer: playerTurn);
                     break;
                 }
 
@@ -142,18 +144,24 @@ namespace AlphaSharp
 
                 int selectedAction = RevisitNode(ref cachedState, isSimulation, playerTurn);
 
+                //Console.WriteLine($"before move ({playerTurn}) :");
+                //_game.PrintState(_currentState, Console.WriteLine);
+
                 _game.ExecutePlayerAction(_currentState, selectedAction);
+
+                //Console.WriteLine($"after move ({playerTurn}) :");
+                //_game.PrintState(_currentState, Console.WriteLine);
 
                 if (IsGameOver(ref cachedState, isSimulation, playerTurn, out float gameOverV))
                 {
-                    BacktrackAndUpdate(_selectedActions, 0, currentPlayer: playerTurn);
+                    BacktrackAndUpdate(_selectedActions, gameOverV, currentPlayer: playerTurn);
                     break;
                 }
 
                 _game.FlipStateToNextPlayer(_currentState);
 
                 playerTurn = -playerTurn;
-                //_param.TextInfoCallback(LogLevel.Debug, $"player switched from {-playerTurn} to {playerTurn}, nodeIdx: {cachedState.Idx}, player: {playerTurn}, moves: {_selectedActions.Count}");
+                _param.TextInfoCallback(LogLevel.Verbose, $"player switched from {-playerTurn} to {playerTurn}, nodeIdx: {cachedState.Idx}, player: {playerTurn}, moves: {_selectedActions.Count}");
             }
         }
 
@@ -169,23 +177,28 @@ namespace AlphaSharp
             if (gameOverStatus == GameOver.Status.DrawDueToMaxMovesReached)
             {
                 // do not mark this state as a draw. It is not the state itself that is game over, we just ran out of moves.
-                _param.TextInfoCallback(LogLevel.Debug, $"max moves reached, game over: {gameOverStatus}, nodeIdx: {cachedState.Idx}, player: {player}, moves: {_selectedActions.Count}");
+                _param.TextInfoCallback(LogLevel.Verbose, $"max moves reached, game over: {gameOverStatus}, nodeIdx: {cachedState.Idx}, player: {player}, moves: {_selectedActions.Count}");
                 v = 0;
                 return true;
             }
 
-            cachedState.GameOver = gameOverStatus;
+            var winningStateIdx = GetOrCreateCachedState(_currentState, out _);
+            var winningState = _cachedStates[winningStateIdx];
+            winningState.GameOver = gameOverStatus;
+            winningState.VisitCount++;
 
             // moves are always made as player1. the latest added actions
             // belongs to current player, no matter if this is pl1 or pl2.
-            // so we want score from p1 perspective.
-            v = GameOver.ValueForPlayer1(cachedState.GameOver);
+            // so we want score from p1 perspective. It cannot just be 1 since
+            // in some games the player might be able to make a move that
+            // loses the game.
+            v = GameOver.ValueForPlayer1(winningState.GameOver);
             return true;
         }
 
         private int RevisitNode(ref CachedState cachedState, bool isSimulation, int player)
         {
-            _param.TextInfoCallback(LogLevel.Debug, $"revisiting a cached state with visitCount {cachedState.VisitCount}, nodeIdx: {cachedState.Idx}, player: {player}, moves: {_selectedActions.Count}");
+            _param.TextInfoCallback(LogLevel.Verbose, $"revisiting a cached state with visitCount {cachedState.VisitCount}, nodeIdx: {cachedState.Idx}, player: {player}, moves: {_selectedActions.Count}");
 
             // Pick action with highest UCB
             float bestUpperConfidence = float.NegativeInfinity;
@@ -211,7 +224,8 @@ namespace AlphaSharp
                     float actionProbability = addNoise ? (1 - _param.DirichletNoiseAmount) * action.ActionProbability + _param.DirichletNoiseAmount * _noiseReused[i] : action.ActionProbability;
                     float upperConfidence = action.Q + _param.Cpuct * actionProbability * (float)Math.Sqrt(cachedState.VisitCount) / (1.0f + action.VisitCount);
 
-                    _param.TextInfoCallback(LogLevel.Debug, $"considering action: {i}, nodeIdx: {cachedState.Idx}, visitcount: {action.VisitCount}, q: {action.Q}, ucb: {upperConfidence}, prob: {action.ActionProbability}, player: {player}, moves: {_selectedActions.Count}, noise: {action.ActionProbability} -> {_noiseReused[i]} = {actionProbability}");
+                    _param.TextInfoCallback(LogLevel.Verbose, $"considering action: {i}, nodeIdx: {cachedState.Idx}, visitcount: {action.VisitCount}, q: {action.Q}, ucb: {upperConfidence}, prob: {action.ActionProbability}, player: {player}, moves: {_selectedActions.Count}, noise: {action.ActionProbability} -> {_noiseReused[i]} = {actionProbability}");
+                    //_game.PrintDisplayTextForAction(i, Console.WriteLine);
                     if (upperConfidence > bestUpperConfidence)
                     {
                         bestUpperConfidence = upperConfidence;
@@ -223,7 +237,7 @@ namespace AlphaSharp
             // an action was selected
             _selectedActions.Add(new SelectedAction { NodeIdx = cachedState.Idx, ActionIdx = selectedAction, Player = player });
 
-            _param.TextInfoCallback(LogLevel.Debug, $"action selected: {selectedAction}, nodeIdx: {cachedState.Idx}, confidence: {bestUpperConfidence}, player: {player}, moves: {_selectedActions.Count}");
+            _param.TextInfoCallback(LogLevel.Verbose, $"action selected: {selectedAction}, nodeIdx: {cachedState.Idx}, confidence: {bestUpperConfidence}, player: {player}, moves: {_selectedActions.Count}");
 
             cachedState.VisitCount++;
 
@@ -239,13 +253,13 @@ namespace AlphaSharp
             ArrayUtil.FilterProbsByValidActions(_actionProbsReused, _validActionsReused);
             ArrayUtil.Normalize(_actionProbsReused);
 
-            _param.TextInfoCallback(LogLevel.Debug, $"new state node created, nodeIdx: {cachedState.Idx}, network v: {v}, player: {playerTurn}, moves: {_selectedActions.Count}");
+            _param.TextInfoCallback(LogLevel.Verbose, $"new state node created, nodeIdx: {cachedState.Idx}, network v: {v}, player: {playerTurn}, moves: {_selectedActions.Count}");
 
             bool hasValidActions = ArrayUtil.CountNonZero(_actionProbsReused) > 0;
             if (!hasValidActions)
             {
                 // no valid actions in leaf, consider this a draw, ex TicTacToe: board is full
-                _param.TextInfoCallback(LogLevel.Debug, $"no valid actions in new state node, nodeIdx: {cachedState.Idx}, player: {playerTurn}, moves: {_selectedActions.Count}");
+                _param.TextInfoCallback(LogLevel.Verbose, $"no valid actions in new state node, nodeIdx: {cachedState.Idx}, player: {playerTurn}, moves: {_selectedActions.Count}");
                 return 0;
             }
 
@@ -261,7 +275,7 @@ namespace AlphaSharp
 
         private void BacktrackAndUpdate(List<SelectedAction> selectedActions, float v, float currentPlayer)
         {
-            _param.TextInfoCallback(LogLevel.Debug, $"backtracking sim result, v: {v}, moves/actions selected: {_selectedActions.Count}, initiated by player: {currentPlayer}");
+            _param.TextInfoCallback(LogLevel.Verbose, $"backtracking sim result, v: {v}, moves/actions selected: {_selectedActions.Count}, initiated by player: {currentPlayer}");
             for (int i = selectedActions.Count - 1; i >= 0; --i)
             {
                 currentPlayer = -currentPlayer;
@@ -273,7 +287,7 @@ namespace AlphaSharp
 
                 float oldQ = action.Q;
                 action.Q = ((action.VisitCount - 1) * action.Q + v) / action.VisitCount;
-                _param.TextInfoCallback(LogLevel.Debug, $"updating nodeIdx {node.Idx}, actionIdx: {a}, v: {v}, oldQ: {oldQ}, newQ: {action.Q}, action visitCount: {action.VisitCount}, action taken by player: {selectedActions[i].Player}");
+                _param.TextInfoCallback(LogLevel.Verbose, $"updating nodeIdx {node.Idx}, actionIdx: {a}, v: {v}, oldQ: {oldQ}, newQ: {action.Q}, action visitCount: {action.VisitCount}, action taken by player: {selectedActions[i].Player}");
 
                 // switch to the other players perspective
                 v = -v;

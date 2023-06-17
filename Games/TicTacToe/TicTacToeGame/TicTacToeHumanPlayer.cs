@@ -11,7 +11,7 @@ namespace TicTacToeGame
             _game = game;
         }
 
-        public int PickAction(byte[] state)
+        public int PickAction(byte[] state, int _)
         {
             _game.PrintState(state, Console.WriteLine);
             Console.WriteLine();

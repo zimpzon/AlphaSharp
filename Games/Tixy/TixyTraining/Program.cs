@@ -24,18 +24,18 @@ namespace TixyGameCmd
                 // global
                 ResumeFromCheckpoint = true,
                 Iterations = 1000,
-                MaxWorkerThreads = 1, // diminishing returns, 4 threads seems optimal'ish on home pc with 12/24 cores
+                MaxWorkerThreads = 4, // diminishing returns, 4 threads seems optimal'ish on home pc with 12/24 cores
                 MaxTrainingExamples = 100000,
                 OutputFolder = "c:\\temp\\zerosharp\\Tixy",
                 TemperatureThresholdMoves = 10000,
-                SimulationIterations = 300,
+                SimulationIterations = 25,
                 DirichletNoiseAmount = 0.5f,
                 DirichletNoiseShape = 0.03f,
                 EvaluationPlayers = EvaluationPlayers.AlternatingModels,
-                MaxLogLevel = LogLevel.Debug,
+                MaxLogLevel = LogLevel.Info,
 
                 // self-play
-                SelfPlayEpisodes = 40,
+                SelfPlayEpisodes = 20,
 
                 // evaluation
                 EvaluationRounds = 10,
