@@ -32,7 +32,7 @@ namespace TicTacToeGame
             _model.save(modelPath);
         }
 
-        public void Suggest(byte[] state, int playerTurn, float[] dstActionsProbs, out float v)
+        public void Suggest(byte[] state, float[] dstActionsProbs, out float v)
         {
             _model.eval();
             using var x = torch.no_grad();
@@ -99,7 +99,7 @@ namespace TicTacToeGame
 
                     var oneHotArray = batch.Select(td => OneHotEncode(td.State)).ToArray();
                     var desiredProbsArray = batch.Select(td => td.ActionProbs).ToArray();
-                    var desiredVsArray = batch.Select(td => td.ValueForCurrentPlayer).ToArray();
+                    var desiredVsArray = batch.Select(td => td.ValueForPlayer1).ToArray();
 
                     using var oneHotBatchTensor = torch.stack(oneHotArray.Select(a => torch.from_array(a))).reshape(_param.TrainingBatchSize, -1);
                     using var desiredProbsBatchTensor = torch.stack(desiredProbsArray.Select(p => torch.from_array(p))).reshape(_param.TrainingBatchSize, -1);

@@ -21,7 +21,7 @@ namespace TicTacToeVsHuman
 
             skynet.LoadModel(modelPath);
 
-            var ticTacToePlayer = new MctsPlayer(game, skynet, args);
+            var ticTacToePlayer = new MctsPlayer("ai", false, game, skynet, args);
             var humanPlayer = new TicTacToeHumanPlayer(game);
 
             var fight = new OneVsOne(game, humanPlayer, ticTacToePlayer);

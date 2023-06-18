@@ -6,15 +6,14 @@ namespace AlphaSharp
     {
         public byte[] State { get; set; }
         public float[] ActionProbs { get; set; }
-        public float ValueForCurrentPlayer { get; set; }
-        public int PlayerTurn { get; set; }
+        public float ValueForPlayer1 { get; set; }
 
         public override string ToString()
-            => $"ValueForCurrentPlayer: {ValueForCurrentPlayer}, PlayerTurn: {PlayerTurn}";
+            => $"ValueForCurrentPlayer: {ValueForPlayer1}";
 
         public TrainingData() { }
 
-        public TrainingData(byte[] state, float[] actionProbs, float player1Score, int playerTurn)
+        public TrainingData(byte[] state, float[] actionProbs, float player1Score)
         {
             State = new byte[state.Length];
             Array.Copy(state, State, state.Length);
@@ -22,8 +21,7 @@ namespace AlphaSharp
             ActionProbs = new float[actionProbs.Length];
             Array.Copy(actionProbs, ActionProbs, actionProbs.Length);
 
-            ValueForCurrentPlayer = player1Score;
-            PlayerTurn = playerTurn;
+            ValueForPlayer1 = player1Score;
         }
     }
 }

@@ -247,7 +247,7 @@ namespace AlphaSharp
         private float ExpandState(ref CachedState cachedState, int playerTurn)
         {
             // get and save suggestions from Skynet, then backtrack to root using suggested v
-            _skynet.Suggest(_currentState, playerTurn, _actionProbsReused, out float v);
+            _skynet.Suggest(_currentState, _actionProbsReused, out float v);
             _game.GetValidActions(_currentState, _validActionsReused);
 
             ArrayUtil.FilterProbsByValidActions(_actionProbsReused, _validActionsReused);

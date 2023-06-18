@@ -26,7 +26,7 @@ namespace TixyGameCmd
                 MaxTrainingExamples = 100000,
                 OutputFolder = "c:\\temp\\zerosharp\\Tixy",
                 TemperatureThresholdMoves = 20,
-                SimulationIterations = 1000,
+                SimulationIterations = 500,
                 DirichletNoiseAmount = 0.25f,
                 DirichletNoiseShape = 0.5f,
                 MaxLogLevel = LogLevel.Info,

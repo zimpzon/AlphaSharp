@@ -161,7 +161,7 @@ namespace AlphaSharp
                 ArrayUtil.FilterProbsByValidActions(probs, validActions);
                 ArrayUtil.Normalize(probs);
 
-                trainingData.Add(new TrainingData(state, probs, currentPlayer, currentPlayer));
+                trainingData.Add(new TrainingData(state, probs, currentPlayer));
 
                 int selectedAction = ArrayUtil.WeightedChoice(rnd, probs);
                 _game.ExecutePlayerAction(state, selectedAction);
@@ -181,11 +181,10 @@ namespace AlphaSharp
 
             // moves are always done by player1 so invert result if current player is actually player2
             float value = GameOver.ValueForPlayer1(gameResult);
-            if (value != 0)
-                value *= currentPlayer;
+            value *= currentPlayer;
 
             for (int i = 0; i < trainingData.Count; i++)
-                trainingData[i].ValueForCurrentPlayer *= value;
+                trainingData[i].ValueForPlayer1 *= value;
 
             lock (_lock)
             {
@@ -400,10 +399,9 @@ namespace AlphaSharp
                 _param.ProgressCallback(trainingProgress.Update(currentValue, numberOfValues), additionalInfo);
             }
 
-            var callback = new TrainingProgressCallback(ProgressCallback);
-
             ArrayUtil.Shuffle(trainingData);
 
+            var callback = new TrainingProgressCallback(ProgressCallback);
             _skynet.Train(trainingData, callback);
         }
     }
