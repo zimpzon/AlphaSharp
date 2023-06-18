@@ -26,9 +26,9 @@ namespace TixyGame
         private readonly LogSoftmax _logSoftmax;
         private readonly Tanh _tanh;
 
-        const float DropOut = 0.25f;
-        const int size1 = 1024;
-        const int size2 = 512;
+        const float DropOut = 0.5f;
+        const int size1 = 512;
+        const int size2 = 256;
         const int size3 = 0;
 
         public TixySkynetModel(int inputSize, int outputSize) : base("tixy")
