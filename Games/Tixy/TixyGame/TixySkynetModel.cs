@@ -26,13 +26,13 @@ namespace TixyGame
         private readonly LogSoftmax _logSoftmax;
         private readonly Tanh _tanh;
 
+        const float DropOut = 0.25f;
+        const int size1 = 1024;
+        const int size2 = 512;
+        const int size3 = 0;
+
         public TixySkynetModel(int inputSize, int outputSize) : base("tixy")
         {
-            const float DropOut = 0.5f;
-            const int size1 = 1024;
-            const int size2 = 768;
-            const int size3 = 512;
-
             _lin1 = torch.nn.Linear(inputSize, size1);
             _bn1 = torch.nn.BatchNorm1d(size1);
             _relu1 = torch.nn.ReLU();
@@ -48,8 +48,9 @@ namespace TixyGame
             _relu3 = torch.nn.ReLU();
             _drop3 = torch.nn.Dropout(DropOut);
 
-            _fc_probs = torch.nn.Linear(size3, outputSize);
-            _fc_v = torch.nn.Linear(size3, 1);
+            int lastSize = size3 > 0 ? size3 : size2;
+            _fc_probs = torch.nn.Linear(lastSize, outputSize);
+            _fc_v = torch.nn.Linear(lastSize, 1);
 
             _logSoftmax = torch.nn.LogSoftmax(1);
             _tanh = torch.nn.Tanh();
@@ -61,7 +62,8 @@ namespace TixyGame
         {
             x = _drop1.forward(_relu1.forward(_bn1.forward(_lin1.forward(x))));
             x = _drop2.forward(_relu2.forward(_bn2.forward(_lin2.forward(x))));
-            x = _drop3.forward(_relu3.forward(_bn3.forward(_lin3.forward(x))));
+            if (size3 > 0)
+                x = _drop3.forward(_relu3.forward(_bn3.forward(_lin3.forward(x))));
 
             var value = _fc_v.forward(x);
             var v = _tanh.forward(value);

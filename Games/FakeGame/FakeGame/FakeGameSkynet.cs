@@ -45,9 +45,10 @@ namespace FakeGame
                 }
             }
 
+            float playerLayerValue = playerTurn == 1 ? 1 : 0;
             for (int i = 0; i < layerSize; ++i)
             {
-                oneHotEncoded[2 * layerSize + i] = playerTurn;
+                oneHotEncoded[2 * layerSize + i] = playerLayerValue;
             }
 
             return oneHotEncoded;
@@ -88,9 +89,9 @@ namespace FakeGame
                     var desiredProbsArray = batch.Select(td => td.ActionProbs).ToArray();
                     var desiredVsArray = batch.Select(td => td.ValueForCurrentPlayer).ToArray();
 
-                    using var oneHotBatchTensor = torch.stack(oneHotArray.Select(a => torch.from_array(a))).reshape(BatchSize, -1);
-                    using var desiredProbsBatchTensor = torch.stack(desiredProbsArray.Select(p => torch.from_array(p))).reshape(BatchSize, -1);
-                    using var desiredVsBatchTensor = torch.from_array(desiredVsArray);
+                    var oneHotBatchTensor = torch.stack(oneHotArray.Select(a => torch.from_array(a))).reshape(BatchSize, -1);
+                    var desiredProbsBatchTensor = torch.stack(desiredProbsArray.Select(p => torch.from_array(p))).reshape(BatchSize, -1);
+                    var desiredVsBatchTensor = torch.from_array(desiredVsArray);
 
                     var (logProbs, vt) = _model.forward(oneHotBatchTensor);
 
@@ -113,7 +114,7 @@ namespace FakeGame
         public void Suggest(byte[] state, int playerTurn, float[] dstActionsProbs, out float v)
         {
             _model.eval();
-            using var x = torch.no_grad();
+            var x = torch.no_grad();
 
             var oneHotEncoded = OneHotEncode(state, playerTurn);
             var oneHotTensor = torch.from_array(oneHotEncoded).reshape(1, oneHotEncoded.Length);

@@ -39,9 +39,25 @@ namespace AlphaSharp
                 }
 
                 int selectedAction = currentPlayer.PickAction(state, playerTurn);
-                _game.ExecutePlayerAction(state, selectedAction);
-                //_game.PrintDisplayTextForAction(selectedAction, Console.WriteLine);
+
+                //Console.WriteLine($"before move ({playerTurn}) :");
+                //if (playerTurn == -1)
+                //    _game.FlipStateToNextPlayer(state);
                 //_game.PrintState(state, Console.WriteLine);
+                //if (playerTurn == -1)
+                //    _game.FlipStateToNextPlayer(state);
+                //_game.PrintDisplayTextForAction(selectedAction, Console.WriteLine);
+
+                _game.ExecutePlayerAction(state, selectedAction);
+
+                //if (playerTurn == -1)
+                //    _game.FlipStateToNextPlayer(state);
+
+                //Console.WriteLine($"after move ({playerTurn}) :");
+                //_game.PrintState(state, Console.WriteLine);
+                //if (playerTurn == -1)
+                //    _game.FlipStateToNextPlayer(state);
+
                 moves++;
 
                 var gameResult = _game.GetGameEnded(state, moves, isSimulation: false);

@@ -9,6 +9,9 @@ namespace AlphaSharp
         public float ValueForCurrentPlayer { get; set; }
         public int PlayerTurn { get; set; }
 
+        public override string ToString()
+            => $"ValueForCurrentPlayer: {ValueForCurrentPlayer}, PlayerTurn: {PlayerTurn}";
+
         public TrainingData() { }
 
         public TrainingData(byte[] state, float[] actionProbs, float player1Score, int playerTurn)

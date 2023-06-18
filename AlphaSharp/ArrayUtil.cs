@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 
@@ -6,6 +7,20 @@ namespace AlphaSharp
 {
     public static class ArrayUtil
     {
+        public static void Shuffle<T>(List<T> list)
+        {
+            var rnd = new Random();
+            int n = list.Count;
+            while (n > 1)
+            {
+                n--;
+                int k = rnd.Next(n + 1);
+                T value = list[k];
+                list[k] = list[n];
+                list[n] = value;
+            }
+        }
+
         public static int WeightedChoice(Random random, float[] probabilities)
         {
             var total = probabilities.Sum();

@@ -52,9 +52,10 @@ namespace TixyGame
             int layerCount = oneHotEncoded.Length / layerSize;
             int lastLayer = layerCount - 1;
 
+            float playerLayerValue = playerTurn == 1 ? 1 : 0;
             for (int i = 0; i < layerSize; ++i)
             {
-                oneHotEncoded[lastLayer * layerSize + i] = playerTurn;
+                oneHotEncoded[lastLayer * layerSize + i] = playerLayerValue;
             }
 
             // verify one-hot encoding
@@ -103,16 +104,17 @@ namespace TixyGame
 
                 for (int b = 0; b < batchCount; ++b)
                 {
-                    var batchIndices = torch.randint(trainingData.Count, _param.TrainingBatchSize).data<long>().ToList();
+                    var batchIndices = Enumerable.Range(b * _param.TrainingBatchSize, _param.TrainingBatchSize).ToList();
+                    //var batchIndices = torch.randint(trainingData.Count, _param.TrainingBatchSize).data<long>().ToList();
                     var batch = batchIndices.Select(i => trainingData[(int)i]);
 
                     var oneHotArray = batch.Select(td => OneHotEncode(td.State, td.PlayerTurn)).ToArray();
                     var desiredProbsArray = batch.Select(td => td.ActionProbs).ToArray();
                     var desiredVsArray = batch.Select(td => td.ValueForCurrentPlayer).ToArray();
 
-                    using var oneHotBatchTensor = torch.stack(oneHotArray.Select(a => torch.from_array(a))).reshape(_param.TrainingBatchSize, -1);
-                    using var desiredProbsBatchTensor = torch.stack(desiredProbsArray.Select(p => torch.from_array(p))).reshape(_param.TrainingBatchSize, -1);
-                    using var desiredVsBatchTensor = torch.from_array(desiredVsArray);
+                    var oneHotBatchTensor = torch.stack(oneHotArray.Select(a => torch.from_array(a))).reshape(_param.TrainingBatchSize, -1);
+                    var desiredProbsBatchTensor = torch.stack(desiredProbsArray.Select(p => torch.from_array(p))).reshape(_param.TrainingBatchSize, -1);
+                    var desiredVsBatchTensor = torch.from_array(desiredVsArray);
 
                     var (logProbs, vt) = _model.forward(oneHotBatchTensor);
 
@@ -135,7 +137,7 @@ namespace TixyGame
         public void Suggest(byte[] state, int playerTurn, float[] dstActionsProbs, out float v)
         {
             _model.eval();
-            using var x = torch.no_grad();
+            var x = torch.no_grad();
 
             var oneHotEncoded = OneHotEncode(state, playerTurn);
             var oneHotTensor = torch.from_array(oneHotEncoded).reshape(1, oneHotEncoded.Length);

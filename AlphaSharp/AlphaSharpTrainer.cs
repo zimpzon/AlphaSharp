@@ -218,22 +218,22 @@ namespace AlphaSharp
                 return NotUsed;
             }
 
-            var mctsPlayerOld = new MctsPlayer(_game, param.OldSkynet, _param);
-            var mctsPlayerNew = new MctsPlayer(_game, _skynet, _param);
+            var mctsPlayerOld = new MctsPlayer("OldModel", makeFirstMoveRandom: true, _game, param.OldSkynet, _param);
+            var mctsPlayerNew = new MctsPlayer("NewModel", makeFirstMoveRandom: true, _game, _skynet, _param);
 
             IPlayer player1 = null;
             IPlayer player2 = null;
-            if (_param.EvaluationPlayers == EvaluationPlayers.NewModelAlwaysPlayer1)
+            if (_param.EvaluationPlayers == EvaluationStyle.NewModelAlwaysPlayer1)
             {
                 player1 = mctsPlayerNew;
                 player2 = mctsPlayerOld;
             }
-            else if (_param.EvaluationPlayers == EvaluationPlayers.NewModelAlwaysPlayer2)
+            else if (_param.EvaluationPlayers == EvaluationStyle.NewModelAlwaysPlayer2)
             {
                 player1 = mctsPlayerOld;
                 player2 = mctsPlayerNew;
             }
-            else if (_param.EvaluationPlayers == EvaluationPlayers.AlternatingModels)
+            else if (_param.EvaluationPlayers == EvaluationStyle.AlternatingModels)
             {
                 player1 = param.Round % 2 == 0 ? mctsPlayerNew : mctsPlayerOld;
                 player2 = param.Round % 2 == 0 ? mctsPlayerOld : mctsPlayerNew;
@@ -310,6 +310,16 @@ namespace AlphaSharp
             var episodesTrainingData = consumer.Run(evalParam);
             string score = $"new: {winNew}, old: {winOld}, draw: {draw}";
 
+            //if (_param.ExtraComparePlayer != null)
+            //{
+            //    for (int i = 0; i < 10; ++i)
+            //    {
+            //        var vs = new OneVsOne(_game, new MctsPlayer(_game, _skynet, _param), _param.ExtraComparePlayer);
+            //        var res = vs.Run();
+            //        Console.WriteLine($"POST Extra compare player: {res}");
+            //    }
+            //}
+
             bool newIsBetter = winNew > winOld;
             if (newIsBetter)
             {
@@ -364,6 +374,22 @@ namespace AlphaSharp
             _param.TextInfoCallback(LogLevel.MoreInfo, $"Saving skynet model before training to {oldModelPath}");
             _skynet.SaveModel(oldModelPath);
 
+            //if (_param.ExtraComparePlayer != null)
+            //{
+            //    for (int i = 0; i < 10; ++i)
+            //    {
+            //        var vs = new OneVsOne(_game, _param.ExtraComparePlayer, new MctsPlayer(_game, _skynet, _param));
+            //        var res = vs.Run();
+            //        Console.WriteLine($"PRE round1 Extra compare player: {res}");
+            //    }
+            //    for (int i = 0; i < 10; ++i)
+            //    {
+            //        var vs = new OneVsOne(_game, new MctsPlayer(_game, _skynet, _param), _param.ExtraComparePlayer);
+            //        var res = vs.Run();
+            //        Console.WriteLine($"PRE round2 Extra compare player: {res}");
+            //    }
+            //}
+
             var trainingProgress = ProgressInfo.Create(ProgressInfo.Phase.Train);
 
             void ProgressCallback(int currentValue, int numberOfValues, string additionalInfo = null)
@@ -375,6 +401,8 @@ namespace AlphaSharp
             }
 
             var callback = new TrainingProgressCallback(ProgressCallback);
+
+            ArrayUtil.Shuffle(trainingData);
 
             _skynet.Train(trainingData, callback);
         }

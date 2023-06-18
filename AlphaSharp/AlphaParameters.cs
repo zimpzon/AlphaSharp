@@ -1,4 +1,5 @@
-﻿using System;
+﻿using AlphaSharp.Interfaces;
+using System;
 
 namespace AlphaSharp
 {
@@ -28,6 +29,7 @@ namespace AlphaSharp
         public string OutputFolder { get; set; }
         public bool ResumeOnError { get; set; } = true;
         public bool SaveBackupAfterIteration { get; set; } = true;
+        public IPlayer ExtraComparePlayer { get; set; }
 
         /// <summary>
         /// MCTS
@@ -47,6 +49,6 @@ namespace AlphaSharp
         /// New model evaluation parameters.
         /// </summary>
         public int EvaluationRounds { get; set; } = 20;
-        public EvaluationPlayers EvaluationPlayers { get; set; } = EvaluationPlayers.AlternatingModels;
+        public EvaluationStyle EvaluationPlayers { get; set; } = EvaluationStyle.AlternatingModels;
     }
 }

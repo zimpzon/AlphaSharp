@@ -1,7 +1,7 @@
 ﻿
 namespace AlphaSharp
 {
-    public enum EvaluationPlayers
+    public enum EvaluationStyle
     {
         NewModelAlwaysPlayer1,
         NewModelAlwaysPlayer2,

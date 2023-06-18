@@ -11,8 +11,8 @@ namespace TixyGame
 
         public int W { get; }
         public int H { get; }
-        private const int MaxMoves = 50;
-        private const int SimulationMaxMoves = 80;
+        private const int MaxMoves = 30;
+        private const int SimulationMaxMoves = 30;
 
         public int ActionCount => W * H * MoveDirections;
         public int StateSize => W * H;
@@ -38,23 +38,25 @@ namespace TixyGame
         {
             ClearPieces(dstState);
 
-            Set(dstState, 2, 0, TixyPieces.P2.I);
-            Set(dstState, 3, 0, TixyPieces.P2.T);
+            //Set(dstState, 0, 0, TixyPieces.P2.I);
+            //Set(dstState, 3, 0, TixyPieces.P2.T);
+            //Set(dstState, 4, 0, TixyPieces.P2.I);
 
-            Set(dstState, 2, H - 1, TixyPieces.P1.I);
-            Set(dstState, 3, H - 1, TixyPieces.P1.T);
+            //Set(dstState, 2, H - 1, TixyPieces.P1.I);
+            //Set(dstState, 3, H - 1, TixyPieces.P1.X);
+            //Set(dstState, 4, H - 1, TixyPieces.P1.T);
 
-            //Set(dstState, 0, 0, TixyPieces.P2.T);
-            //Set(dstState, 1, 0, TixyPieces.P2.X);
-            //Set(dstState, 2, 0, TixyPieces.P2.Y);
-            //Set(dstState, 3, 0, TixyPieces.P2.I);
-            //Set(dstState, 4, 0, TixyPieces.P2.Y);
+            Set(dstState, 0, 0, TixyPieces.P2.T);
+            Set(dstState, 1, 0, TixyPieces.P2.X);
+            Set(dstState, 2, 0, TixyPieces.P2.Y);
+            Set(dstState, 3, 0, TixyPieces.P2.I);
+            Set(dstState, 4, 0, TixyPieces.P2.Y);
 
-            //Set(dstState, 0, H - 1, TixyPieces.P1.T);
-            //Set(dstState, 1, H - 1, TixyPieces.P1.X);
-            //Set(dstState, 2, H - 1, TixyPieces.P1.Y);
-            //Set(dstState, 3, H - 1, TixyPieces.P1.I);
-            //Set(dstState, 4, H - 1, TixyPieces.P1.Y);
+            Set(dstState, 0, H - 1, TixyPieces.P1.T);
+            Set(dstState, 1, H - 1, TixyPieces.P1.X);
+            Set(dstState, 2, H - 1, TixyPieces.P1.Y);
+            Set(dstState, 3, H - 1, TixyPieces.P1.I);
+            Set(dstState, 4, H - 1, TixyPieces.P1.Y);
         }
 
         public GameOver.Status GetGameEnded(byte[] state, int movesMade, bool isSimulation)

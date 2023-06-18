@@ -10,7 +10,6 @@ namespace TixyGameCmd
         static void Run()
         {
             // reintroduce greedy!! (optional)
-            // !!! look at python 'game ended at step 14' and print some more mcts debug!!! should be comparable.
 
             // FIX THE CRASHING BUG!!! MIGHT DISTURB RESULTS
             // training still crashes some times, very often with tictac
@@ -23,21 +22,21 @@ namespace TixyGameCmd
                 // global
                 ResumeFromCheckpoint = true,
                 Iterations = 1000,
-                MaxWorkerThreads = 4, // diminishing returns, 4 threads seems optimal'ish on home pc with 12/24 cores
+                MaxWorkerThreads = 5,
                 MaxTrainingExamples = 100000,
                 OutputFolder = "c:\\temp\\zerosharp\\Tixy",
-                TemperatureThresholdMoves = 10000,
-                SimulationIterations = 25,
+                TemperatureThresholdMoves = 30,
+                SimulationIterations = 100,
                 DirichletNoiseAmount = 0.5f,
-                DirichletNoiseShape = 0.03f,
-                EvaluationPlayers = EvaluationPlayers.AlternatingModels,
+                DirichletNoiseShape = 1.0f,
                 MaxLogLevel = LogLevel.Info,
+                Cpuct = 4, // exploration term
 
                 // self-play
-                SelfPlayEpisodes = 20,
+                SelfPlayEpisodes = 50,
 
                 // evaluation
-                EvaluationRounds = 10,
+                EvaluationRounds = 50,
             };
 
             var tixyParam = new TixyParameters
@@ -51,6 +50,8 @@ namespace TixyGameCmd
             torch.set_num_threads(1);
 
             var game = new Tixy(5, 5);
+            alphaParam.ExtraComparePlayer = new TixyGreedyPlayer(game);
+
             var skynetCreator = () => new TixySkynet(game, tixyParam);
 
             var trainer = new AlphaSharpTrainer(game, skynetCreator, alphaParam);

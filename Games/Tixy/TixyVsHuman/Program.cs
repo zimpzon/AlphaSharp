@@ -21,7 +21,7 @@ namespace TixyGameCmd
 
             skynet.LoadModel(modelPath);
 
-            var tixyPlayer = new MctsPlayer(game, skynet, args);
+            var tixyPlayer = new MctsPlayer("", false, game, skynet, args);
             var humanPlayer = new TixyHumanPlayer(game);
 
             var fight = new OneVsOne(game, humanPlayer, tixyPlayer);
