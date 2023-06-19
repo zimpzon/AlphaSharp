@@ -50,7 +50,7 @@ namespace TixyGame.Test
                     td.Add(d);
                 };
 
-                void ProgressCallback(int currentValue, int numberOfValues, string additionalInfo = null)
+                static void ProgressCallback(int currentValue, int numberOfValues, string additionalInfo = null)
                 {
                     Trace.WriteLine($"{currentValue} / {numberOfValues} {additionalInfo}");
                 }
@@ -64,7 +64,6 @@ namespace TixyGame.Test
 
                 skynet.Suggest(state2, dst2, out float v2);
                 // for p2 want: input state2, NOT 90 highest prob, v = -1
-
             }
         }
     }

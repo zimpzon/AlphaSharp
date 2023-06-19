@@ -33,10 +33,10 @@ namespace TixyGameCmd
                 Cpuct = 2, // exploration term
 
                 // self-play
-                SelfPlayEpisodes = 30,
+                SelfPlayEpisodes = 10,
 
                 // evaluation
-                EvaluationRounds = 30,
+                EvaluationRounds = 50,
             };
 
             var tixyParam = new TixyParameters

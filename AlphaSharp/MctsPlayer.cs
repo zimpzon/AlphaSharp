@@ -1,6 +1,5 @@
 ﻿using AlphaSharp.Interfaces;
 using System;
-using System.Linq;
 
 namespace AlphaSharp
 {
@@ -8,24 +7,24 @@ namespace AlphaSharp
     {
         public string Name { get; }
 
-        private readonly bool _makeFirstMoveRandom;
         private readonly Mcts _mcts;
         private readonly IGame _game;
         private int _moveCount;
+        private readonly bool _firstMoveIsRandom;
 
-        public MctsPlayer(string name, bool makeFirstMoveRandom, IGame game, ISkynet skynet, AlphaParameters args)
+        public MctsPlayer(string name, bool firstMoveIsRandom, IGame game, ISkynet skynet, AlphaParameters args)
         {
             Name = name;
-            _makeFirstMoveRandom = makeFirstMoveRandom;
             _mcts = new Mcts(game, skynet, args);
             _game = game;
+            _firstMoveIsRandom = firstMoveIsRandom;
         }
 
         public int PickAction(byte[] state, int playerTurn)
         {
             _moveCount++;
 
-            if (_moveCount == 1)
+            if (_moveCount == 1 && _firstMoveIsRandom)
             {
                 var validActions = new byte[_game.ActionCount];
                 _game.GetValidActions(state, validActions);
@@ -40,3 +39,4 @@ namespace AlphaSharp
         }
     }
 }
+;

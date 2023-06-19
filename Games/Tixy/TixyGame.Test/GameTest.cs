@@ -30,18 +30,17 @@ namespace TixyGame.Test
 
             // place left side top and bottom
             game.Set(state, 0, 0, TixyPieces.P2.X);
-            game.Set(state, 1, 0, TixyPieces.P2.Y);
-            game.Set(state, 0, 6, TixyPieces.P1.I);
-            game.Set(state, 1, 6, TixyPieces.P1.T);
+
+            game.Set(state, 6, 6, TixyPieces.P1.I);
 
             Assert.Equal(TixyPieces.P2.X, game.Get(state, 0, 0));
-            Assert.Equal(TixyPieces.P1.I, game.Get(state, 0, 6));
+            Assert.Equal(TixyPieces.P1.I, game.Get(state, 6, 6));
 
             // flip player and verify it was flipped
             game.FlipStateToNextPlayer(state);
 
             Assert.Equal(TixyPieces.P2.I, game.Get(state, 0, 0));
-            Assert.Equal(TixyPieces.P1.X, game.Get(state, 0, 6));
+            Assert.Equal(TixyPieces.P1.X, game.Get(state, 6, 6));
         }
 
         [Fact]
