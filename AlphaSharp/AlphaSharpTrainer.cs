@@ -25,11 +25,14 @@ namespace AlphaSharp
 
         private sealed class EpisodeParam
         {
+            public Mcts Mcts { get; set; }
             public ProgressInfo Progress { get; set; }
         }
 
         private sealed class EvaluationParam
         {
+            public Mcts MctsOld { get; set; }
+            public Mcts MctsNew { get; set; }
             public ProgressInfo Progress { get; set; }
             public int Round { get; set; }
             public ISkynet OldSkynet { get; set; }
@@ -96,8 +99,10 @@ namespace AlphaSharp
                 // Self-play episodes
                 var episodeProgress = ProgressInfo.Create(ProgressInfo.Phase.SelfPlay, _param.SelfPlayEpisodes);
 
+                var mcts = new Mcts(_game, _skynet, _param);
+
                 var episodeNumbers = Enumerable.Range(0, _param.SelfPlayEpisodes).ToList();
-                var episodeParam = episodeNumbers.Select(e => new EpisodeParam { Progress = episodeProgress }).ToList();
+                var episodeParam = episodeNumbers.Select(e => new EpisodeParam { Progress = episodeProgress, Mcts = mcts }).ToList();
                 var consumer = new ThreadedConsumer<EpisodeParam, List<TrainingData>>(RunEpisode, _param.MaxWorkerThreads);
 
                 _param.TextInfoCallback(LogLevel.Info, "");
@@ -136,8 +141,9 @@ namespace AlphaSharp
 
         private List<TrainingData> RunEpisode(EpisodeParam param)
         {
+            var mcts = param.Mcts;
+
             var state = new byte[_game.StateSize];
-            var mcts = new Mcts(_game, _skynet, _param);
 
             var trainingData = new List<TrainingData>();
 
@@ -168,6 +174,7 @@ namespace AlphaSharp
                 moves++;
 
                 // TODO: could easily discard the part of the tree that is before current move. Just move from new root to idx 0?
+                // actually, maybe not easily at all. Have to think about it.
 
                 gameResult = _game.GetGameEnded(state, moves, isSimulation: false);
                 if (gameResult != GameOver.Status.GameIsNotOver)
@@ -217,8 +224,8 @@ namespace AlphaSharp
                 return NotUsed;
             }
 
-            var mctsPlayerOld = new MctsPlayer("OldModel", firstMoveIsRandom: true, _game, param.OldSkynet, _param);
-            var mctsPlayerNew = new MctsPlayer("NewModel", firstMoveIsRandom: true, _game, _skynet, _param);
+            var mctsPlayerOld = new MctsPlayer("OldModel", firstMoveIsRandom: true, _game, param.MctsOld);
+            var mctsPlayerNew = new MctsPlayer("NewModel", firstMoveIsRandom: true, _game, param.MctsNew);
 
             IPlayer player1 = null;
             IPlayer player2 = null;
@@ -294,10 +301,15 @@ namespace AlphaSharp
             _param.TextInfoCallback(LogLevel.MoreInfo, $"Loading old model from {oldModelPath}");
             oldSkynet.LoadModel(oldModelPath);
 
+            var mctsOld = new Mcts(_game, oldSkynet, _param);
+            var mctsNew = new Mcts(_game, _skynet, _param);
+
             var progress = ProgressInfo.Create(ProgressInfo.Phase.Eval, _param.EvaluationRounds);
 
             var countNumbers = Enumerable.Range(0, _param.EvaluationRounds).ToList();
             var evalParam = countNumbers.Select(e => new EvaluationParam {
+                MctsNew = mctsNew,
+                MctsOld = mctsOld,
                 Round = e,
                 OldSkynet = oldSkynet,
                 Progress = progress
@@ -306,7 +318,7 @@ namespace AlphaSharp
             var consumer = new ThreadedConsumer<EvaluationParam, int>(RunEvalRound, _param.MaxWorkerThreads);
 
             evalRoundsCompleted = 0;
-            var episodesTrainingData = consumer.Run(evalParam);
+            consumer.Run(evalParam);
             string score = $"new: {winNew}, old: {winOld}, draw: {draw}";
 
             //if (_param.ExtraComparePlayer != null)

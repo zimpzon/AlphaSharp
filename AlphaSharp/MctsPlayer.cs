@@ -12,12 +12,12 @@ namespace AlphaSharp
         private int _moveCount;
         private readonly bool _firstMoveIsRandom;
 
-        public MctsPlayer(string name, bool firstMoveIsRandom, IGame game, ISkynet skynet, AlphaParameters args)
+        public MctsPlayer(string name, bool firstMoveIsRandom, IGame game, Mcts mcts)
         {
             Name = name;
-            _mcts = new Mcts(game, skynet, args);
             _game = game;
             _firstMoveIsRandom = firstMoveIsRandom;
+            _mcts = mcts;
         }
 
         public int PickAction(byte[] state, int playerTurn)

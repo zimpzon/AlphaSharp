@@ -1,5 +1,4 @@
 ﻿using AlphaSharp;
-using System.Runtime.CompilerServices;
 using TixyGame;
 using TorchSharp;
 
@@ -22,10 +21,10 @@ namespace TixyGameCmd
                 // global
                 ResumeFromCheckpoint = true,
                 Iterations = 1000,
-                MaxWorkerThreads = 5,
+                MaxWorkerThreads = 1,
                 MaxTrainingExamples = 100000,
                 OutputFolder = "c:\\temp\\zerosharp\\Tixy",
-                TemperatureThresholdMoves = 20,
+                TemperatureThresholdMoves = 30,
                 SimulationIterations = 500,
                 DirichletNoiseAmount = 0.25f,
                 DirichletNoiseShape = 0.5f,
@@ -33,10 +32,10 @@ namespace TixyGameCmd
                 Cpuct = 2, // exploration term
 
                 // self-play
-                SelfPlayEpisodes = 10,
+                SelfPlayEpisodes = 20,
 
                 // evaluation
-                EvaluationRounds = 50,
+                EvaluationRounds = 20,
             };
 
             var tixyParam = new TixyParameters

@@ -13,7 +13,7 @@ namespace TixyGame.Test
                 var game = new Tixy(5, 5);
                 var skynet = new TixySkynet(game, new TixyParameters());
 
-                var player1 = new MctsPlayer("ai", false, game, skynet, new AlphaParameters());
+                var player1 = new MctsPlayer("ai", false, game, null);
                 var player2 = new RandomPlayer(game);
                 var oneVsOne = new OneVsOne(game, player1, player2);
 
