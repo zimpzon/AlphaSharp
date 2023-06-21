@@ -112,6 +112,7 @@ namespace AlphaSharp
                 var episodesTrainingData = consumer.Run(episodeParam);
 
                 var newSamples = episodesTrainingData.SelectMany(e => e).ToList();
+                newSamples = DeduplicateTrainingData(newSamples);
 
                 _param.TextInfoCallback(LogLevel.MoreInfo, $"Self-play added {newSamples.Count} new samples of training data");
 
@@ -213,6 +214,42 @@ namespace AlphaSharp
             }
 
             return trainingData;
+        }
+
+
+        private List<TrainingData> DeduplicateTrainingData(List<TrainingData> trainingData)
+        {
+            var lookup = new Dictionary<string, List<TrainingData>>();
+            foreach(var d in trainingData)
+            {
+                string key = Convert.ToBase64String(d.State);
+                if (!lookup.ContainsKey(key))
+                    lookup[key] = new List<TrainingData>();
+
+                lookup[key].Add(d);
+            }
+
+            var newList = new List<TrainingData>();
+            foreach(var pair in lookup)
+            {
+                if (pair.Value.Count == 1)
+                {
+                    newList.Add(pair.Value[0]);
+                    continue;
+                }
+
+                // This state has duplicates
+                float sumValue = 0;
+                foreach(var d in pair.Value)
+                    sumValue += d.ValueForPlayer1;
+
+                float avg = sumValue / pair.Value.Count;
+                newList.Add(new TrainingData(pair.Value[0].State, pair.Value[0].ActionProbs, avg));
+
+                _param.TextInfoCallback(LogLevel.Info, $"state deduplicated from {pair.Value.Count} to 1, new avg value: {avg}");
+            }
+
+            return newList;
         }
 
         long winNew = 0;

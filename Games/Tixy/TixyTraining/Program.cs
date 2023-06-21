@@ -28,14 +28,14 @@ namespace TixyGameCmd
                 MaxWorkerThreads = 1,
                 MaxTrainingExamples = 20_000,
                 OutputFolder = "c:\\temp\\zerosharp\\Tixy",
-                TemperatureThresholdMoves = 40,
-                SimulationIterations = 100,
+                TemperatureThresholdMoves = 30,
+                SimulationIterations = 50,
                 DirichletNoiseShape = 1.0f,
                 MaxLogLevel = LogLevel.Info,
                 Cpuct = 1.0f, // exploration term
 
                 // self-play
-                SelfPlayEpisodes = 0,
+                SelfPlayEpisodes = 10,
 
                 // evaluation
                 EvaluationRounds = 30,

@@ -27,7 +27,7 @@ namespace TicTacToeVsHuman
             var ticTacToePlayer = new MctsPlayer("ai", false, game, mcts);
             var humanPlayer = new TicTacToeHumanPlayer(game);
 
-            var fight = new OneVsOne(game, humanPlayer, ticTacToePlayer);
+            var fight = new OneVsOne(game, ticTacToePlayer, humanPlayer);
             var res = fight.Run();
             Console.WriteLine($"Game over, result: {res}\n");
             game.PrintState(fight.State, Console.WriteLine);
