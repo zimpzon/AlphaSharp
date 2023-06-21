@@ -158,6 +158,9 @@ namespace AlphaSharp
             var validActions = new byte[_game.ActionCount];
             int moves = 0;
 
+            //var dp1 = new List<TrainingData>();
+            //var dp2 = new List<TrainingData>();
+
             while (true)
             {
                 _game.GetValidActions(state, validActions);
@@ -183,11 +186,21 @@ namespace AlphaSharp
                 _game.FlipStateToNextPlayer(state);
                 Array.Copy(state, prevState, state.Length);
 
+                //if (currentPlayer == 1)
+                //    dp1.Add(trainingData.Last());
+                //else
+                //    dp2.Add(trainingData.Last());
+
                 currentPlayer *= -1;
             }
 
             // moves are always done by player1 so invert result if current player is actually player2
             float value = GameOver.ValueForPlayer1(gameResult);
+            //if (value > 0)
+            //    trainingData = new List<TrainingData>(dp1);
+            //else if (value < 0)
+            //    trainingData = new List<TrainingData>(dp2);
+
             value *= currentPlayer;
 
             for (int i = 0; i < trainingData.Count; i++)

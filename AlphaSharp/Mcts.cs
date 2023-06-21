@@ -23,6 +23,8 @@ namespace AlphaSharp
             public int NodeIdx { get; set; }
             public int ActionIdx { get; set; }
             public float Player { get; set; }
+            public override string ToString()
+                => $"NodeIdx: {NodeIdx}, ActionIdx: {ActionIdx}, Player: {Player}";
         }
 
         public class CachedState
@@ -50,6 +52,8 @@ namespace AlphaSharp
         private readonly byte[] _validActionsReused;
         private readonly List<SelectedAction> _selectedActions = new();
         private readonly byte[] _currentState;
+
+        private const int NoValidAction = -1;
 
         private readonly Dictionary<string, int> _cachedStateLookup = new();
 
@@ -147,7 +151,10 @@ namespace AlphaSharp
                 //Console.WriteLine($"before move ({playerTurn}) :");
                 //_game.PrintState(_currentState, Console.WriteLine);
 
-                _game.ExecutePlayerAction(_currentState, selectedAction);
+                if (selectedAction != NoValidAction)
+                {
+                    _game.ExecutePlayerAction(_currentState, selectedAction);
+                }
 
                 //Console.WriteLine($"after move ({playerTurn}) :");
                 //_game.PrintState(_currentState, Console.WriteLine);
@@ -216,30 +223,36 @@ namespace AlphaSharp
                 Array.Clear(_noiseReused, 0, _noiseReused.Length);
             }
 
+            // Increase state visit count before calculating U, this way actionProbability will be dominant until there is at least one action visitcount
+            cachedState.VisitCount++;
+
             for (int i = 0; i < cachedState.Actions.Length; i++)
             {
                 ref Action action = ref cachedState.Actions[i];
                 if (action.IsValidMove != 0)
                 {
-                    float actionProbability = addNoise ? (1 - _param.DirichletNoiseAmount) * action.ActionProbability + _param.DirichletNoiseAmount * _noiseReused[i] : action.ActionProbability;
-                    float upperConfidence = action.Q + _param.Cpuct * actionProbability * (float)Math.Sqrt(cachedState.VisitCount) / (1.0f + action.VisitCount);
+                    float actionProbability = addNoise ? action.ActionProbability + _noiseReused[i] * _param.DirichletNoiseScale : action.ActionProbability;
 
-                    _param.TextInfoCallback(LogLevel.Verbose, $"considering action: {i}, nodeIdx: {cachedState.Idx}, visitcount: {action.VisitCount}, q: {action.Q}, ucb: {upperConfidence}, prob: {action.ActionProbability}, player: {player}, moves: {_selectedActions.Count}, noise: {action.ActionProbability} -> {_noiseReused[i]} = {actionProbability}");
-                    //_game.PrintDisplayTextForAction(i, Console.WriteLine);
-                    if (upperConfidence > bestUpperConfidence)
+                    //float u = action.Q + _param.Cpuct * actionProbability * (float)Math.Sqrt(cachedState.VisitCount) / (1.0f + action.VisitCount);
+
+                    float u = action.Q + actionProbability * cachedState.VisitCount / (action.VisitCount + 1) * _param.Cpuct / (float)Math.Sqrt(action.VisitCount + 1);
+                    _param.TextInfoCallback(LogLevel.Verbose, $"considering action: {i}, nodeIdx: {cachedState.Idx}, visitcount: {action.VisitCount}, q: {action.Q}, ucb: {u}, prob: {action.ActionProbability}, player: {player}, moves: {_selectedActions.Count}, noise: {action.ActionProbability} -> {_noiseReused[i]} = {actionProbability}");
+
+                    if (u > bestUpperConfidence)
                     {
-                        bestUpperConfidence = upperConfidence;
+                        bestUpperConfidence = u;
                         selectedAction = i;
                     }
                 }
             }
 
-            // an action was selected
-            _selectedActions.Add(new SelectedAction { NodeIdx = cachedState.Idx, ActionIdx = selectedAction, Player = player });
+            if (selectedAction != NoValidAction)
+            {
+                // an action was selected
+                _selectedActions.Add(new SelectedAction { NodeIdx = cachedState.Idx, ActionIdx = selectedAction, Player = player });
 
-            _param.TextInfoCallback(LogLevel.Verbose, $"action selected: {selectedAction}, nodeIdx: {cachedState.Idx}, confidence: {bestUpperConfidence}, player: {player}, moves: {_selectedActions.Count}");
-
-            cachedState.VisitCount++;
+                _param.TextInfoCallback(LogLevel.Verbose, $"action selected: {selectedAction}, nodeIdx: {cachedState.Idx}, confidence: {bestUpperConfidence}, player: {player}, moves: {_selectedActions.Count}");
+            }
 
             return selectedAction;
         }
@@ -251,7 +264,6 @@ namespace AlphaSharp
             _game.GetValidActions(_currentState, _validActionsReused);
 
             ArrayUtil.FilterProbsByValidActions(_actionProbsReused, _validActionsReused);
-            ArrayUtil.Normalize(_actionProbsReused);
 
             _param.TextInfoCallback(LogLevel.Verbose, $"new state node created, nodeIdx: {cachedState.Idx}, network v: {v}, player: {playerTurn}, moves: {_selectedActions.Count}");
 
@@ -262,6 +274,8 @@ namespace AlphaSharp
                 _param.TextInfoCallback(LogLevel.Verbose, $"no valid actions in new state node, nodeIdx: {cachedState.Idx}, player: {playerTurn}, moves: {_selectedActions.Count}");
                 return 0;
             }
+
+            ArrayUtil.Normalize(_actionProbsReused);
 
             for (int i = 0; i < cachedState.Actions.Length; ++i)
             {
@@ -283,10 +297,12 @@ namespace AlphaSharp
                 var node = _cachedStates[selectedActions[i].NodeIdx];
                 int a = selectedActions[i].ActionIdx;
                 ref var action = ref node.Actions[a];
+
                 action.VisitCount++;
 
                 float oldQ = action.Q;
-                action.Q = ((action.VisitCount - 1) * action.Q + v) / action.VisitCount;
+                action.Q = (action.VisitCount * action.Q + v) / (action.VisitCount + 1);
+
                 _param.TextInfoCallback(LogLevel.Verbose, $"updating nodeIdx {node.Idx}, actionIdx: {a}, v: {v}, oldQ: {oldQ}, newQ: {action.Q}, action visitCount: {action.VisitCount}, action taken by player: {selectedActions[i].Player}");
 
                 // switch to the other players perspective

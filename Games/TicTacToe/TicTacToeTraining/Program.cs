@@ -25,7 +25,7 @@ namespace TicTacToeTraining
             var TicTacToeParam = new TicTacToeParameters
             {
                 TrainingEpochs = 10,
-                TrainingBatchSize = 200,
+                TrainingBatchSize = 16,
                 TrainingLearningRate = 0.001f,
             };
 
@@ -34,9 +34,6 @@ namespace TicTacToeTraining
 
             var game = new TicTacToe();
             var skynetCreator = () => new TicTacToeSkynet(game, TicTacToeParam);
-            var skynet = new TicTacToeSkynet(game, TicTacToeParam);
-            var evaluationSkynet = new TicTacToeSkynet(game, TicTacToeParam);
-
             var trainer = new AlphaSharpTrainer(game, skynetCreator, alphaParam);
             trainer.Run();
         }

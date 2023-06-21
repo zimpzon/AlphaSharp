@@ -56,11 +56,11 @@ namespace TicTacToeGame
             }
         }
 
-        public GameOver.Status GetGameEnded(byte[] state, int movesMade, bool _)
+        public GameOver.Status GetGameEnded(byte[] state, int movesMade, bool isSimulation)
         {
             // could be optimized to return draw when it is clear no winner can be found
-            bool allCellsFilled = movesMade == W * H;
-            if (allCellsFilled)
+            int cellsFree = state.Count(b => b == 0);
+            if (cellsFree == 0)
                 return GameOver.Status.Draw;
 
             for (int l = 0; l < WinningLines.Count; l++)

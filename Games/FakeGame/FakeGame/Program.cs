@@ -8,7 +8,7 @@ namespace FakeGame
         {
             var args = new AlphaParameters
             {
-                DirichletNoiseAmount = 0,
+                DirichletNoiseScale = 0,
                 Iterations = 10000,
                 SelfPlayEpisodes = 10,
                 SimulationIterations = 25,

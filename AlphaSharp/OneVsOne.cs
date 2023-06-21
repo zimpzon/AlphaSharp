@@ -8,6 +8,7 @@ namespace AlphaSharp
         private readonly IGame _game;
         private readonly IPlayer _player1;
         private readonly IPlayer _player2;
+        public byte[] State { get; private set; }
 
         public OneVsOne(IGame game, IPlayer player1, IPlayer player2)
         {
@@ -18,10 +19,10 @@ namespace AlphaSharp
 
         public GameOver.Status Run()
         {
-            var state = new byte[_game.StateSize];
+            State = new byte[_game.StateSize];
             var actions = new byte[_game.ActionCount];
 
-            _game.GetStartingState(state);
+            _game.GetStartingState(State);
 
             var currentPlayer = _player1;
             int playerTurn = 1;
@@ -30,7 +31,7 @@ namespace AlphaSharp
 
             while (true)
             {
-                _game.GetValidActions(state, actions);
+                _game.GetValidActions(State, actions);
                 int validActionCount = ArrayUtil.CountNonZero(actions);
                 if (validActionCount == 0)
                 {
@@ -38,7 +39,7 @@ namespace AlphaSharp
                     return 0;
                 }
 
-                int selectedAction = currentPlayer.PickAction(state, playerTurn);
+                int selectedAction = currentPlayer.PickAction(State, playerTurn);
 
                 //Console.WriteLine($"before move ({playerTurn}) :");
                 //if (playerTurn == -1)
@@ -48,7 +49,7 @@ namespace AlphaSharp
                 //    _game.FlipStateToNextPlayer(state);
                 //_game.PrintDisplayTextForAction(selectedAction, Console.WriteLine);
 
-                _game.ExecutePlayerAction(state, selectedAction);
+                _game.ExecutePlayerAction(State, selectedAction);
 
                 //if (playerTurn == -1)
                 //    _game.FlipStateToNextPlayer(state);
@@ -60,7 +61,7 @@ namespace AlphaSharp
 
                 moves++;
 
-                var gameResult = _game.GetGameEnded(state, moves, isSimulation: false);
+                var gameResult = _game.GetGameEnded(State, moves, isSimulation: false);
                 if (gameResult != GameOver.Status.GameIsNotOver)
                 {
                     // moves are always done by player1 so invert result if current player is actually player2
@@ -70,8 +71,8 @@ namespace AlphaSharp
                     return gameResult;
                 }
 
-                _game.FlipStateToNextPlayer(state);
-                Array.Copy(state, prevState, state.Length);
+                _game.FlipStateToNextPlayer(State);
+                Array.Copy(State, prevState, State.Length);
 
                 playerTurn = -playerTurn;
                 currentPlayer = currentPlayer == _player1 ? _player2 : _player1;

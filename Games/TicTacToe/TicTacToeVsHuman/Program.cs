@@ -11,6 +11,8 @@ namespace TicTacToeVsHuman
             {
                 // evaluation
                 SimulationIterations = 200,
+                MaxLogLevel = LogLevel.Info,
+                DirichletNoiseScale = 0,
             };
 
             var game = new TicTacToe();
@@ -21,12 +23,14 @@ namespace TicTacToeVsHuman
 
             skynet.LoadModel(modelPath);
 
-            var ticTacToePlayer = new MctsPlayer("ai", false, game, null);
+            var mcts = new Mcts(game, skynet, args);
+            var ticTacToePlayer = new MctsPlayer("ai", false, game, mcts);
             var humanPlayer = new TicTacToeHumanPlayer(game);
 
             var fight = new OneVsOne(game, humanPlayer, ticTacToePlayer);
             var res = fight.Run();
             Console.WriteLine($"Game over, result: {res}\n");
+            game.PrintState(fight.State, Console.WriteLine);
         }
 
         static void Main(string[] _)

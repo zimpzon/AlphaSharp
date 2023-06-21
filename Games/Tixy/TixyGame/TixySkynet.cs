@@ -96,7 +96,7 @@ namespace TixyGame
                 {
                     var batchIndices = Enumerable.Range(b * _param.TrainingBatchSize, _param.TrainingBatchSize).ToList();
                     //var batchIndices = torch.randint(trainingData.Count, _param.TrainingBatchSize).data<long>().ToList();
-                    var batch = batchIndices.Select(i => trainingData[(int)i]);
+                    var batch = batchIndices.Select(i => trainingData[i]);
 
                     var oneHotArray = batch.Select(td => OneHotEncode(td.State)).ToArray();
                     var desiredProbsArray = batch.Select(td => td.ActionProbs).ToArray();
