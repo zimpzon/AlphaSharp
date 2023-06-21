@@ -224,8 +224,8 @@ namespace AlphaSharp
                 return NotUsed;
             }
 
-            var mctsPlayerOld = new MctsPlayer("OldModel", firstMoveIsRandom: true, _game, param.MctsOld);
-            var mctsPlayerNew = new MctsPlayer("NewModel", firstMoveIsRandom: true, _game, param.MctsNew);
+            var mctsPlayerOld = new MctsPlayer("OldModel", firstMoveIsRandom: false, _game, param.MctsOld);
+            var mctsPlayerNew = new MctsPlayer("NewModel", firstMoveIsRandom: false, _game, param.MctsNew);
 
             IPlayer player1 = null;
             IPlayer player2 = null;

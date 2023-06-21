@@ -22,33 +22,33 @@ namespace TixyGameCmd
                 ResumeFromCheckpoint = true,
                 Iterations = 1000,
                 MaxWorkerThreads = 1,
-                MaxTrainingExamples = 100000,
+                MaxTrainingExamples = 50_000,
                 OutputFolder = "c:\\temp\\zerosharp\\Tixy",
-                TemperatureThresholdMoves = 30,
-                SimulationIterations = 500,
+                TemperatureThresholdMoves = 40,
+                SimulationIterations = 2000,
                 DirichletNoiseAmount = 0.25f,
                 DirichletNoiseShape = 0.5f,
                 MaxLogLevel = LogLevel.Info,
-                Cpuct = 2, // exploration term
+                Cpuct = 1.0f, // exploration term
 
                 // self-play
-                SelfPlayEpisodes = 20,
+                SelfPlayEpisodes = 50,
 
                 // evaluation
-                EvaluationRounds = 20,
+                EvaluationRounds = 30,
             };
 
             var tixyParam = new TixyParameters
             {
                 TrainingEpochs = 10,
-                TrainingBatchSize = 64,
+                TrainingBatchSize = 256,
                 TrainingLearningRate = 0.001f,
             };
 
             // setting threads to 1 seems to be rather important. more than 1 *always* slows down torch in my testing.
             torch.set_num_threads(1);
 
-            var game = new Tixy(5, 5);
+            var game = new Tixy(6, 6);
             alphaParam.ExtraComparePlayer = new TixyGreedyPlayer(game);
 
             var skynetCreator = () => new TixySkynet(game, tixyParam);
@@ -59,14 +59,17 @@ namespace TixyGameCmd
 
         static void Main(string[] _)
         {
-            try
+            while (true)
             {
-                Run();
-                Console.WriteLine("Exiting");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
+                try
+                {
+                    Run();
+                    Console.WriteLine("Exiting");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex);
+                }
             }
         }
     }

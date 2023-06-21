@@ -89,8 +89,8 @@ namespace TixyGame
 
                 int batchCount = trainingData.Count / _param.TrainingBatchSize;
 
-                float latestLossV = 0;
-                float latestLossProbs = 0;
+                float batchLossV = 0;
+                float batchLossProbs = 0;
 
                 for (int b = 0; b < batchCount; ++b)
                 {
@@ -116,11 +116,11 @@ namespace TixyGame
                     totalLoss.backward();
                     optimizer.step();
 
-                    latestLossV += lossV.ToSingle();
-                    latestLossProbs += lossProbs.ToSingle();
+                    batchLossV += lossV.ToSingle();
+                    batchLossProbs += lossProbs.ToSingle();
                 }
 
-                progressCallback?.Invoke(epoch + 1, _param.TrainingEpochs, $"lossV: {latestLossV / batchCount}, lossProbs: {latestLossProbs / batchCount}");
+                progressCallback?.Invoke(epoch + 1, _param.TrainingEpochs, $"lossV: {batchLossV / batchCount}, lossProbs: {batchLossProbs / batchCount}");
             }
         }
 

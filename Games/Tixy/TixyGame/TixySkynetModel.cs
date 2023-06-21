@@ -20,6 +20,16 @@ namespace TixyGame
         private readonly ReLU _relu3;
         private readonly Dropout _drop3;
 
+        //private readonly Linear _lin4;
+        //private readonly BatchNorm1d _bn4;
+        //private readonly ReLU _relu4;
+        //private readonly Dropout _drop4;
+
+        //private readonly Linear _lin5;
+        //private readonly BatchNorm1d _bn5;
+        //private readonly ReLU _relu5;
+        //private readonly Dropout _drop5;
+
         private readonly Linear _fc_probs;
         private readonly Linear _fc_v;
 
@@ -28,8 +38,8 @@ namespace TixyGame
 
         const float DropOut = 0.5f;
         const int size1 = 512;
-        const int size2 = 256;
-        const int size3 = 0;
+        const int size2 = 512;
+        const int size3 = 512;
 
         public TixySkynetModel(int inputSize, int outputSize) : base("tixy")
         {
@@ -48,9 +58,18 @@ namespace TixyGame
             _relu3 = torch.nn.ReLU();
             _drop3 = torch.nn.Dropout(DropOut);
 
-            int lastSize = size3 > 0 ? size3 : size2;
-            _fc_probs = torch.nn.Linear(lastSize, outputSize);
-            _fc_v = torch.nn.Linear(lastSize, 1);
+            //_lin4 = torch.nn.Linear(size3, size4);
+            //_bn4 = torch.nn.BatchNorm1d(size4);
+            //_relu4 = torch.nn.ReLU();
+            //_drop4 = torch.nn.Dropout(DropOut);
+
+            //_lin5 = torch.nn.Linear(size4, size5);
+            //_bn5 = torch.nn.BatchNorm1d(size5);
+            //_relu5 = torch.nn.ReLU();
+            //_drop5 = torch.nn.Dropout(DropOut);
+
+            _fc_probs = torch.nn.Linear(size3, outputSize);
+            _fc_v = torch.nn.Linear(size3, 1);
 
             _logSoftmax = torch.nn.LogSoftmax(1);
             _tanh = torch.nn.Tanh();
@@ -62,8 +81,9 @@ namespace TixyGame
         {
             x = _drop1.forward(_relu1.forward(_bn1.forward(_lin1.forward(x))));
             x = _drop2.forward(_relu2.forward(_bn2.forward(_lin2.forward(x))));
-            if (size3 > 0)
-                x = _drop3.forward(_relu3.forward(_bn3.forward(_lin3.forward(x))));
+            x = _drop3.forward(_relu3.forward(_bn3.forward(_lin3.forward(x))));
+            //x = _drop4.forward(_relu4.forward(_bn4.forward(_lin4.forward(x))));
+            //x = _drop5.forward(_relu5.forward(_bn5.forward(_lin5.forward(x))));
 
             var value = _fc_v.forward(x);
             var v = _tanh.forward(value);

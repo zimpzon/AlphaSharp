@@ -13,7 +13,7 @@ namespace TixyGameCmd
                 SimulationIterations = 500,
             };
 
-            var game = new Tixy(5, 5);
+            var game = new Tixy(6, 6);
             var skynet = new TixySkynet(game, new TixyParameters());
 
             string modelPath = "c:\\temp\\zerosharp\\tixy\\tixy-best.skynet";
@@ -21,12 +21,15 @@ namespace TixyGameCmd
 
             skynet.LoadModel(modelPath);
 
-            var tixyPlayer = new MctsPlayer("", false, game, null);
+            var mcts = new Mcts(game, skynet, args);
+
+            var tixyPlayer = new MctsPlayer("", false, game, mcts);
             var humanPlayer = new TixyHumanPlayer(game);
 
             var fight = new OneVsOne(game, humanPlayer, tixyPlayer);
             var res = fight.Run();
             Console.WriteLine($"Game over, result: {res}");
+            Console.ReadLine();
         }
 
         static void Main(string[] _)
