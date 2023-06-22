@@ -114,9 +114,9 @@ namespace AlphaSharp
 
                 var newSamples = episodesTrainingData.SelectMany(e => e).ToList();
                 newSamples = DeduplicateTrainingData(newSamples);
-                int samplesToDiscard = newSamples.Count / 2;
+                int samplesToDiscard = _trainingSamples.Count > 0 ? newSamples.Count / 2 : 0;
 
-                _param.TextInfoCallback(LogLevel.MoreInfo, $"Self-play added {newSamples.Count} new samples of training data, discarding the {samplesToDiscard} oldest samples");
+                _param.TextInfoCallback(LogLevel.Info, $"Self-play added {newSamples.Count} new samples of training data, discarding {samplesToDiscard} oldest samples");
 
                 _trainingSamples.AddRange(newSamples);
                 _trainingSamples = _trainingSamples.Skip(samplesToDiscard).ToList();
