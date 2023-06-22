@@ -37,7 +37,7 @@ namespace TixyGame
         private readonly Tanh _tanh;
 
         const float DropOut = 0.5f;
-        const int size1 = 512;
+        const int size1 = 1024;
         const int size2 = 512;
         const int size3 = 512;
         const int size4 = 512;
@@ -55,20 +55,20 @@ namespace TixyGame
             _relu2 = torch.nn.ReLU();
             _drop2 = torch.nn.Dropout(DropOut);
 
-            _lin3 = torch.nn.Linear(size2, size3);
-            _bn3 = torch.nn.BatchNorm1d(size3);
-            _relu3 = torch.nn.ReLU();
-            _drop3 = torch.nn.Dropout(DropOut);
+            //_lin3 = torch.nn.Linear(size2, size3);
+            //_bn3 = torch.nn.BatchNorm1d(size3);
+            //_relu3 = torch.nn.ReLU();
+            //_drop3 = torch.nn.Dropout(DropOut);
 
-            _lin4 = torch.nn.Linear(size3, size4);
-            _bn4 = torch.nn.BatchNorm1d(size4);
-            _relu4 = torch.nn.ReLU();
-            _drop4 = torch.nn.Dropout(DropOut);
+            //_lin4 = torch.nn.Linear(size3, size4);
+            //_bn4 = torch.nn.BatchNorm1d(size4);
+            //_relu4 = torch.nn.ReLU();
+            //_drop4 = torch.nn.Dropout(DropOut);
 
-            _lin5 = torch.nn.Linear(size4, size5);
-            _bn5 = torch.nn.BatchNorm1d(size5);
-            _relu5 = torch.nn.ReLU();
-            _drop5 = torch.nn.Dropout(DropOut);
+            //_lin5 = torch.nn.Linear(size4, size5);
+            //_bn5 = torch.nn.BatchNorm1d(size5);
+            //_relu5 = torch.nn.ReLU();
+            //_drop5 = torch.nn.Dropout(DropOut);
 
             _fc_probs = torch.nn.Linear(size3, outputSize);
             _fc_v = torch.nn.Linear(size3, 1);
@@ -83,9 +83,9 @@ namespace TixyGame
         {
             x = _drop1.forward(_relu1.forward(_bn1.forward(_lin1.forward(x))));
             x = _drop2.forward(_relu2.forward(_bn2.forward(_lin2.forward(x))));
-            x = _drop3.forward(_relu3.forward(_bn3.forward(_lin3.forward(x))));
-            x = _drop4.forward(_relu4.forward(_bn4.forward(_lin4.forward(x))));
-            x = _drop5.forward(_relu5.forward(_bn5.forward(_lin5.forward(x))));
+            //x = _drop3.forward(_relu3.forward(_bn3.forward(_lin3.forward(x))));
+            //x = _drop4.forward(_relu4.forward(_bn4.forward(_lin4.forward(x))));
+            //x = _drop5.forward(_relu5.forward(_bn5.forward(_lin5.forward(x))));
 
             var value = _fc_v.forward(x);
             var v = _tanh.forward(value);

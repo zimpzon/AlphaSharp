@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.Intrinsics.X86;
 using System.Text.Json;
 using System.Threading;
 
@@ -229,6 +230,7 @@ namespace AlphaSharp
                 lookup[key].Add(d);
             }
 
+            int totalRemoved = 0;
             var newList = new List<TrainingData>();
             foreach(var pair in lookup)
             {
@@ -246,8 +248,10 @@ namespace AlphaSharp
                 float avg = sumValue / pair.Value.Count;
                 newList.Add(new TrainingData(pair.Value[0].State, pair.Value[0].ActionProbs, avg));
 
-                _param.TextInfoCallback(LogLevel.Info, $"state deduplicated from {pair.Value.Count} to 1, new avg value: {avg}");
+                totalRemoved += pair.Value.Count - 1;
             }
+
+            _param.TextInfoCallback(LogLevel.Info, $"state deduplication removed {totalRemoved} states");
 
             return newList;
         }

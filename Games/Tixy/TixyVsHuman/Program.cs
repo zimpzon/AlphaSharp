@@ -13,7 +13,7 @@ namespace TixyGameCmd
                 SimulationIterations = 500,
             };
 
-            var game = new Tixy(6, 6);
+            var game = new Tixy(5, 5);
             var skynet = new TixySkynet(game, new TixyParameters());
 
             string modelPath = "c:\\temp\\zerosharp\\tixy\\tixy-best.skynet";
