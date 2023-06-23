@@ -7,9 +7,9 @@ namespace AlphaSharp
     {
         public static int PickRandomNonZeroAction(byte[] validActions)
         {
-            int nonZeroCount = ArrayUtil.CountNonZero(validActions);
+            int nonZeroCount = Util.CountNonZero(validActions);
             int selectedNo = Random.Shared.Next(0, nonZeroCount);
-            return ArrayUtil.FindNthNonZeroIndex(validActions, selectedNo + 1);
+            return Util.FindNthNonZeroIndex(validActions, selectedNo + 1);
         }
 
         public static int CountValidActions(Mcts.Action[] actions)

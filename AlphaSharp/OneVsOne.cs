@@ -32,7 +32,7 @@ namespace AlphaSharp
             while (true)
             {
                 _game.GetValidActions(State, actions);
-                int validActionCount = ArrayUtil.CountNonZero(actions);
+                int validActionCount = Util.CountNonZero(actions);
                 if (validActionCount == 0)
                 {
                     // no valid actions is considered a draw

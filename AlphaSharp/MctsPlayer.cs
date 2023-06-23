@@ -28,14 +28,14 @@ namespace AlphaSharp
             {
                 var validActions = new byte[_game.ActionCount];
                 _game.GetValidActions(state, validActions);
-                int validActionCount = ArrayUtil.CountNonZero(validActions);
+                int validActionCount = Util.CountNonZero(validActions);
                 int selected = new Random().Next(validActionCount);
-                int action = ArrayUtil.FindNthNonZeroIndex(validActions, selected + 1);
+                int action = Util.FindNthNonZeroIndex(validActions, selected + 1);
                 return action;
             }
 
             var probs = _mcts.GetActionPolicy(state, playerTurn);
-            return ArrayUtil.ArgMax(probs);
+            return Util.ArgMax(probs);
         }
     }
 }

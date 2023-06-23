@@ -104,13 +104,13 @@ namespace AlphaSharp
 
                 var episodeNumbers = Enumerable.Range(0, _param.SelfPlayEpisodes).ToList();
                 var episodeParam = episodeNumbers.Select(e => new EpisodeParam { Progress = episodeProgress, Mcts = mcts }).ToList();
-                var consumer = new ThreadedConsumer<EpisodeParam, List<TrainingData>>(RunEpisode, _param.MaxWorkerThreads);
+                var consumer = new ThreadedConsumer<EpisodeParam, List<TrainingData>>(RunEpisode, episodeParam, _param.MaxWorkerThreads);
 
                 _param.TextInfoCallback(LogLevel.Info, "");
                 _param.TextInfoCallback(LogLevel.Info, $"Starting {_param.SelfPlayEpisodes} episodes of self-play using {_param.MaxWorkerThreads} worker thread{(_param.MaxWorkerThreads == 1 ? "" : "s")}");
 
                 episodesCompleted = 0;
-                var episodesTrainingData = consumer.Run(episodeParam);
+                var episodesTrainingData = consumer.Run();
 
                 var newSamples = episodesTrainingData.SelectMany(e => e).ToList();
                 newSamples = DeduplicateTrainingData(newSamples);
@@ -173,12 +173,12 @@ namespace AlphaSharp
 
                 float temperature = moves > _param.TemperatureThresholdMoves ? 0.1f : 1.0f;
                 var probs = mcts.GetActionPolicyForSelfPlay(state, currentPlayer, temperature);
-                ArrayUtil.FilterProbsByValidActions(probs, validActions);
-                ArrayUtil.Normalize(probs);
+                Util.FilterProbsByValidActions(probs, validActions);
+                Util.Normalize(probs);
 
                 trainingData.Add(new TrainingData(state, probs, currentPlayer));
 
-                int selectedAction = ArrayUtil.WeightedChoice(rnd, probs);
+                int selectedAction = Util.WeightedChoice(rnd, probs);
                 _game.ExecutePlayerAction(state, selectedAction);
                 moves++;
 
@@ -373,10 +373,10 @@ namespace AlphaSharp
                 Progress = progress
             }).ToList();
 
-            var consumer = new ThreadedConsumer<EvaluationParam, int>(RunEvalRound, _param.MaxWorkerThreads);
+            var consumer = new ThreadedConsumer<EvaluationParam, int>(RunEvalRound, evalParam, _param.MaxWorkerThreads);
 
             evalRoundsCompleted = 0;
-            consumer.Run(evalParam);
+            consumer.Run();
             string score = $"new: {winNew}, old: {winOld}, draw: {draw}";
 
             //if (_param.ExtraComparePlayer != null)
@@ -469,7 +469,7 @@ namespace AlphaSharp
                 _param.ProgressCallback(trainingProgress.Update(currentValue, numberOfValues), additionalInfo);
             }
 
-            ArrayUtil.Shuffle(trainingData);
+            Util.Shuffle(trainingData);
 
             var callback = new TrainingProgressCallback(ProgressCallback);
             _skynet.Train(trainingData, callback);

@@ -1,5 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using AlphaSharp.Interfaces;
 using Math = System.Math;
@@ -93,13 +96,18 @@ namespace AlphaSharp
 
         private float[] GetActionPolicyInternal(byte[] state, int playerTurn, bool isSelfPlay, float temperature = 0.0f)
         {
-            int simCount = _param.SimulationIterations;
-
-            for (int i = 0; i < simCount; i++)
+            int ExploreThreadMain(int threadId)
             {
-                // threading here
-                ExploreGameTree(state, isSimulation: isSelfPlay, playerTurn, i, simCount);
+                ExploreGameTree(state, isSimulation: isSelfPlay, playerTurn, threadId);
+                return 0;
             }
+
+            // TODO: threading should use maxThreads threads and not 200+, and fix the deadlock, if there is any.
+            // TODO: mcts buffers per threadId
+
+            var threadIds = Util.RepeatSequence(_param.MaxWorkerThreads, _param.SimulationIterations).ToList();
+            var threadedSimulation = new ThreadedConsumer<int, int>(ExploreThreadMain, threadIds, _param.MaxWorkerThreads);
+            threadedSimulation.Run();
 
             var cachedState = GetOrCreateLockedCachedState(state, out bool wasCreated);
             cachedState.Unlock();
@@ -116,7 +124,7 @@ namespace AlphaSharp
                     policy[i] = cachedState.Actions[i].VisitCount;
                 }
 
-                ArrayUtil.Softmax(policy, temperature);
+                Util.Softmax(policy, temperature);
 
                 return policy;
             }
@@ -129,7 +137,7 @@ namespace AlphaSharp
             }
         }
 
-        private void ExploreGameTree(byte[] startingState, bool isSimulation, int playerTurn, int simNo, int simCount)
+        private void ExploreGameTree(byte[] startingState, bool isSimulation, int playerTurn, int threadId)
         {
             Array.Copy(startingState, _currentState, _currentState.Length);
             _selectedActions.Clear();
@@ -283,11 +291,11 @@ namespace AlphaSharp
             _skynet.Suggest(_currentState, _actionProbsReused, out float v);
             _game.GetValidActions(_currentState, _validActionsReused);
 
-            ArrayUtil.FilterProbsByValidActions(_actionProbsReused, _validActionsReused);
+            Util.FilterProbsByValidActions(_actionProbsReused, _validActionsReused);
 
             //_param.TextInfoCallback(LogLevel.Verbose, $"new state node created, nodeIdx: {cachedState.Idx}, network v: {v}, player: {playerTurn}, moves: {_selectedActions.Count}");
 
-            bool hasValidActions = ArrayUtil.CountNonZero(_actionProbsReused) > 0;
+            bool hasValidActions = Util.CountNonZero(_actionProbsReused) > 0;
             if (!hasValidActions)
             {
                 // no valid actions in leaf, consider this a draw, ex TicTacToe: board is full
@@ -295,7 +303,7 @@ namespace AlphaSharp
                 return 0;
             }
 
-            ArrayUtil.Normalize(_actionProbsReused);
+            Util.Normalize(_actionProbsReused);
 
             for (int i = 0; i < cachedState.Actions.Length; ++i)
             {

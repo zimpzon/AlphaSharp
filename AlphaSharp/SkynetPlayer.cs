@@ -26,9 +26,9 @@ namespace AlphaSharp
         {
             _game.GetValidActions(state, _validActions);
             _skynet.Suggest(state, _probs, out _);
-            ArrayUtil.FilterProbsByValidActions(_probs, _validActions);
-            ArrayUtil.Normalize(_probs);
-            return ArrayUtil.WeightedChoice(_rnd, _probs);
+            Util.FilterProbsByValidActions(_probs, _validActions);
+            Util.Normalize(_probs);
+            return Util.WeightedChoice(_rnd, _probs);
         }
     }
 }
