@@ -3,7 +3,7 @@ using TorchSharp.Modules;
 
 namespace TixyGame
 {
-    public class TixySkynetModel : torch.nn.Module<torch.Tensor, (torch.Tensor, torch.Tensor)>
+    public class TixySkynetModelConv6x6 : torch.nn.Module<torch.Tensor, (torch.Tensor, torch.Tensor)>
     {
         private readonly Conv2d _conv1;
         private readonly Conv2d _conv2;
@@ -53,17 +53,17 @@ namespace TixyGame
 
         const int NumChannels = 128;
 
-        public TixySkynetModel(int inputSize, int outputSize) : base("tixy")
+        public TixySkynetModelConv6x6(int inputSize, int outputSize) : base("tixy")
         {
-            _conv1 = torch.nn.Conv2d(8, NumChannels, kernelSize: 3, stride: 1, padding: 1, dilation: 1, PaddingModes.Zeros);
-            _conv2 = torch.nn.Conv2d(NumChannels, NumChannels, 3, stride: 1, padding: 1, dilation: 1, PaddingModes.Zeros);
-            _conv3 = torch.nn.Conv2d(NumChannels, NumChannels, 3, stride: 1, padding: 0, dilation: 1, PaddingModes.Zeros);
+            _conv1 = torch.nn.Conv2d(8, NumChannels, kernelSize: 3, stride: 1, padding: 1, dilation: 1, PaddingModes.Zeros); // -> 6
+            _conv2 = torch.nn.Conv2d(NumChannels, NumChannels, 3, stride: 1, padding: 1, dilation: 1, PaddingModes.Zeros); // -> 5
+            _conv3 = torch.nn.Conv2d(NumChannels, NumChannels, 3, stride: 1, padding: 0, dilation: 1, PaddingModes.Zeros); // -> 4
 
             _bn2d1 = torch.nn.BatchNorm2d(NumChannels);
             _bn2d2 = torch.nn.BatchNorm2d(NumChannels);
             _bn2d3 = torch.nn.BatchNorm2d(NumChannels);
 
-            _lin1 = torch.nn.Linear(NumChannels * 3 * 3, 1024);
+            _lin1 = torch.nn.Linear(NumChannels * 4 * 4, 1024);
             _bn1 = torch.nn.BatchNorm1d(1024);
             _drop1 = torch.nn.Dropout(DropOut);
 
@@ -110,7 +110,7 @@ namespace TixyGame
 
         public override (torch.Tensor, torch.Tensor) forward(torch.Tensor x)
         {
-            x = x.view(x.shape[0], 8, 5, 5); // hardcoded for 6x6 board
+            x = x.view(x.shape[0], 8, 6, 6); // hardcoded for 6x6 board
 
             //x = _drop1.forward(_relu1.forward(_bn1.forward(_lin1.forward(x))));
             //x = _drop2.forward(_relu2.forward(_bn2.forward(_lin2.forward(x))));
@@ -130,7 +130,7 @@ namespace TixyGame
             x = _bn2d3.forward(x);
             x = torch.nn.functional.relu(x);
 
-            x = x.view(-1, NumChannels * 3 * 3);
+            x = x.view(-1, NumChannels * 4 * 4);
 
             x = _lin1.forward(x);
             x = _bn1.forward(x);

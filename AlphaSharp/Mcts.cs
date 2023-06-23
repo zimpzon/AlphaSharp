@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading;
 using AlphaSharp.Interfaces;
 using Math = System.Math;
 
@@ -36,9 +37,23 @@ namespace AlphaSharp
             }
 
             public int Idx { get; set; }
-            public int VisitCount { get; set; }
+            public long VisitCount;
+            public SpinLock SpinLock = new();
             public GameOver.Status GameOver { get; set; }
             public Action[] Actions { get; set; }
+            
+            public void Lock()
+            {
+                bool lockTaken = false;
+                SpinLock.Enter(ref lockTaken);
+                if (!lockTaken)
+                    throw new Exception("Failed to lock state");
+            }
+
+            public void Unlock()
+            {
+                SpinLock.Exit(useMemoryBarrier: true);
+            }
         }
 
         private readonly IGame _game;
@@ -46,13 +61,13 @@ namespace AlphaSharp
         private readonly AlphaParameters _param;
         private CachedState[] _cachedStates = new CachedState[200000];
         private int _stateIdx = 0;
-        private readonly float[] _actionProbsReused;
+        private readonly float[] _actionProbsReused; // per thread
         private readonly float[] _noiseReused;
-        private readonly double[] _actionsVisitCountReused;
-        private readonly byte[] _validActionsReused;
-        private readonly List<SelectedAction> _selectedActions = new();
-        private readonly byte[] _currentState;
-
+        private readonly double[] _actionsVisitCountReused; // per thread
+        private readonly byte[] _validActionsReused; // per thread
+        private readonly List<SelectedAction> _selectedActions = new(); // per thread
+        private readonly byte[] _currentState; // per thread
+        private SpinLock _mctsSpinLock = new();
         private const int NoValidAction = -1;
 
         private readonly Dictionary<string, int> _cachedStateLookup = new();
@@ -82,14 +97,15 @@ namespace AlphaSharp
 
             for (int i = 0; i < simCount; i++)
             {
+                // threading here
                 ExploreGameTree(state, isSimulation: isSelfPlay, playerTurn, i, simCount);
             }
 
-            int nodeIdx = GetOrCreateCachedState(state, out bool wasCreated);
+            var cachedState = GetOrCreateLockedCachedState(state, out bool wasCreated);
+            cachedState.Unlock();
+
             if (wasCreated)
                 throw new ArgumentException("BUG: after exploring this state should have been cached");
-
-            var cachedState = _cachedStates[nodeIdx];
 
             var policy = new float[cachedState.Actions.Length];
 
@@ -118,11 +134,12 @@ namespace AlphaSharp
             Array.Copy(startingState, _currentState, _currentState.Length);
             _selectedActions.Clear();
 
-            _param.TextInfoCallback(LogLevel.Verbose, $"--- starting simulation from root as player {playerTurn} ({simNo + 1}/{simCount}) ---");
+            //lock (_mctsLock)
+            //    _param.TextInfoCallback(LogLevel.Verbose, $"--- starting simulation from root as player {playerTurn} ({simNo + 1}/{simCount}) ---");
+
             while (true)
             {
-                int idxStateNode = GetOrCreateCachedState(_currentState, out bool wasCreated);
-                var cachedState = _cachedStates[idxStateNode];
+                var cachedState = GetOrCreateLockedCachedState(_currentState, out bool wasCreated);
 
                 bool revisitedGameOver = cachedState.GameOver != GameOver.Status.GameIsNotOver;
                 if (revisitedGameOver)
@@ -130,23 +147,25 @@ namespace AlphaSharp
                     cachedState.VisitCount++;
 
                     // This may repeat many times at the end of a simulation loop since the remaining simulations will just exploit this known winning state over and over.
-                    _param.TextInfoCallback(LogLevel.Verbose, $"revisiting a cached game over: {cachedState.GameOver}, nodeIdx: {cachedState.Idx}, player: {playerTurn}, moves: {_selectedActions.Count}");
+                    //_param.TextInfoCallback(LogLevel.Verbose, $"revisiting a cached game over: {cachedState.GameOver}, nodeIdx: {cachedState.Idx}, player: {playerTurn}, moves: {_selectedActions.Count}");
 
                     // the latest move made was by the opponent, so they should receive a negative reward for moving
+                    cachedState.Unlock();
                     BacktrackAndUpdate(_selectedActions, -1, currentPlayer: playerTurn);
                     break;
                 }
 
                 if (wasCreated)
                 {
-                    float expandV = ExpandState(ref cachedState, playerTurn);
+                    float expandV = ExpandState(cachedState, playerTurn);
 
                     // latest recorded action was the opponents, but v is for me, so negate v
+                    cachedState.Unlock();
                     BacktrackAndUpdate(_selectedActions, -expandV, currentPlayer: playerTurn);
                     break;
                 }
 
-                int selectedAction = RevisitNode(ref cachedState, isSimulation, playerTurn);
+                int selectedAction = RevisitNode(cachedState, isSimulation, playerTurn);
 
                 //Console.WriteLine($"before move ({playerTurn}) :");
                 //_game.PrintState(_currentState, Console.WriteLine);
@@ -159,20 +178,23 @@ namespace AlphaSharp
                 //Console.WriteLine($"after move ({playerTurn}) :");
                 //_game.PrintState(_currentState, Console.WriteLine);
 
-                if (IsGameOver(ref cachedState, isSimulation, playerTurn, out float gameOverV))
+                if (IsGameOver(cachedState, isSimulation, playerTurn, out float gameOverV))
                 {
+                    cachedState.Unlock();
                     BacktrackAndUpdate(_selectedActions, gameOverV, currentPlayer: playerTurn);
                     break;
                 }
 
+                cachedState.Unlock();
+
                 _game.FlipStateToNextPlayer(_currentState);
 
                 playerTurn = -playerTurn;
-                _param.TextInfoCallback(LogLevel.Verbose, $"player switched from {-playerTurn} to {playerTurn}, nodeIdx: {cachedState.Idx}, player: {playerTurn}, moves: {_selectedActions.Count}");
+                //_param.TextInfoCallback(LogLevel.Verbose, $"player switched from {-playerTurn} to {playerTurn}, nodeIdx: {cachedState.Idx}, player: {playerTurn}, moves: {_selectedActions.Count}");
             }
         }
 
-        private bool IsGameOver(ref CachedState cachedState, bool isSimulation, int player, out float v)
+        private bool IsGameOver(CachedState cachedState, bool isSimulation, int player, out float v)
         {
             var gameOverStatus = _game.GetGameEnded(_currentState, _selectedActions.Count, isSimulation);
             if (gameOverStatus == GameOver.Status.GameIsNotOver)
@@ -184,26 +206,24 @@ namespace AlphaSharp
             if (gameOverStatus == GameOver.Status.DrawDueToMaxMovesReached)
             {
                 // do not mark this state as a draw. It is not the state itself that is game over, we just ran out of moves.
-                _param.TextInfoCallback(LogLevel.Verbose, $"max moves reached, game over: {gameOverStatus}, nodeIdx: {cachedState.Idx}, player: {player}, moves: {_selectedActions.Count}");
+                //_param.TextInfoCallback(LogLevel.Verbose, $"max moves reached, game over: {gameOverStatus}, nodeIdx: {cachedState.Idx}, player: {player}, moves: {_selectedActions.Count}");
                 v = 0;
                 return true;
             }
 
-            var winningStateIdx = GetOrCreateCachedState(_currentState, out _);
-            var winningState = _cachedStates[winningStateIdx];
-            winningState.GameOver = gameOverStatus;
-            winningState.VisitCount++;
+            cachedState.GameOver = gameOverStatus;
+            cachedState.VisitCount++;
 
             // moves are always made as player1. the latest added actions
             // belongs to current player, no matter if this is pl1 or pl2.
             // so we want score from p1 perspective. It cannot just be 1 since
             // in some games the player might be able to make a move that
             // loses the game.
-            v = GameOver.ValueForPlayer1(winningState.GameOver);
+            v = GameOver.ValueForPlayer1(cachedState.GameOver);
             return true;
         }
 
-        private int RevisitNode(ref CachedState cachedState, bool isSimulation, int player)
+        private int RevisitNode(CachedState cachedState, bool isSimulation, int player)
         {
             _param.TextInfoCallback(LogLevel.Verbose, $"revisiting a cached state with visitCount {cachedState.VisitCount}, nodeIdx: {cachedState.Idx}, player: {player}, moves: {_selectedActions.Count}");
 
@@ -257,7 +277,7 @@ namespace AlphaSharp
             return selectedAction;
         }
 
-        private float ExpandState(ref CachedState cachedState, int playerTurn)
+        private float ExpandState(CachedState cachedState, int playerTurn)
         {
             // get and save suggestions from Skynet, then backtrack to root using suggested v
             _skynet.Suggest(_currentState, _actionProbsReused, out float v);
@@ -265,13 +285,13 @@ namespace AlphaSharp
 
             ArrayUtil.FilterProbsByValidActions(_actionProbsReused, _validActionsReused);
 
-            _param.TextInfoCallback(LogLevel.Verbose, $"new state node created, nodeIdx: {cachedState.Idx}, network v: {v}, player: {playerTurn}, moves: {_selectedActions.Count}");
+            //_param.TextInfoCallback(LogLevel.Verbose, $"new state node created, nodeIdx: {cachedState.Idx}, network v: {v}, player: {playerTurn}, moves: {_selectedActions.Count}");
 
             bool hasValidActions = ArrayUtil.CountNonZero(_actionProbsReused) > 0;
             if (!hasValidActions)
             {
                 // no valid actions in leaf, consider this a draw, ex TicTacToe: board is full
-                _param.TextInfoCallback(LogLevel.Verbose, $"no valid actions in new state node, nodeIdx: {cachedState.Idx}, player: {playerTurn}, moves: {_selectedActions.Count}");
+                //_param.TextInfoCallback(LogLevel.Verbose, $"no valid actions in new state node, nodeIdx: {cachedState.Idx}, player: {playerTurn}, moves: {_selectedActions.Count}");
                 return 0;
             }
 
@@ -284,39 +304,63 @@ namespace AlphaSharp
             }
 
             cachedState.VisitCount = 1;
+
             return v;
         }
 
         private void BacktrackAndUpdate(List<SelectedAction> selectedActions, float v, float currentPlayer)
         {
-            _param.TextInfoCallback(LogLevel.Verbose, $"backtracking sim result, v: {v}, moves/actions selected: {_selectedActions.Count}, initiated by player: {currentPlayer}");
+            //_param.TextInfoCallback(LogLevel.Verbose, $"backtracking sim result, v: {v}, moves/actions selected: {_selectedActions.Count}, initiated by player: {currentPlayer}");
             for (int i = selectedActions.Count - 1; i >= 0; --i)
             {
                 currentPlayer = -currentPlayer;
 
-                var node = _cachedStates[selectedActions[i].NodeIdx];
+                var node = GetLockedCachedStateByIndex(selectedActions[i].NodeIdx);
+
                 int a = selectedActions[i].ActionIdx;
                 ref var action = ref node.Actions[a];
 
                 action.VisitCount++;
 
-                float oldQ = action.Q;
+                //float oldQ = action.Q;
                 action.Q = (action.VisitCount * action.Q + v) / (action.VisitCount + 1);
 
-                _param.TextInfoCallback(LogLevel.Verbose, $"updating nodeIdx {node.Idx}, actionIdx: {a}, v: {v}, oldQ: {oldQ}, newQ: {action.Q}, action visitCount: {action.VisitCount}, action taken by player: {selectedActions[i].Player}");
+                //_param.TextInfoCallback(LogLevel.Verbose, $"updating nodeIdx {node.Idx}, actionIdx: {a}, v: {v}, oldQ: {oldQ}, newQ: {action.Q}, action visitCount: {action.VisitCount}, action taken by player: {selectedActions[i].Player}");
 
                 // switch to the other players perspective
                 v = -v;
+
+                node.Unlock();
             }
         }
 
-        private int GetOrCreateCachedState(byte[] state, out bool wasCreated)
+        private CachedState GetLockedCachedStateByIndex(int idx)
         {
+            bool lockTaken = false;
+            _mctsSpinLock.Enter(ref lockTaken);
+
+            var result = _cachedStates[idx];
+            _mctsSpinLock.Exit();
+
+            result.Lock();
+            return result;
+        }
+
+        private CachedState GetOrCreateLockedCachedState(byte[] state, out bool wasCreated)
+        {
+            bool lockTaken = false;
+            _mctsSpinLock.Enter(ref lockTaken);
+
             string key = Convert.ToBase64String(state);
             if (_cachedStateLookup.TryGetValue(key, out int idx))
             {
                 wasCreated = false;
-                return idx;
+
+                var existing = _cachedStates[idx];
+                _mctsSpinLock.Exit();
+
+                existing.Lock();
+                return existing;
             }
 
             if (_stateIdx >= _cachedStates.Length)
@@ -333,7 +377,11 @@ namespace AlphaSharp
             _stateIdx++;
             wasCreated = true;
 
-            return _stateIdx - 1;
+            var result = _cachedStates[_stateIdx - 1];
+            _mctsSpinLock.Exit();
+
+            result.Lock();
+            return result;
         }
     }
 }

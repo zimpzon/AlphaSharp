@@ -114,7 +114,9 @@ namespace AlphaSharp
 
                 var newSamples = episodesTrainingData.SelectMany(e => e).ToList();
                 newSamples = DeduplicateTrainingData(newSamples);
-                int samplesToDiscard = _trainingSamples.Count > 0 ? newSamples.Count / 2 : 0;
+
+                bool bestModelExists = File.Exists(Path.Combine(_param.OutputFolder, _filenameBestSkynet));
+                int samplesToDiscard = !bestModelExists || _trainingSamples.Count == 0 ? 0 : newSamples.Count / 2;
 
                 _param.TextInfoCallback(LogLevel.Info, $"Self-play added {newSamples.Count} new samples of training data, discarding {samplesToDiscard} oldest samples");
 

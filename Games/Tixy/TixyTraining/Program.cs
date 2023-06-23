@@ -10,10 +10,10 @@ namespace TixyGameCmd
         {
             // reintroduce greedy!! (optional)
 
-            // FIX THE CRASHING BUG!!! MIGHT DISTURB RESULTS
-            // ---- craching is PROBABLY due to C# memory getting garbage collected while torch is still using it.
+            // MULTITHREADED: buffers are per thread, virtual loss somehow, discourage path, but don't block it. I assume.
 
-            // SHOULDN'T Tictactoe be able to conclude most games? I bet if watching the games they are just stupid random.
+            // FIX THE CRASHING BUG!!! MIGHT DISTURB RESULTS
+            // ---- crashing is PROBABLY due to C# memory getting garbage collected while torch is still using it.
 
             // TRAINING ALGO: when game is won, track back a number of states (random around half of avg count?) and start from there, NOT picking the same action again.
             // Forwards and backwards meets at the middle'ish? Better endgame? I Assume endgame can be weak due to not always reaching it?
@@ -26,12 +26,12 @@ namespace TixyGameCmd
                 MaxWorkerThreads = 1,
                 MaxTrainingExamples = 50_000,
                 OutputFolder = "c:\\temp\\zerosharp\\Tixy",
-                TemperatureThresholdMoves = 20,
-                SimulationIterations = 100,
+                TemperatureThresholdMoves = 40,
+                SimulationIterations = 300,
                 DirichletNoiseShape = 1.0f,
                 DirichletNoiseScale = 1.0f,
                 MaxLogLevel = LogLevel.Info,
-                Cpuct = 2.0f,
+                Cpuct = 1.0f,
 
                 // self-play
                 SelfPlayEpisodes = 20,
