@@ -10,7 +10,7 @@ namespace TicTacToeVsHuman
             var args = new AlphaParameters
             {
                 // evaluation
-                SimulationIterations = 200,
+                SelfPlaySimulationIterations = 200,
                 MaxLogLevel = LogLevel.Info,
                 DirichletNoiseScale = 0,
             };

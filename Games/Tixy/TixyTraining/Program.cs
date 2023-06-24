@@ -23,13 +23,14 @@ namespace TixyGameCmd
                 // global
                 ResumeFromCheckpoint = true,
                 Iterations = 1000,
-                MaxWorkerThreads = 1,
+                MaxWorkerThreads = 4,
                 MaxTrainingExamples = 50_000,
                 OutputFolder = "c:\\temp\\zerosharp\\Tixy",
                 TemperatureThresholdMoves = 40,
-                SimulationIterations = 300,
+                SelfPlaySimulationIterations = 100,
+                EvalSimulationIterations = 50,
                 DirichletNoiseShape = 1.0f,
-                DirichletNoiseScale = 1.0f,
+                DirichletNoiseScale = 10.0f,
                 MaxLogLevel = LogLevel.Info,
                 Cpuct = 1.0f,
 
@@ -37,7 +38,7 @@ namespace TixyGameCmd
                 SelfPlayEpisodes = 20,
 
                 // evaluation
-                EvaluationRounds = 20,
+                EvaluationRounds = 30,
             };
 
             var tixyParam = new TixyParameters

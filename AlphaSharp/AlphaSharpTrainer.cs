@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.Intrinsics.X86;
 using System.Text.Json;
 using System.Threading;
 
@@ -104,7 +103,7 @@ namespace AlphaSharp
 
                 var episodeNumbers = Enumerable.Range(0, _param.SelfPlayEpisodes).ToList();
                 var episodeParam = episodeNumbers.Select(e => new EpisodeParam { Progress = episodeProgress, Mcts = mcts }).ToList();
-                var consumer = new ThreadedConsumer<EpisodeParam, List<TrainingData>>(RunEpisode, episodeParam, _param.MaxWorkerThreads);
+                var consumer = new ThreadedWorker<EpisodeParam, List<TrainingData>>(RunEpisode, episodeParam, 1);
 
                 _param.TextInfoCallback(LogLevel.Info, "");
                 _param.TextInfoCallback(LogLevel.Info, $"Starting {_param.SelfPlayEpisodes} episodes of self-play using {_param.MaxWorkerThreads} worker thread{(_param.MaxWorkerThreads == 1 ? "" : "s")}");
@@ -216,9 +215,10 @@ namespace AlphaSharp
             {
                 episodesCompleted++;
                 _param.ProgressCallback(param.Progress.Update(episodesCompleted), string.Empty);
+                _param.TextInfoCallback(LogLevel.Info, $"mcts has {mcts.NumberOfCachedStates} cached states, ms waited: {Mcts.TimeWaited}");
             }
 
-            return trainingData;
+                return trainingData;
         }
 
 
@@ -373,7 +373,7 @@ namespace AlphaSharp
                 Progress = progress
             }).ToList();
 
-            var consumer = new ThreadedConsumer<EvaluationParam, int>(RunEvalRound, evalParam, _param.MaxWorkerThreads);
+            var consumer = new ThreadedWorker<EvaluationParam, int>(RunEvalRound, evalParam, 1);
 
             evalRoundsCompleted = 0;
             consumer.Run();

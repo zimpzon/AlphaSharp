@@ -11,7 +11,7 @@ namespace FakeGame
                 DirichletNoiseScale = 0,
                 Iterations = 10000,
                 SelfPlayEpisodes = 10,
-                SimulationIterations = 25,
+                SelfPlaySimulationIterations = 25,
                 TemperatureThresholdMoves = 10000,
                 OutputFolder = "c:\\temp\\zerosharp\\Fakegame",
                 MaxLogLevel = LogLevel.Debug,

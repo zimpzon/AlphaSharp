@@ -1,8 +1,8 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.ComponentModel;
+using System.Diagnostics;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using AlphaSharp.Interfaces;
 using Math = System.Math;
@@ -16,6 +16,7 @@ namespace AlphaSharp
             public float Q { get; set; }
             public int VisitCount { get; set; }
             public byte IsValidMove { get; set; }
+            public byte VirtualLoss { get; set; }
             public float ActionProbability { get; set; }
 
             public override readonly string ToString()
@@ -26,11 +27,11 @@ namespace AlphaSharp
         {
             public int NodeIdx { get; set; }
             public int ActionIdx { get; set; }
-            public float Player { get; set; }
             public override string ToString()
-                => $"NodeIdx: {NodeIdx}, ActionIdx: {ActionIdx}, Player: {Player}";
+                => $"NodeIdx: {NodeIdx}, ActionIdx: {ActionIdx}";
         }
 
+        public static long TimeWaited = 0;
         public class CachedState
         {
             public CachedState(int actionCount, int idx)
@@ -47,10 +48,14 @@ namespace AlphaSharp
             
             public void Lock()
             {
+                var sw = Stopwatch.StartNew();
                 bool lockTaken = false;
                 SpinLock.Enter(ref lockTaken);
                 if (!lockTaken)
                     throw new Exception("Failed to lock state");
+                long ms = sw.ElapsedMilliseconds;
+
+                Interlocked.Add(ref Mcts.TimeWaited, ms);
             }
 
             public void Unlock()
@@ -59,33 +64,43 @@ namespace AlphaSharp
             }
         }
 
+        private sealed class ThreadData
+        {
+            public ThreadData(int actionCount, int stateSize)
+            {
+                ActionProbsReused = new float[actionCount];
+                NoiseReused = new float[actionCount];
+                ValidActionsReused = new byte[actionCount];
+                ActionsVisitCountReused = new double[actionCount];
+                CurrentState = new byte[stateSize];
+            }
+
+            public readonly float[] ActionProbsReused; // per thread
+            public readonly float[] NoiseReused;
+            public readonly double[] ActionsVisitCountReused; // per thread
+            public readonly byte[] ValidActionsReused; // per thread
+            public readonly List<SelectedAction> SelectedActions = new(); // per thread
+            public readonly byte[] CurrentState; // per thread
+        }
+
         private readonly IGame _game;
         private readonly ISkynet _skynet;
         private readonly AlphaParameters _param;
         private CachedState[] _cachedStates = new CachedState[200000];
         private int _stateIdx = 0;
-        private readonly float[] _actionProbsReused; // per thread
-        private readonly float[] _noiseReused;
-        private readonly double[] _actionsVisitCountReused; // per thread
-        private readonly byte[] _validActionsReused; // per thread
-        private readonly List<SelectedAction> _selectedActions = new(); // per thread
-        private readonly byte[] _currentState; // per thread
         private SpinLock _mctsSpinLock = new();
         private const int NoValidAction = -1;
+        private ConcurrentDictionary<int, ThreadData> _threadDic = new ConcurrentDictionary<int, ThreadData>();
 
+        public int NumberOfCachedStates => _cachedStateLookup.Count;
         private readonly Dictionary<string, int> _cachedStateLookup = new();
 
         public Mcts(IGame game, ISkynet skynet, AlphaParameters args)
         {
+            TimeWaited = 0;
             _game = game;
             _skynet = skynet;
             _param = args;
-
-            _actionProbsReused = new float[_game.ActionCount];
-            _noiseReused = new float[_game.ActionCount];
-            _validActionsReused = new byte[_game.ActionCount];
-            _actionsVisitCountReused = new double[_game.ActionCount];
-            _currentState = new byte[_game.StateSize];
         }
         
         public float[] GetActionPolicy(byte[] state, int playerTurn)
@@ -96,18 +111,17 @@ namespace AlphaSharp
 
         private float[] GetActionPolicyInternal(byte[] state, int playerTurn, bool isSelfPlay, float temperature = 0.0f)
         {
-            int ExploreThreadMain(int threadId)
+            int ExploreThreadMain(int _)
             {
-                ExploreGameTree(state, isSimulation: isSelfPlay, playerTurn, threadId);
+                ExploreGameTree(state, isSimulation: isSelfPlay, playerTurn);
                 return 0;
             }
 
-            // TODO: threading should use maxThreads threads and not 200+, and fix the deadlock, if there is any.
-            // TODO: mcts buffers per threadId
-
-            var threadIds = Util.RepeatSequence(_param.MaxWorkerThreads, _param.SimulationIterations).ToList();
-            var threadedSimulation = new ThreadedConsumer<int, int>(ExploreThreadMain, threadIds, _param.MaxWorkerThreads);
+            var workList = Enumerable.Range(0, isSelfPlay ? _param.SelfPlaySimulationIterations : _param.EvalSimulationIterations).ToList();
+            var threadedSimulation = new ThreadedWorker<int, int>(ExploreThreadMain, workList, _param.MaxWorkerThreads);
             threadedSimulation.Run();
+
+            //_param.TextInfoCallback(LogLevel.Info, $"mcts has {_cachedStateLookup.Count} cached states");
 
             var cachedState = GetOrCreateLockedCachedState(state, out bool wasCreated);
             cachedState.Unlock();
@@ -119,7 +133,8 @@ namespace AlphaSharp
 
             if (isSelfPlay)
             {
-                for (int i = 0; i < _actionsVisitCountReused.Length; i++)
+                var threadData = GetThreadForCurrentThread();
+                for (int i = 0; i < threadData.ActionsVisitCountReused.Length; i++)
                 {
                     policy[i] = cachedState.Actions[i].VisitCount;
                 }
@@ -137,17 +152,33 @@ namespace AlphaSharp
             }
         }
 
-        private void ExploreGameTree(byte[] startingState, bool isSimulation, int playerTurn, int threadId)
+        private ThreadData GetThreadForCurrentThread()
         {
-            Array.Copy(startingState, _currentState, _currentState.Length);
-            _selectedActions.Clear();
+            if (!_threadDic.TryGetValue(Environment.CurrentManagedThreadId, out ThreadData threadData))
+            {
+                threadData = new ThreadData(_game.ActionCount, _game.StateSize);
+                _threadDic[Environment.CurrentManagedThreadId] = threadData;
+            }
+
+            return threadData;
+        }
+
+        private void ExploreGameTree(byte[] startingState, bool isSimulation, int playerTurn)
+        {
+            var threadData = GetThreadForCurrentThread();
+
+            // ez pz, lists of all buffers and use threadId to index into them. Violá, multithreaded undeterministic MCTS! (need some penalties too)
+            Array.Copy(startingState, threadData.CurrentState, threadData.CurrentState.Length);
+            threadData.SelectedActions.Clear();
+
+            //Console.WriteLine($"starting simulation from root as player {playerTurn} ({Environment.CurrentManagedThreadId})");
 
             //lock (_mctsLock)
             //    _param.TextInfoCallback(LogLevel.Verbose, $"--- starting simulation from root as player {playerTurn} ({simNo + 1}/{simCount}) ---");
 
             while (true)
             {
-                var cachedState = GetOrCreateLockedCachedState(_currentState, out bool wasCreated);
+                var cachedState = GetOrCreateLockedCachedState(threadData.CurrentState, out bool wasCreated);
 
                 bool revisitedGameOver = cachedState.GameOver != GameOver.Status.GameIsNotOver;
                 if (revisitedGameOver)
@@ -159,52 +190,52 @@ namespace AlphaSharp
 
                     // the latest move made was by the opponent, so they should receive a negative reward for moving
                     cachedState.Unlock();
-                    BacktrackAndUpdate(_selectedActions, -1, currentPlayer: playerTurn);
+                    BacktrackAndUpdate(threadData.SelectedActions, -1, currentPlayer: playerTurn);
                     break;
                 }
 
                 if (wasCreated)
                 {
-                    float expandV = ExpandState(cachedState, playerTurn);
+                    float expandV = ExpandState(cachedState, threadData);
 
                     // latest recorded action was the opponents, but v is for me, so negate v
                     cachedState.Unlock();
-                    BacktrackAndUpdate(_selectedActions, -expandV, currentPlayer: playerTurn);
+                    BacktrackAndUpdate(threadData.SelectedActions, -expandV, currentPlayer: playerTurn);
                     break;
                 }
 
-                int selectedAction = RevisitNode(cachedState, isSimulation, playerTurn);
+                int selectedAction = RevisitNode(cachedState, isSimulation, threadData);
 
                 //Console.WriteLine($"before move ({playerTurn}) :");
                 //_game.PrintState(_currentState, Console.WriteLine);
 
                 if (selectedAction != NoValidAction)
                 {
-                    _game.ExecutePlayerAction(_currentState, selectedAction);
+                    _game.ExecutePlayerAction(threadData.CurrentState, selectedAction);
                 }
 
                 //Console.WriteLine($"after move ({playerTurn}) :");
                 //_game.PrintState(_currentState, Console.WriteLine);
 
-                if (IsGameOver(cachedState, isSimulation, playerTurn, out float gameOverV))
+                if (IsGameOver(cachedState, isSimulation, threadData, out float gameOverV))
                 {
                     cachedState.Unlock();
-                    BacktrackAndUpdate(_selectedActions, gameOverV, currentPlayer: playerTurn);
+                    BacktrackAndUpdate(threadData.SelectedActions, gameOverV, currentPlayer: playerTurn);
                     break;
                 }
 
                 cachedState.Unlock();
 
-                _game.FlipStateToNextPlayer(_currentState);
+                _game.FlipStateToNextPlayer(threadData.CurrentState);
 
                 playerTurn = -playerTurn;
                 //_param.TextInfoCallback(LogLevel.Verbose, $"player switched from {-playerTurn} to {playerTurn}, nodeIdx: {cachedState.Idx}, player: {playerTurn}, moves: {_selectedActions.Count}");
             }
         }
 
-        private bool IsGameOver(CachedState cachedState, bool isSimulation, int player, out float v)
+        private bool IsGameOver(CachedState cachedState, bool isSimulation, ThreadData threadData, out float v)
         {
-            var gameOverStatus = _game.GetGameEnded(_currentState, _selectedActions.Count, isSimulation);
+            var gameOverStatus = _game.GetGameEnded(threadData.CurrentState, threadData.SelectedActions.Count, isSimulation);
             if (gameOverStatus == GameOver.Status.GameIsNotOver)
             {
                 v = 0;
@@ -231,24 +262,24 @@ namespace AlphaSharp
             return true;
         }
 
-        private int RevisitNode(CachedState cachedState, bool isSimulation, int player)
+        private int RevisitNode(CachedState cachedState, bool isSimulation, ThreadData threadData)
         {
-            _param.TextInfoCallback(LogLevel.Verbose, $"revisiting a cached state with visitCount {cachedState.VisitCount}, nodeIdx: {cachedState.Idx}, player: {player}, moves: {_selectedActions.Count}");
+            //_param.TextInfoCallback(LogLevel.Verbose, $"revisiting a cached state with visitCount {cachedState.VisitCount}, nodeIdx: {cachedState.Idx}, player: {player}, moves: {_selectedActions.Count}");
 
             // Pick action with highest UCB
             float bestUpperConfidence = float.NegativeInfinity;
             int selectedAction = -1;
 
-            bool isFirstMove = _selectedActions.Count == 0;
+            bool isFirstMove = threadData.SelectedActions.Count == 0;
 
             bool addNoise = isFirstMove && isSimulation;
             if (addNoise)
             {
-                Noise.CreateDirichlet(_noiseReused, _param.DirichletNoiseShape);
+                Noise.CreateDirichlet(threadData.NoiseReused, _param.DirichletNoiseShape);
             }
             else
             {
-                Array.Clear(_noiseReused, 0, _noiseReused.Length);
+                Array.Clear(threadData.NoiseReused, 0, threadData.NoiseReused.Length);
             }
 
             // Increase state visit count before calculating U, this way actionProbability will be dominant until there is at least one action visitcount
@@ -259,13 +290,14 @@ namespace AlphaSharp
                 ref Action action = ref cachedState.Actions[i];
                 if (action.IsValidMove != 0)
                 {
-                    float actionProbability = addNoise ? action.ActionProbability + _noiseReused[i] * _param.DirichletNoiseScale : action.ActionProbability;
+                    float actionProbability = addNoise ? action.ActionProbability + threadData.NoiseReused[i] * _param.DirichletNoiseScale : action.ActionProbability;
 
                     //float u = action.Q + _param.Cpuct * actionProbability * (float)Math.Sqrt(cachedState.VisitCount) / (1.0f + action.VisitCount);
 
                     float u = action.Q + actionProbability * cachedState.VisitCount / (action.VisitCount + 1) * _param.Cpuct / (float)Math.Sqrt(action.VisitCount + 1);
-                    _param.TextInfoCallback(LogLevel.Verbose, $"considering action: {i}, nodeIdx: {cachedState.Idx}, visitcount: {action.VisitCount}, q: {action.Q}, ucb: {u}, prob: {action.ActionProbability}, player: {player}, moves: {_selectedActions.Count}, noise: {action.ActionProbability} -> {_noiseReused[i]} = {actionProbability}");
+                    //_param.TextInfoCallback(LogLevel.Verbose, $"considering action: {i}, nodeIdx: {cachedState.Idx}, visitcount: {action.VisitCount}, q: {action.Q}, ucb: {u}, prob: {action.ActionProbability}, player: {player}, moves: {_selectedActions.Count}, noise: {action.ActionProbability} -> {_noiseReused[i]} = {actionProbability}");
 
+                    u -= action.VirtualLoss * 0.5f;
                     if (u > bestUpperConfidence)
                     {
                         bestUpperConfidence = u;
@@ -277,25 +309,28 @@ namespace AlphaSharp
             if (selectedAction != NoValidAction)
             {
                 // an action was selected
-                _selectedActions.Add(new SelectedAction { NodeIdx = cachedState.Idx, ActionIdx = selectedAction, Player = player });
+                threadData.SelectedActions.Add(new SelectedAction { NodeIdx = cachedState.Idx, ActionIdx = selectedAction });
 
-                _param.TextInfoCallback(LogLevel.Verbose, $"action selected: {selectedAction}, nodeIdx: {cachedState.Idx}, confidence: {bestUpperConfidence}, player: {player}, moves: {_selectedActions.Count}");
+                ref Action action = ref cachedState.Actions[selectedAction];
+                action.VirtualLoss++;
+
+                //_param.TextInfoCallback(LogLevel.Verbose, $"action selected: {selectedAction}, nodeIdx: {cachedState.Idx}, confidence: {bestUpperConfidence}, player: {player}, moves: {_selectedActions.Count}");
             }
 
             return selectedAction;
         }
 
-        private float ExpandState(CachedState cachedState, int playerTurn)
+        private float ExpandState(CachedState cachedState, ThreadData threadData)
         {
             // get and save suggestions from Skynet, then backtrack to root using suggested v
-            _skynet.Suggest(_currentState, _actionProbsReused, out float v);
-            _game.GetValidActions(_currentState, _validActionsReused);
+            _skynet.Suggest(threadData.CurrentState, threadData.ActionProbsReused, out float v);
+            _game.GetValidActions(threadData.CurrentState, threadData.ValidActionsReused);
 
-            Util.FilterProbsByValidActions(_actionProbsReused, _validActionsReused);
+            Util.FilterProbsByValidActions(threadData.ActionProbsReused, threadData.ValidActionsReused);
 
             //_param.TextInfoCallback(LogLevel.Verbose, $"new state node created, nodeIdx: {cachedState.Idx}, network v: {v}, player: {playerTurn}, moves: {_selectedActions.Count}");
 
-            bool hasValidActions = Util.CountNonZero(_actionProbsReused) > 0;
+            bool hasValidActions = Util.CountNonZero(threadData.ActionProbsReused) > 0;
             if (!hasValidActions)
             {
                 // no valid actions in leaf, consider this a draw, ex TicTacToe: board is full
@@ -303,12 +338,12 @@ namespace AlphaSharp
                 return 0;
             }
 
-            Util.Normalize(_actionProbsReused);
+            Util.Normalize(threadData.ActionProbsReused);
 
             for (int i = 0; i < cachedState.Actions.Length; ++i)
             {
-                cachedState.Actions[i].ActionProbability = _actionProbsReused[i];
-                cachedState.Actions[i].IsValidMove = _validActionsReused[i];
+                cachedState.Actions[i].ActionProbability = threadData.ActionProbsReused[i];
+                cachedState.Actions[i].IsValidMove = threadData.ValidActionsReused[i];
             }
 
             cachedState.VisitCount = 1;
@@ -329,6 +364,11 @@ namespace AlphaSharp
                 ref var action = ref node.Actions[a];
 
                 action.VisitCount++;
+                action.VirtualLoss--;
+                if (action.VirtualLoss < 0)
+                {
+                    throw new Exception("Virtual loss should never be negative");
+                }
 
                 //float oldQ = action.Q;
                 action.Q = (action.VisitCount * action.Q + v) / (action.VisitCount + 1);

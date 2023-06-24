@@ -34,7 +34,8 @@ namespace AlphaSharp
         /// <summary>
         /// MCTS
         /// </summary>
-        public int SimulationIterations { get; set; } = 100;
+        public int SelfPlaySimulationIterations { get; set; } = 100;
+        public int EvalSimulationIterations { get; set; } = 100;
         public float Cpuct { get; set; } = 1;
         public float TemperatureThresholdMoves { get; set; } = 10;
         public float DirichletNoiseShape { get; set; } = 1.0f;

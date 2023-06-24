@@ -8,7 +8,7 @@ namespace AlphaSharp
     /// <summary>
     /// PyTorch needs threads, not tasks, to run in parallel. There is some thread-local state and tasks are not hard-bound to threads.
     /// </summary>
-    internal class ThreadedConsumer<TIn, TOut>
+    internal class ThreadedWorker<TIn, TOut>
     {
         private readonly Func<TIn, TOut> _worker;
         private readonly List<TOut> _results = new();
@@ -16,7 +16,7 @@ namespace AlphaSharp
         private readonly ConcurrentQueue<TIn> _workQueue = new();
         private readonly int _maxThreads;
 
-        public ThreadedConsumer(Func<TIn, TOut> worker, List<TIn> work, int maxThreads)
+        public ThreadedWorker(Func<TIn, TOut> worker, List<TIn> work, int maxThreads)
         {
             _worker = worker;
             _workQueue = new ConcurrentQueue<TIn>(work);

@@ -10,7 +10,7 @@ namespace TixyGameCmd
             var args = new AlphaParameters
             {
                 // evaluation
-                SimulationIterations = 500,
+                SelfPlaySimulationIterations = 500,
             };
 
             var game = new Tixy(5, 5);
