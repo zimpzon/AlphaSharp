@@ -34,7 +34,7 @@ namespace AlphaSharp
                 return action;
             }
 
-            var probs = _mcts.GetActionPolicy(state, playerTurn);
+            var probs = _mcts.GetActionPolicy(state, playerTurn, simulationDecay: 1.0f);
             return Util.ArgMax(probs);
         }
     }

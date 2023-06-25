@@ -8,9 +8,13 @@ namespace TixyGameCmd
     {
         static void Run()
         {
+            // WHY are selectedActions counts so low? was it just end of game?
+
             // reintroduce greedy!! (optional)
 
-            // MULTITHREADED: buffers are per thread, virtual loss somehow, discourage path, but don't block it. I assume.
+            // sim iterations start high then decay? since its same mcts it makes sense.
+
+            // discard parts of tree no longer needed. should allow much deeper search.
 
             // FIX THE CRASHING BUG!!! MIGHT DISTURB RESULTS
             // ---- crashing is PROBABLY due to C# memory getting garbage collected while torch is still using it.
@@ -27,18 +31,18 @@ namespace TixyGameCmd
                 MaxTrainingExamples = 50_000,
                 OutputFolder = "c:\\temp\\zerosharp\\Tixy",
                 TemperatureThresholdMoves = 40,
-                SelfPlaySimulationIterations = 100,
-                EvalSimulationIterations = 50,
+                SelfPlaySimulationIterations = 500,
+                EvalSimulationIterations = 10,
                 DirichletNoiseShape = 1.0f,
-                DirichletNoiseScale = 10.0f,
+                DirichletNoiseScale = 1.0f,
                 MaxLogLevel = LogLevel.Info,
                 Cpuct = 1.0f,
 
                 // self-play
-                SelfPlayEpisodes = 20,
+                SelfPlayEpisodes = 50,
 
                 // evaluation
-                EvaluationRounds = 30,
+                EvaluationRounds = 50,
             };
 
             var tixyParam = new TixyParameters

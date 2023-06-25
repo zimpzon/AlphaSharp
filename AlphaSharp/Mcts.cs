@@ -31,7 +31,7 @@ namespace AlphaSharp
                 => $"NodeIdx: {NodeIdx}, ActionIdx: {ActionIdx}";
         }
 
-        public static long TimeWaited = 0;
+        public static long TicksWaited = 0;
         public class CachedState
         {
             public CachedState(int actionCount, int idx)
@@ -53,9 +53,9 @@ namespace AlphaSharp
                 SpinLock.Enter(ref lockTaken);
                 if (!lockTaken)
                     throw new Exception("Failed to lock state");
-                long ms = sw.ElapsedMilliseconds;
+                long ticks = sw.Elapsed.Ticks;
 
-                Interlocked.Add(ref Mcts.TimeWaited, ms);
+                Interlocked.Add(ref Mcts.TicksWaited, ticks);
             }
 
             public void Unlock()
@@ -97,19 +97,19 @@ namespace AlphaSharp
 
         public Mcts(IGame game, ISkynet skynet, AlphaParameters args)
         {
-            TimeWaited = 0;
+            TicksWaited = 0;
             _game = game;
             _skynet = skynet;
             _param = args;
         }
         
-        public float[] GetActionPolicy(byte[] state, int playerTurn)
-            => GetActionPolicyInternal(state, playerTurn, isSelfPlay: false);
+        public float[] GetActionPolicy(byte[] state, int playerTurn, float simulationDecay)
+            => GetActionPolicyInternal(state, playerTurn, isSelfPlay: false, simulationDecay);
 
-        public float[] GetActionPolicyForSelfPlay(byte[] state, int playerTurn, float temperature)
-            => GetActionPolicyInternal(state, playerTurn, isSelfPlay: true, temperature);
+        public float[] GetActionPolicyForSelfPlay(byte[] state, int playerTurn, float simulationDecay, float temperature)
+            => GetActionPolicyInternal(state, playerTurn, isSelfPlay: true, simulationDecay, temperature);
 
-        private float[] GetActionPolicyInternal(byte[] state, int playerTurn, bool isSelfPlay, float temperature = 0.0f)
+        private float[] GetActionPolicyInternal(byte[] state, int playerTurn, bool isSelfPlay, float simulationDecay, float temperature = 0.0f)
         {
             int ExploreThreadMain(int _)
             {
@@ -117,7 +117,10 @@ namespace AlphaSharp
                 return 0;
             }
 
-            var workList = Enumerable.Range(0, isSelfPlay ? _param.SelfPlaySimulationIterations : _param.EvalSimulationIterations).ToList();
+            _threadDic.Clear();
+
+            int iterations = (int)((isSelfPlay ? _param.SelfPlaySimulationIterations : _param.EvalSimulationIterations) * simulationDecay);
+            var workList = Enumerable.Range(0, iterations).ToList();
             var threadedSimulation = new ThreadedWorker<int, int>(ExploreThreadMain, workList, _param.MaxWorkerThreads);
             threadedSimulation.Run();
 
@@ -167,7 +170,6 @@ namespace AlphaSharp
         {
             var threadData = GetThreadForCurrentThread();
 
-            // ez pz, lists of all buffers and use threadId to index into them. Violá, multithreaded undeterministic MCTS! (need some penalties too)
             Array.Copy(startingState, threadData.CurrentState, threadData.CurrentState.Length);
             threadData.SelectedActions.Clear();
 

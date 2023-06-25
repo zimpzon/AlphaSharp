@@ -44,9 +44,9 @@ namespace TixyGame
         private readonly LogSoftmax _logSoftmax;
         private readonly Tanh _tanh;
 
-        const float DropOut = 0.5f;
-        const int size1 = 512;
-        const int size2 = 1024;
+        const float DropOut = 0.3f;
+        const int size1 = 1024;
+        const int size2 = 256;
         const int size3 = 512;
         const int size4 = 512;
         const int size5 = 512;
@@ -55,26 +55,27 @@ namespace TixyGame
 
         public TixySkynetModel(int inputSize, int outputSize) : base("tixy")
         {
-            _conv1 = torch.nn.Conv2d(8, NumChannels, kernelSize: 3, stride: 1, padding: 1, dilation: 1, PaddingModes.Zeros);
-            _conv2 = torch.nn.Conv2d(NumChannels, NumChannels, 3, stride: 1, padding: 1, dilation: 1, PaddingModes.Zeros);
-            _conv3 = torch.nn.Conv2d(NumChannels, NumChannels, 3, stride: 1, padding: 0, dilation: 1, PaddingModes.Zeros);
+            _conv1 = torch.nn.Conv2d(8, NumChannels, kernelSize: 3, stride: 1, padding: 1, dilation: 1, PaddingModes.Zeros, bias: false);
+            _conv2 = torch.nn.Conv2d(NumChannels, NumChannels, 3, stride: 1, padding: 1, dilation: 1, PaddingModes.Zeros, bias: false);
+            _conv3 = torch.nn.Conv2d(NumChannels, NumChannels, 3, stride: 1, padding: 0, dilation: 1, PaddingModes.Zeros, bias: false);
 
             _bn2d1 = torch.nn.BatchNorm2d(NumChannels);
             _bn2d2 = torch.nn.BatchNorm2d(NumChannels);
             _bn2d3 = torch.nn.BatchNorm2d(NumChannels);
 
-            _lin1 = torch.nn.Linear(NumChannels * 3 * 3, 1024);
-            _bn1 = torch.nn.BatchNorm1d(1024);
-            _drop1 = torch.nn.Dropout(DropOut);
+            //_lin1 = torch.nn.Linear(NumChannels * 3 * 3, 1024);
+            //_bn1 = torch.nn.BatchNorm1d(1024);
+            //_drop1 = torch.nn.Dropout(DropOut);
 
-            _lin2 = torch.nn.Linear(1024, 512);
-            _bn2 = torch.nn.BatchNorm1d(512);
-            _drop2 = torch.nn.Dropout(DropOut);
+            //_lin2 = torch.nn.Linear(1024, 512);
+            //_bn2 = torch.nn.BatchNorm1d(512);
+            //_drop2 = torch.nn.Dropout(DropOut);
 
-            _fc_probs = torch.nn.Linear(512, outputSize);
-            _fc_v = torch.nn.Linear(512, 1);
+            //_fc_probs = torch.nn.Linear(512, outputSize);
+            //_fc_v = torch.nn.Linear(512, 1);
 
 
+            //_lin1 = torch.nn.Linear(inputSize, size1);
             //_bn1 = torch.nn.BatchNorm1d(size1);
             //_relu1 = torch.nn.ReLU();
             //_drop1 = torch.nn.Dropout(DropOut);
@@ -99,8 +100,8 @@ namespace TixyGame
             //_relu5 = torch.nn.ReLU();
             //_drop5 = torch.nn.Dropout(DropOut);
 
-            //_fc_probs = torch.nn.Linear(size2, outputSize);
-            //_fc_v = torch.nn.Linear(size2, 1);
+            _fc_probs = torch.nn.Linear(NumChannels * 3 * 3, outputSize);
+            _fc_v = torch.nn.Linear(NumChannels * 3 * 3, 1);
 
             _logSoftmax = torch.nn.LogSoftmax(1);
             _tanh = torch.nn.Tanh();
@@ -110,7 +111,7 @@ namespace TixyGame
 
         public override (torch.Tensor, torch.Tensor) forward(torch.Tensor x)
         {
-            x = x.view(x.shape[0], 8, 5, 5); // hardcoded for 6x6 board
+            x = x.view(x.shape[0], 8, 5, 5); // hardcoded board size
 
             //x = _drop1.forward(_relu1.forward(_bn1.forward(_lin1.forward(x))));
             //x = _drop2.forward(_relu2.forward(_bn2.forward(_lin2.forward(x))));
@@ -122,9 +123,13 @@ namespace TixyGame
             x = _bn2d1.forward(x);
             x = torch.nn.functional.relu(x);
 
+            var residual = x;
+
             x = _conv2.forward(x);
             x = _bn2d2.forward(x);
             x = torch.nn.functional.relu(x);
+
+            x += residual;
 
             x = _conv3.forward(x);
             x = _bn2d3.forward(x);
@@ -132,15 +137,15 @@ namespace TixyGame
 
             x = x.view(-1, NumChannels * 3 * 3);
 
-            x = _lin1.forward(x);
-            x = _bn1.forward(x);
-            x = torch.nn.functional.relu(x);
-            x = _drop1.forward(x);
+            //x = _lin1.forward(x);
+            //x = _bn1.forward(x);
+            //x = torch.nn.functional.relu(x);
+            //x = _drop1.forward(x);
 
-            x = _lin2.forward(x);
-            x = _bn2.forward(x);
-            x = torch.nn.functional.relu(x);
-            x = _drop2.forward(x);
+            //x = _lin2.forward(x);
+            //x = _bn2.forward(x);
+            //x = torch.nn.functional.relu(x);
+            //x = _drop2.forward(x);
 
             var value = _fc_v.forward(x);
             var v = _tanh.forward(value);

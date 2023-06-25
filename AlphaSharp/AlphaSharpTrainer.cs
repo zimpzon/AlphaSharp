@@ -115,7 +115,7 @@ namespace AlphaSharp
                 newSamples = DeduplicateTrainingData(newSamples);
 
                 bool bestModelExists = File.Exists(Path.Combine(_param.OutputFolder, _filenameBestSkynet));
-                int samplesToDiscard = !bestModelExists || _trainingSamples.Count == 0 ? 0 : newSamples.Count / 2;
+                int samplesToDiscard = !bestModelExists || _trainingSamples.Count == 0 ? 0 : newSamples.Count / 4;
 
                 _param.TextInfoCallback(LogLevel.Info, $"Self-play added {newSamples.Count} new samples of training data, discarding {samplesToDiscard} oldest samples");
 
@@ -166,12 +166,19 @@ namespace AlphaSharp
             //var dp1 = new List<TrainingData>();
             //var dp2 = new List<TrainingData>();
 
+            var startTime = DateTime.UtcNow;
+            long startTicks = Mcts.TicksWaited;
+
+            float simulationDecay = 1.0f;
+
             while (true)
             {
                 _game.GetValidActions(state, validActions);
 
                 float temperature = moves > _param.TemperatureThresholdMoves ? 0.1f : 1.0f;
-                var probs = mcts.GetActionPolicyForSelfPlay(state, currentPlayer, temperature);
+                var probs = mcts.GetActionPolicyForSelfPlay(state, currentPlayer, simulationDecay, temperature);
+                simulationDecay = Math.Max(0.1f, simulationDecay * 0.9f);
+
                 Util.FilterProbsByValidActions(probs, validActions);
                 Util.Normalize(probs);
 
@@ -213,14 +220,19 @@ namespace AlphaSharp
 
             lock (_lock)
             {
+                var runTime = DateTime.UtcNow - startTime;
+                long ticksWaited = Mcts.TicksWaited - startTicks;
+                double msWaited = ticksWaited / 10000.0;
+                double msWaitedPerThread = msWaited / _param.MaxWorkerThreads;
+                double waitRatio = msWaitedPerThread / runTime.TotalMilliseconds;
+
                 episodesCompleted++;
-                _param.ProgressCallback(param.Progress.Update(episodesCompleted), string.Empty);
-                _param.TextInfoCallback(LogLevel.Info, $"mcts has {mcts.NumberOfCachedStates} cached states, ms waited: {Mcts.TimeWaited}");
+                string info = $"mcts cached states: {mcts.NumberOfCachedStates}, thread block: {waitRatio * 100:0.00}%";
+                _param.ProgressCallback(param.Progress.Update(episodesCompleted), info);
             }
 
-                return trainingData;
+            return trainingData;
         }
-
 
         private List<TrainingData> DeduplicateTrainingData(List<TrainingData> trainingData)
         {
@@ -282,7 +294,9 @@ namespace AlphaSharp
                 return NotUsed;
             }
 
-            var mctsPlayerOld = new MctsPlayer("OldModel", firstMoveIsRandom: false, _game, param.MctsOld);
+            IPlayer mctsPlayerOld = new MctsPlayer("OldModel", firstMoveIsRandom: false, _game, param.MctsOld);
+            //mctsPlayerOld = new RandomPlayer(_game);
+
             var mctsPlayerNew = new MctsPlayer("NewModel", firstMoveIsRandom: false, _game, param.MctsNew);
 
             IPlayer player1 = null;
