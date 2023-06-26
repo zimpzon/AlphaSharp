@@ -31,8 +31,8 @@ namespace TixyGameCmd
                 MaxTrainingExamples = 50_000,
                 OutputFolder = "c:\\temp\\zerosharp\\Tixy",
                 TemperatureThresholdMoves = 40,
-                SelfPlaySimulationIterations = 500,
-                EvalSimulationIterations = 10,
+                SelfPlaySimulationIterations = 100,
+                EvalSimulationIterations = 50,
                 DirichletNoiseShape = 1.0f,
                 DirichletNoiseScale = 1.0f,
                 MaxLogLevel = LogLevel.Info,
@@ -42,7 +42,7 @@ namespace TixyGameCmd
                 SelfPlayEpisodes = 50,
 
                 // evaluation
-                EvaluationRounds = 50,
+                EvaluationRounds = 100,
             };
 
             var tixyParam = new TixyParameters
