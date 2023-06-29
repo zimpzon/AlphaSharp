@@ -8,6 +8,8 @@ namespace TixyGameCmd
     {
         static void Run()
         {
+            // WATCH some sample games!
+
             // WHY are selectedActions counts so low? was it just end of game?
 
             // reintroduce greedy!! (optional)
@@ -30,8 +32,8 @@ namespace TixyGameCmd
                 MaxWorkerThreads = 4,
                 MaxTrainingExamples = 50_000,
                 OutputFolder = "c:\\temp\\zerosharp\\Tixy",
-                TemperatureThresholdMoves = 40,
-                SelfPlaySimulationIterations = 100,
+                TemperatureThresholdMoves = 30,
+                SelfPlaySimulationIterations = 50,
                 EvalSimulationIterations = 50,
                 DirichletNoiseShape = 1.0f,
                 DirichletNoiseScale = 1.0f,

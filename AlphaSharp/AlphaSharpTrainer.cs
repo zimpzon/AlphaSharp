@@ -99,10 +99,10 @@ namespace AlphaSharp
                 // Self-play episodes
                 var episodeProgress = ProgressInfo.Create(ProgressInfo.Phase.SelfPlay, _param.SelfPlayEpisodes);
 
-                var mcts = new Mcts(_game, _skynet, _param);
+                //var mcts = new Mcts(_game, _skynet, _param);
 
                 var episodeNumbers = Enumerable.Range(0, _param.SelfPlayEpisodes).ToList();
-                var episodeParam = episodeNumbers.Select(e => new EpisodeParam { Progress = episodeProgress, Mcts = mcts }).ToList();
+                var episodeParam = episodeNumbers.Select(e => new EpisodeParam { Progress = episodeProgress, Mcts = null }).ToList();
                 var consumer = new ThreadedWorker<EpisodeParam, List<TrainingData>>(RunEpisode, episodeParam, 1);
 
                 _param.TextInfoCallback(LogLevel.Info, "");
@@ -146,7 +146,7 @@ namespace AlphaSharp
 
         private List<TrainingData> RunEpisode(EpisodeParam param)
         {
-            var mcts = param.Mcts;
+            var mcts = param.Mcts == null ? new Mcts(_game, _skynet, _param) :  param.Mcts;
 
             var state = new byte[_game.StateSize];
 
@@ -217,6 +217,8 @@ namespace AlphaSharp
 
             for (int i = 0; i < trainingData.Count; i++)
                 trainingData[i].ValueForPlayer1 *= value;
+
+            //trainingData = trainingData.Where(t => t.ValueForPlayer1 > 0).ToList();
 
             lock (_lock)
             {
@@ -294,10 +296,13 @@ namespace AlphaSharp
                 return NotUsed;
             }
 
-            IPlayer mctsPlayerOld = new MctsPlayer("OldModel", firstMoveIsRandom: false, _game, param.MctsOld);
+            var mctsOld = param.MctsOld == null ? new Mcts(_game, param.OldSkynet, _param) : param.MctsOld;
+            var mctsNew = param.MctsNew == null ? new Mcts(_game, _skynet, _param) : param.MctsNew;
+
+            IPlayer mctsPlayerOld = new MctsPlayer("OldModel", firstMoveIsRandom: false, _game, mctsOld);
             //mctsPlayerOld = new RandomPlayer(_game);
 
-            var mctsPlayerNew = new MctsPlayer("NewModel", firstMoveIsRandom: false, _game, param.MctsNew);
+            var mctsPlayerNew = new MctsPlayer("NewModel", firstMoveIsRandom: false, _game, mctsNew);
 
             IPlayer player1 = null;
             IPlayer player2 = null;
@@ -380,8 +385,8 @@ namespace AlphaSharp
 
             var countNumbers = Enumerable.Range(0, _param.EvaluationRounds).ToList();
             var evalParam = countNumbers.Select(e => new EvaluationParam {
-                MctsNew = mctsNew,
-                MctsOld = mctsOld,
+                MctsNew = null,
+                MctsOld = null,
                 Round = e,
                 OldSkynet = oldSkynet,
                 Progress = progress
