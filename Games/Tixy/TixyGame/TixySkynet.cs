@@ -10,7 +10,7 @@ namespace TixyGame
         private readonly IGame _game;
         private readonly int _oneHotEncodedInputSize;
 
-        private readonly TixySkynetModel _model;
+        private readonly TixySkynetModelConv _model;
         private readonly TixyParameters _param;
 
         public TixySkynet(IGame game, TixyParameters param)
@@ -19,7 +19,7 @@ namespace TixyGame
             _param = param;
 
             _oneHotEncodedInputSize = _game.W * _game.H * TixyPieces.NumberOfPieces;
-            _model = new TixySkynetModel(_oneHotEncodedInputSize, _game.ActionCount);
+            _model = new TixySkynetModelConv(_game, numInputChannels: TixyPieces.NumberOfPieces);
         }
 
         public void LoadModel(string modelPath)
@@ -48,23 +48,6 @@ namespace TixyGame
                 }
             }
 
-            // verify one-hot encoding
-            //int cnt = 0;
-            //for (int i = 0; i < oneHotEncoded.Length; i++)
-            //{
-            //    if (oneHotEncoded[i] != 0)
-            //    {
-            //        int ii = i % 25;
-            //        cnt++;
-            //        int x = ii % _game.W;
-            //        int y = ii / _game.W;
-            //        int p = TixyPieces.PlaneIdxToPiece(i / _game.StateSize);
-            //        int l = state[y * _game.W + x];
-            //        if (l != p)
-            //            Console.WriteLine("wut");
-            //    }
-            //}
-
             return oneHotEncoded;
         }
 
@@ -83,6 +66,8 @@ namespace TixyGame
         {
             var optimizer = torch.optim.Adam(_model.parameters(), lr: _param.TrainingLearningRate);
 
+            torch.set_num_threads(_param.TrainingMaxWorkerThreads);
+
             for (int epoch = 0; epoch < _param.TrainingEpochs; ++epoch)
             {
                 _model.train();
@@ -95,7 +80,6 @@ namespace TixyGame
                 for (int b = 0; b < batchCount; ++b)
                 {
                     var batchIndices = Enumerable.Range(b * _param.TrainingBatchSize, _param.TrainingBatchSize).ToList();
-                    //var batchIndices = torch.randint(trainingData.Count, _param.TrainingBatchSize).data<long>().ToList();
                     var batch = batchIndices.Select(i => trainingData[i]);
 
                     var oneHotArray = batch.Select(td => OneHotEncode(td.State)).ToArray();
@@ -122,6 +106,8 @@ namespace TixyGame
 
                 progressCallback?.Invoke(epoch + 1, _param.TrainingEpochs, $"lossV: {batchLossV / batchCount}, lossProbs: {batchLossProbs / batchCount}");
             }
+
+            torch.set_num_threads(1);
         }
 
         public void Suggest(byte[] state, float[] dstActionsProbs, out float v)

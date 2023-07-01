@@ -38,6 +38,8 @@ namespace AlphaSharp
         public int EvalSimulationIterations { get; set; } = 100;
         public float Cpuct { get; set; } = 1;
         public float TemperatureThresholdMoves { get; set; } = 10;
+        public float SelfPlaySleepCycleChance { get; set; } = 0.3f;
+        public float SelfPlaySleepNoiseChance { get; set; } = 0.25f;
         public float DirichletNoiseShape { get; set; } = 1.0f;
         public float DirichletNoiseScale { get; set; } = 1.0f;
 

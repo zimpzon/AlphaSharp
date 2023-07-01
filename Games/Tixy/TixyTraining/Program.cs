@@ -8,6 +8,8 @@ namespace TixyGameCmd
     {
         static void Run()
         {
+            // DEEPMIND TWEAKS: https://lczero.org/blog/2018/12/alphazero-paper-and-lc0-v0191/
+
             // WATCH some sample games!
 
             // WHY are selectedActions counts so low? was it just end of game?
@@ -29,19 +31,21 @@ namespace TixyGameCmd
                 // global
                 ResumeFromCheckpoint = true,
                 Iterations = 1000,
-                MaxWorkerThreads = 5,
+                MaxWorkerThreads = 4,
                 MaxTrainingExamples = 50_000,
-                OutputFolder = "c:\\temp\\zerosharp\\Tixy",
-                TemperatureThresholdMoves = 30,
-                SelfPlaySimulationIterations = 400,
-                EvalSimulationIterations = 200,
+                OutputFolder = "c:\\temp\\zerosharp\\Tixy 5x5",
+                TemperatureThresholdMoves = 20,
+                SelfPlaySimulationIterations = 25,
+                EvalSimulationIterations = 25,
                 DirichletNoiseShape = 1.0f,
                 DirichletNoiseScale = 1.0f,
                 MaxLogLevel = LogLevel.Info,
-                Cpuct = 2.0f,
+                Cpuct = 1.5f, // AlphaZero uses ~10/game branching factor
 
                 // self-play
                 SelfPlayEpisodes = 100,
+                SelfPlaySleepCycleChance = 0.2f,
+                SelfPlaySleepNoiseChance = 0.25f,
 
                 // evaluation
                 EvaluationRounds = 100,
@@ -49,12 +53,13 @@ namespace TixyGameCmd
 
             var tixyParam = new TixyParameters
             {
-                TrainingEpochs = 15,
+                TrainingEpochs = 10,
                 TrainingBatchSize = 32,
                 TrainingLearningRate = 0.001f,
+                TrainingMaxWorkerThreads = 8,
             };
 
-            // setting threads to 1 seems to be rather important. more than 1 *always* slows down torch in my testing.
+            // setting threads to 1 seems to be rather important for inference. more than 1 *always* slows down torch in my testing. Training can have a few.
             torch.set_num_threads(1);
 
             var game = new Tixy(5, 5);

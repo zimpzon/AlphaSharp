@@ -163,21 +163,17 @@ namespace AlphaSharp
             var validActions = new byte[_game.ActionCount];
             int moves = 0;
 
-            //var dp1 = new List<TrainingData>();
-            //var dp2 = new List<TrainingData>();
-
             var startTime = DateTime.UtcNow;
             long startTicks = Mcts.TicksWaited;
 
-            float simulationDecay = 1.0f;
+            bool isSleepCycle = _param.SelfPlaySleepCycleChance > Random.Shared.NextDouble();
 
             while (true)
             {
                 _game.GetValidActions(state, validActions);
 
                 float temperature = moves > _param.TemperatureThresholdMoves ? 0.1f : 1.0f;
-                var probs = mcts.GetActionPolicyForSelfPlay(state, currentPlayer, simulationDecay, temperature);
-                simulationDecay = Math.Max(0.1f, simulationDecay * 0.9f);
+                var probs = mcts.GetActionPolicyForSelfPlay(state, currentPlayer, isSleepCycle, temperature);
 
                 Util.FilterProbsByValidActions(probs, validActions);
                 Util.Normalize(probs);
@@ -188,8 +184,6 @@ namespace AlphaSharp
                 _game.ExecutePlayerAction(state, selectedAction);
                 moves++;
 
-                // TODO: could easily discard the part of the tree that is before current move. Just move from new root to idx 0?
-                // actually, maybe not easily at all. Have to think about it.
 
                 gameResult = _game.GetGameEnded(state, moves, isSimulation: false);
                 if (gameResult != GameOver.Status.GameIsNotOver)
@@ -198,27 +192,16 @@ namespace AlphaSharp
                 _game.FlipStateToNextPlayer(state);
                 Array.Copy(state, prevState, state.Length);
 
-                //if (currentPlayer == 1)
-                //    dp1.Add(trainingData.Last());
-                //else
-                //    dp2.Add(trainingData.Last());
-
                 currentPlayer *= -1;
             }
 
             // moves are always done by player1 so invert result if current player is actually player2
             float value = GameOver.ValueForPlayer1(gameResult);
-            //if (value > 0)
-            //    trainingData = new List<TrainingData>(dp1);
-            //else if (value < 0)
-            //    trainingData = new List<TrainingData>(dp2);
 
             value *= currentPlayer;
 
             for (int i = 0; i < trainingData.Count; i++)
                 trainingData[i].ValueForPlayer1 *= value;
-
-            //trainingData = trainingData.Where(t => t.ValueForPlayer1 > 0).ToList();
 
             lock (_lock)
             {
@@ -229,7 +212,7 @@ namespace AlphaSharp
                 double waitRatio = msWaitedPerThread / runTime.TotalMilliseconds;
 
                 episodesCompleted++;
-                string info = $"mcts cached states: {mcts.NumberOfCachedStates}, thread block: {waitRatio * 100:0.00}%";
+                string info = $"mcts cached states: {mcts.NumberOfCachedStates}, thread block: {waitRatio * 100:0.00}% {(isSleepCycle ? "(sleep cycle)" : string.Empty)}";
                 _param.ProgressCallback(param.Progress.Update(episodesCompleted), info);
             }
 
@@ -378,8 +361,8 @@ namespace AlphaSharp
             _param.TextInfoCallback(LogLevel.MoreInfo, $"Loading old model from {oldModelPath}");
             oldSkynet.LoadModel(oldModelPath);
 
-            var mctsOld = new Mcts(_game, oldSkynet, _param);
-            var mctsNew = new Mcts(_game, _skynet, _param);
+            //var mctsOld = new Mcts(_game, oldSkynet, _param);
+            //var mctsNew = new Mcts(_game, _skynet, _param);
 
             var progress = ProgressInfo.Create(ProgressInfo.Phase.Eval, _param.EvaluationRounds);
 

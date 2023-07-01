@@ -90,6 +90,8 @@ namespace AlphaSharp
         private int _stateIdx = 0;
         private SpinLock _mctsSpinLock = new();
         private const int NoValidAction = -1;
+        private bool _isSleepCycle;
+
         private ConcurrentDictionary<int, ThreadData> _threadDic = new ConcurrentDictionary<int, ThreadData>();
 
         public int NumberOfCachedStates => _cachedStateLookup.Count;
@@ -102,15 +104,17 @@ namespace AlphaSharp
             _skynet = skynet;
             _param = args;
         }
-        
-        public float[] GetActionPolicy(byte[] state, int playerTurn, float simulationDecay)
-            => GetActionPolicyInternal(state, playerTurn, isSelfPlay: false, simulationDecay);
 
-        public float[] GetActionPolicyForSelfPlay(byte[] state, int playerTurn, float simulationDecay, float temperature)
-            => GetActionPolicyInternal(state, playerTurn, isSelfPlay: true, simulationDecay, temperature);
+        public float[] GetActionPolicy(byte[] state, int playerTurn)
+            => GetActionPolicyInternal(state, playerTurn, isSelfPlay: false, isSleepCycle: false);
 
-        private float[] GetActionPolicyInternal(byte[] state, int playerTurn, bool isSelfPlay, float simulationDecay, float temperature = 0.0f)
+        public float[] GetActionPolicyForSelfPlay(byte[] state, int playerTurn, bool isSleepCycle, float temperature)
+            => GetActionPolicyInternal(state, playerTurn, isSelfPlay: true, isSleepCycle, temperature);
+
+        private float[] GetActionPolicyInternal(byte[] state, int playerTurn, bool isSelfPlay, bool isSleepCycle, float temperature = 0.0f)
         {
+            _isSleepCycle = isSleepCycle;
+
             int ExploreThreadMain(int _)
             {
                 ExploreGameTree(state, isSimulation: isSelfPlay, playerTurn);
@@ -119,7 +123,10 @@ namespace AlphaSharp
 
             _threadDic.Clear();
 
-            int iterations = (int)((isSelfPlay ? _param.SelfPlaySimulationIterations : _param.EvalSimulationIterations) * simulationDecay);
+            int iterations = isSelfPlay ? _param.SelfPlaySimulationIterations : _param.EvalSimulationIterations;
+            if (isSleepCycle)
+                iterations *= 2;
+
             var workList = Enumerable.Range(0, iterations).ToList();
             var threadedSimulation = new ThreadedWorker<int, int>(ExploreThreadMain, workList, _param.MaxWorkerThreads);
             threadedSimulation.Run();
@@ -136,7 +143,7 @@ namespace AlphaSharp
 
             if (isSelfPlay)
             {
-                var threadData = GetThreadForCurrentThread();
+                var threadData = GetThreadDataForCurrentThread();
                 for (int i = 0; i < threadData.ActionsVisitCountReused.Length; i++)
                 {
                     policy[i] = cachedState.Actions[i].VisitCount;
@@ -155,7 +162,7 @@ namespace AlphaSharp
             }
         }
 
-        private ThreadData GetThreadForCurrentThread()
+        private ThreadData GetThreadDataForCurrentThread()
         {
             if (!_threadDic.TryGetValue(Environment.CurrentManagedThreadId, out ThreadData threadData))
             {
@@ -168,7 +175,7 @@ namespace AlphaSharp
 
         private void ExploreGameTree(byte[] startingState, bool isSimulation, int playerTurn)
         {
-            var threadData = GetThreadForCurrentThread();
+            var threadData = GetThreadDataForCurrentThread();
 
             Array.Copy(startingState, threadData.CurrentState, threadData.CurrentState.Length);
             threadData.SelectedActions.Clear();
@@ -274,14 +281,12 @@ namespace AlphaSharp
 
             bool isFirstMove = threadData.SelectedActions.Count == 0;
 
-            bool addNoise = isFirstMove && isSimulation;
+            float rnd = (float)Random.Shared.NextDouble();
+
+            bool addNoise = (isFirstMove && isSimulation) || (_isSleepCycle && _param.SelfPlaySleepNoiseChance > rnd);
             if (addNoise)
             {
                 Noise.CreateDirichlet(threadData.NoiseReused, _param.DirichletNoiseShape);
-            }
-            else
-            {
-                Array.Clear(threadData.NoiseReused, 0, threadData.NoiseReused.Length);
             }
 
             // Increase state visit count before calculating U, this way actionProbability will be dominant until there is at least one action visitcount
@@ -292,7 +297,10 @@ namespace AlphaSharp
                 ref Action action = ref cachedState.Actions[i];
                 if (action.IsValidMove != 0)
                 {
-                    float actionProbability = addNoise ? action.ActionProbability + threadData.NoiseReused[i] * _param.DirichletNoiseScale : action.ActionProbability;
+                    float noiseScale = _isSleepCycle ? Math.Max(1.0f, _param.DirichletNoiseScale) : _param.DirichletNoiseScale;
+                    float noiseValue = threadData.NoiseReused[i] * (_isSleepCycle ? 100 : 1);
+
+                    float actionProbability = addNoise ? action.ActionProbability + noiseValue * noiseScale : action.ActionProbability;
 
                     float u = action.Q + _param.Cpuct * actionProbability * (float)Math.Sqrt(cachedState.VisitCount) / (1.0f + action.VisitCount);
 
@@ -367,6 +375,7 @@ namespace AlphaSharp
 
                 action.VisitCount++;
                 action.VirtualLoss--;
+
                 if (action.VirtualLoss < 0)
                 {
                     throw new Exception("Virtual loss should never be negative");
