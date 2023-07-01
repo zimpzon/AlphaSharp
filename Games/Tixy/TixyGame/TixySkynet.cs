@@ -113,7 +113,7 @@ namespace TixyGame
         public void Suggest(byte[] state, float[] dstActionsProbs, out float v)
         {
             _model.eval();
-            var x = torch.no_grad();
+            using var _ = torch.no_grad();
 
             var oneHotEncoded = OneHotEncode(state);
             var oneHotTensor = torch.from_array(oneHotEncoded).reshape(1, oneHotEncoded.Length);

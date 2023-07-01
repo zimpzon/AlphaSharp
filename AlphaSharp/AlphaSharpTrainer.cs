@@ -99,8 +99,6 @@ namespace AlphaSharp
                 // Self-play episodes
                 var episodeProgress = ProgressInfo.Create(ProgressInfo.Phase.SelfPlay, _param.SelfPlayEpisodes);
 
-                //var mcts = new Mcts(_game, _skynet, _param);
-
                 var episodeNumbers = Enumerable.Range(0, _param.SelfPlayEpisodes).ToList();
                 var episodeParam = episodeNumbers.Select(e => new EpisodeParam { Progress = episodeProgress, Mcts = null }).ToList();
                 var consumer = new ThreadedWorker<EpisodeParam, List<TrainingData>>(RunEpisode, episodeParam, 1);

@@ -26,6 +26,9 @@ namespace TixyGameCmd
             // TRAINING ALGO: when game is won, track back a number of states (random around half of avg count?) and start from there, NOT picking the same action again.
             // Forwards and backwards meets at the middle'ish? Better endgame? I Assume endgame can be weak due to not always reaching it?
 
+            const int W = 5;
+            const int H = 6;
+
             var alphaParam = new AlphaParameters
             {
                 // global
@@ -33,7 +36,7 @@ namespace TixyGameCmd
                 Iterations = 1000,
                 MaxWorkerThreads = 4,
                 MaxTrainingExamples = 50_000,
-                OutputFolder = "c:\\temp\\zerosharp\\Tixy 5x5",
+                OutputFolder = $"c:\\temp\\zerosharp\\Tixy {W}x{H}",
                 TemperatureThresholdMoves = 20,
                 SelfPlaySimulationIterations = 25,
                 EvalSimulationIterations = 25,
@@ -62,7 +65,7 @@ namespace TixyGameCmd
             // setting threads to 1 seems to be rather important for inference. more than 1 *always* slows down torch in my testing. Training can have a few.
             torch.set_num_threads(1);
 
-            var game = new Tixy(5, 5);
+            var game = new Tixy(W, H);
             alphaParam.ExtraComparePlayer = new TixyGreedyPlayer(game);
 
             var skynetCreator = () => new TixySkynet(game, tixyParam);
