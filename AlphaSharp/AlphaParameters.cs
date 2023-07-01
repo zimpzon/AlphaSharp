@@ -23,13 +23,12 @@ namespace AlphaSharp
         /// Global parameters.
         /// </summary>
         public bool ResumeFromCheckpoint { get; set; } = true;
+        public bool OnlyTraining { get; set; } = false;
         public int Iterations { get; set; } = 1000;
         public int MaxWorkerThreads { get; set; } = 1;
         public int MaxTrainingExamples { get; set; } = 500_000;
         public string OutputFolder { get; set; }
-        public bool ResumeOnError { get; set; } = true;
         public bool SaveBackupAfterIteration { get; set; } = true;
-        public IPlayer ExtraComparePlayer { get; set; }
 
         /// <summary>
         /// MCTS

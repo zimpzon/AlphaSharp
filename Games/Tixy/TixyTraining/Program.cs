@@ -34,19 +34,19 @@ namespace TixyGameCmd
                 // global
                 ResumeFromCheckpoint = true,
                 Iterations = 1000,
-                MaxWorkerThreads = 4,
+                MaxWorkerThreads = 6,
                 MaxTrainingExamples = 50_000,
                 OutputFolder = $"c:\\temp\\zerosharp\\Tixy {W}x{H}",
                 TemperatureThresholdMoves = 20,
-                SelfPlaySimulationIterations = 25,
-                EvalSimulationIterations = 25,
+                SelfPlaySimulationIterations = 100,
+                EvalSimulationIterations = 50,
                 DirichletNoiseShape = 1.0f,
                 DirichletNoiseScale = 1.0f,
                 MaxLogLevel = LogLevel.Info,
                 Cpuct = 1.5f, // AlphaZero uses ~10/game branching factor
 
                 // self-play
-                SelfPlayEpisodes = 100,
+                SelfPlayEpisodes = 50,
                 SelfPlaySleepCycleChance = 0.2f,
                 SelfPlaySleepNoiseChance = 0.25f,
 
@@ -66,7 +66,6 @@ namespace TixyGameCmd
             torch.set_num_threads(1);
 
             var game = new Tixy(W, H);
-            alphaParam.ExtraComparePlayer = new TixyGreedyPlayer(game);
 
             var skynetCreator = () => new TixySkynet(game, tixyParam);
 

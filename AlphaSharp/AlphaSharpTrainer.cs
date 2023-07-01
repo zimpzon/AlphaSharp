@@ -31,8 +31,6 @@ namespace AlphaSharp
 
         private sealed class EvaluationParam
         {
-            public Mcts MctsOld { get; set; }
-            public Mcts MctsNew { get; set; }
             public ProgressInfo Progress { get; set; }
             public int Round { get; set; }
             public ISkynet OldSkynet { get; set; }
@@ -96,35 +94,42 @@ namespace AlphaSharp
 
                 _param.ProgressCallback(iterationProgress.Update(iter + 1), string.Empty);
 
-                // Self-play episodes
-                var episodeProgress = ProgressInfo.Create(ProgressInfo.Phase.SelfPlay, _param.SelfPlayEpisodes);
-
-                var episodeNumbers = Enumerable.Range(0, _param.SelfPlayEpisodes).ToList();
-                var episodeParam = episodeNumbers.Select(e => new EpisodeParam { Progress = episodeProgress, Mcts = null }).ToList();
-                var consumer = new ThreadedWorker<EpisodeParam, List<TrainingData>>(RunEpisode, episodeParam, 1);
-
-                _param.TextInfoCallback(LogLevel.Info, "");
-                _param.TextInfoCallback(LogLevel.Info, $"Starting {_param.SelfPlayEpisodes} episodes of self-play using {_param.MaxWorkerThreads} worker thread{(_param.MaxWorkerThreads == 1 ? "" : "s")}");
-
-                episodesCompleted = 0;
-                var episodesTrainingData = consumer.Run();
-
-                var newSamples = episodesTrainingData.SelectMany(e => e).ToList();
-                newSamples = DeduplicateTrainingData(newSamples);
-
-                bool bestModelExists = File.Exists(Path.Combine(_param.OutputFolder, _filenameBestSkynet));
-                int samplesToDiscard = !bestModelExists || _trainingSamples.Count == 0 ? 0 : newSamples.Count / 4;
-
-                _param.TextInfoCallback(LogLevel.Info, $"Self-play added {newSamples.Count} new samples of training data, discarding {samplesToDiscard} oldest samples");
-
-                _trainingSamples.AddRange(newSamples);
-                _trainingSamples = _trainingSamples.Skip(samplesToDiscard).ToList();
-
-                if (_trainingSamples.Count > _param.MaxTrainingExamples)
+                if (!_param.OnlyTraining)
                 {
-                    int removeCount = _trainingSamples.Count - _param.MaxTrainingExamples;
-                    _param.TextInfoCallback(LogLevel.MoreInfo, $"Limit of {_param.MaxTrainingExamples} training examples reached, removing {removeCount} oldest samples");
-                    _trainingSamples.RemoveRange(0, removeCount);
+                    // Self-play episodes
+                    var episodeProgress = ProgressInfo.Create(ProgressInfo.Phase.SelfPlay, _param.SelfPlayEpisodes);
+
+                    var episodeNumbers = Enumerable.Range(0, _param.SelfPlayEpisodes).ToList();
+                    var episodeParam = episodeNumbers.Select(e => new EpisodeParam { Progress = episodeProgress, Mcts = null }).ToList();
+                    var consumer = new ThreadedWorker<EpisodeParam, List<TrainingData>>(RunEpisode, episodeParam, 1);
+
+                    _param.TextInfoCallback(LogLevel.Info, "");
+                    _param.TextInfoCallback(LogLevel.Info, $"Starting {_param.SelfPlayEpisodes} episodes of self-play using {_param.MaxWorkerThreads} worker thread{(_param.MaxWorkerThreads == 1 ? "" : "s")}");
+
+                    episodesCompleted = 0;
+                    var episodesTrainingData = consumer.Run();
+
+                    var newSamples = episodesTrainingData.SelectMany(e => e).ToList();
+                    newSamples = DeduplicateTrainingData(newSamples);
+
+                    bool bestModelExists = File.Exists(Path.Combine(_param.OutputFolder, _filenameBestSkynet));
+                    int samplesToDiscard = !bestModelExists || _trainingSamples.Count == 0 ? 0 : newSamples.Count / 4;
+
+                    _param.TextInfoCallback(LogLevel.Info, $"Self-play added {newSamples.Count} new samples of training data, discarding {samplesToDiscard} oldest samples");
+
+                    _trainingSamples.AddRange(newSamples);
+                    _trainingSamples = _trainingSamples.Skip(samplesToDiscard).ToList();
+
+                    if (_trainingSamples.Count > _param.MaxTrainingExamples)
+                    {
+                        int removeCount = _trainingSamples.Count - _param.MaxTrainingExamples;
+                        _param.TextInfoCallback(LogLevel.MoreInfo, $"Limit of {_param.MaxTrainingExamples} training examples reached, removing {removeCount} oldest samples");
+                        _trainingSamples.RemoveRange(0, removeCount);
+                    }
+                }
+                else
+                {
+                    _param.TextInfoCallback(LogLevel.Info, $"--- Skipping self-play and only training");
                 }
 
                 _param.TextInfoCallback(LogLevel.Info, "");
@@ -277,8 +282,8 @@ namespace AlphaSharp
                 return NotUsed;
             }
 
-            var mctsOld = param.MctsOld == null ? new Mcts(_game, param.OldSkynet, _param) : param.MctsOld;
-            var mctsNew = param.MctsNew == null ? new Mcts(_game, _skynet, _param) : param.MctsNew;
+            var mctsOld = new Mcts(_game, param.OldSkynet, _param);
+            var mctsNew = new Mcts(_game, _skynet, _param);
 
             IPlayer mctsPlayerOld = new MctsPlayer("OldModel", firstMoveIsRandom: false, _game, mctsOld);
             //mctsPlayerOld = new RandomPlayer(_game);
@@ -359,15 +364,10 @@ namespace AlphaSharp
             _param.TextInfoCallback(LogLevel.MoreInfo, $"Loading old model from {oldModelPath}");
             oldSkynet.LoadModel(oldModelPath);
 
-            //var mctsOld = new Mcts(_game, oldSkynet, _param);
-            //var mctsNew = new Mcts(_game, _skynet, _param);
-
             var progress = ProgressInfo.Create(ProgressInfo.Phase.Eval, _param.EvaluationRounds);
 
             var countNumbers = Enumerable.Range(0, _param.EvaluationRounds).ToList();
             var evalParam = countNumbers.Select(e => new EvaluationParam {
-                MctsNew = null,
-                MctsOld = null,
                 Round = e,
                 OldSkynet = oldSkynet,
                 Progress = progress
@@ -378,16 +378,6 @@ namespace AlphaSharp
             evalRoundsCompleted = 0;
             consumer.Run();
             string score = $"new: {winNew}, old: {winOld}, draw: {draw}";
-
-            //if (_param.ExtraComparePlayer != null)
-            //{
-            //    for (int i = 0; i < 10; ++i)
-            //    {
-            //        var vs = new OneVsOne(_game, new MctsPlayer(_game, _skynet, _param), _param.ExtraComparePlayer);
-            //        var res = vs.Run();
-            //        Console.WriteLine($"POST Extra compare player: {res}");
-            //    }
-            //}
 
             bool newIsBetter = winNew > winOld;
             if (newIsBetter)
@@ -442,22 +432,6 @@ namespace AlphaSharp
             string oldModelPath = Path.Combine(_param.OutputFolder, _filenamePreTrainingSkynet);
             _param.TextInfoCallback(LogLevel.MoreInfo, $"Saving skynet model before training to {oldModelPath}");
             _skynet.SaveModel(oldModelPath);
-
-            //if (_param.ExtraComparePlayer != null)
-            //{
-            //    for (int i = 0; i < 10; ++i)
-            //    {
-            //        var vs = new OneVsOne(_game, _param.ExtraComparePlayer, new MctsPlayer(_game, _skynet, _param));
-            //        var res = vs.Run();
-            //        Console.WriteLine($"PRE round1 Extra compare player: {res}");
-            //    }
-            //    for (int i = 0; i < 10; ++i)
-            //    {
-            //        var vs = new OneVsOne(_game, new MctsPlayer(_game, _skynet, _param), _param.ExtraComparePlayer);
-            //        var res = vs.Run();
-            //        Console.WriteLine($"PRE round2 Extra compare player: {res}");
-            //    }
-            //}
 
             var trainingProgress = ProgressInfo.Create(ProgressInfo.Phase.Train);
 

@@ -73,7 +73,7 @@ namespace FakeGame
             for (int i = 0; i < state.Length; ++i)
             {
                 sb.Append(state[i]);
-                sb.Append(" ");
+                sb.Append(' ');
             }
             print(sb.ToString());
         }

@@ -92,7 +92,7 @@ namespace AlphaSharp
         private const int NoValidAction = -1;
         private bool _isSleepCycle;
 
-        private ConcurrentDictionary<int, ThreadData> _threadDic = new ConcurrentDictionary<int, ThreadData>();
+        private readonly ConcurrentDictionary<int, ThreadData> _threadDic = new ConcurrentDictionary<int, ThreadData>();
 
         public int NumberOfCachedStates => _cachedStateLookup.Count;
         private readonly Dictionary<string, int> _cachedStateLookup = new();
@@ -128,7 +128,7 @@ namespace AlphaSharp
                 iterations *= 2;
 
             var workList = Enumerable.Range(0, iterations).ToList();
-            var threadedSimulation = new ThreadedWorker<int, int>(ExploreThreadMain, workList, _param.MaxWorkerThreads);
+            var threadedSimulation = new ThreadedWorker<int, int>(ExploreThreadMain, workList, isSelfPlay ? _param.MaxWorkerThreads : Math.Max(1,  _param.MaxWorkerThreads / 2));
             threadedSimulation.Run();
 
             //_param.TextInfoCallback(LogLevel.Info, $"mcts has {_cachedStateLookup.Count} cached states");

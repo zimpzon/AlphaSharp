@@ -25,8 +25,8 @@ namespace TixyGame
         private readonly LogSoftmax _logSoftmax;
         private readonly Tanh _tanh;
 
-        const int NumChannels = 128;
-        const int NumConvBlocks = 3;
+        const int NumChannels = 16;
+        const int NumConvBlocks = 4;
 
         public TixySkynetModelConv(IGame game, int numInputChannels) : base("tixy")
         {
