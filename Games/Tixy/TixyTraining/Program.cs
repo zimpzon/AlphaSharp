@@ -38,7 +38,7 @@ namespace TixyGameCmd
                 MaxTrainingExamples = 50_000,
                 OutputFolder = $"c:\\temp\\zerosharp\\Tixy {W}x{H}",
                 TemperatureThresholdMoves = 20,
-                SelfPlaySimulationIterations = 100,
+                SelfPlaySimulationIterations = 10,
                 EvalSimulationIterations = 50,
                 DirichletNoiseShape = 1.0f,
                 DirichletNoiseScale = 1.0f,
@@ -46,7 +46,7 @@ namespace TixyGameCmd
                 Cpuct = 1.5f, // AlphaZero uses ~10/game branching factor
 
                 // self-play
-                SelfPlayEpisodes = 50,
+                SelfPlayEpisodes = 3,
                 SelfPlaySleepCycleChance = 0.2f,
                 SelfPlaySleepNoiseChance = 0.25f,
 

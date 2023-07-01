@@ -10,7 +10,7 @@ namespace TixyGame
         private readonly IGame _game;
         private readonly int _oneHotEncodedInputSize;
 
-        private readonly TixySkynetModelConv _model;
+        private readonly TixySkynetModelConvCuda _model;
         private readonly TixyParameters _param;
 
         public TixySkynet(IGame game, TixyParameters param)
@@ -19,12 +19,14 @@ namespace TixyGame
             _param = param;
 
             _oneHotEncodedInputSize = _game.W * _game.H * TixyPieces.NumberOfPieces;
-            _model = new TixySkynetModelConv(_game, numInputChannels: TixyPieces.NumberOfPieces);
+            _model = new TixySkynetModelConvCuda(_game, numInputChannels: TixyPieces.NumberOfPieces);
         }
 
         public void LoadModel(string modelPath)
         {
+            _model.SetDevice(DeviceType.CPU);
             _model.load(modelPath);
+            _model.SetDeviceAuto();
         }
 
         public void SaveModel(string modelPath)
@@ -67,6 +69,7 @@ namespace TixyGame
             var optimizer = torch.optim.Adam(_model.parameters(), lr: _param.TrainingLearningRate);
 
             torch.set_num_threads(_param.TrainingMaxWorkerThreads);
+            using var disposeScope = torch.NewDisposeScope();
 
             for (int epoch = 0; epoch < _param.TrainingEpochs; ++epoch)
             {
@@ -87,8 +90,8 @@ namespace TixyGame
                     var desiredVsArray = batch.Select(td => td.ValueForPlayer1).ToArray();
 
                     var oneHotBatchTensor = torch.stack(oneHotArray.Select(a => torch.from_array(a))).reshape(_param.TrainingBatchSize, -1);
-                    var desiredProbsBatchTensor = torch.stack(desiredProbsArray.Select(p => torch.from_array(p))).reshape(_param.TrainingBatchSize, -1);
-                    var desiredVsBatchTensor = torch.from_array(desiredVsArray);
+                    var desiredProbsBatchTensor = torch.stack(desiredProbsArray.Select(p => torch.from_array(p))).reshape(_param.TrainingBatchSize, -1).to(_model.Device);
+                    var desiredVsBatchTensor = torch.from_array(desiredVsArray).to(_model.Device);
 
                     var (logProbs, vt) = _model.forward(oneHotBatchTensor);
 
@@ -113,6 +116,8 @@ namespace TixyGame
         public void Suggest(byte[] state, float[] dstActionsProbs, out float v)
         {
             _model.eval();
+
+            using var disposeScope = torch.NewDisposeScope();
             using var _ = torch.no_grad();
 
             var oneHotEncoded = OneHotEncode(state);
