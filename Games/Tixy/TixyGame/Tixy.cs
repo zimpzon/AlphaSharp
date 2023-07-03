@@ -30,9 +30,10 @@ namespace TixyGame
 
         public void Set(byte[] state, int x, int y, byte value)
         {
-            int idx = y * W + x;
-            if (idx >= 0 && idx < state.Length)
-                state[y * W + x] = value;
+            if (x < 0 || y < 0 || x >= W || y >= H)
+                return;
+
+            state[y * W + x] = value;
         }
 
         public byte Get(byte[] state, int x, int y)

@@ -31,7 +31,10 @@ namespace AlphaSharp
                 => $"NodeIdx: {NodeIdx}, ActionIdx: {ActionIdx}";
         }
 
-        public static long TicksWaited = 0;
+        public static long TicksBlockedAccessNode = 0;
+        public static long TicksBlockedGetOrCreateNode = 0;
+        public static long TicksInference = 0;
+
         public class CachedState
         {
             public CachedState(int actionCount, int idx)
@@ -53,9 +56,9 @@ namespace AlphaSharp
                 SpinLock.Enter(ref lockTaken);
                 if (!lockTaken)
                     throw new Exception("Failed to lock state");
-                long ticks = sw.Elapsed.Ticks;
 
-                Interlocked.Add(ref Mcts.TicksWaited, ticks);
+                long ticks = sw.Elapsed.Ticks;
+                Interlocked.Add(ref TicksBlockedAccessNode, ticks);
             }
 
             public void Unlock()
@@ -99,7 +102,10 @@ namespace AlphaSharp
 
         public Mcts(IGame game, ISkynet skynet, AlphaParameters args)
         {
-            TicksWaited = 0;
+            TicksBlockedAccessNode = 0;
+            TicksBlockedGetOrCreateNode = 0;
+            TicksInference = 0;
+
             _game = game;
             _skynet = skynet;
             _param = args;
@@ -333,9 +339,15 @@ namespace AlphaSharp
         private float ExpandState(CachedState cachedState, ThreadData threadData)
         {
             // get and save suggestions from Skynet, then backtrack to root using suggested v
-            _skynet.Suggest(threadData.CurrentState, threadData.ActionProbsReused, out float v);
-            _game.GetValidActions(threadData.CurrentState, threadData.ValidActionsReused);
 
+            var sw = Stopwatch.StartNew();
+
+            _skynet.Suggest(threadData.CurrentState, threadData.ActionProbsReused, out float v);
+
+            long ticks = sw.Elapsed.Ticks;
+            Interlocked.Add(ref TicksInference, ticks);
+
+            _game.GetValidActions(threadData.CurrentState, threadData.ValidActionsReused);
             Util.FilterProbsByValidActions(threadData.ActionProbsReused, threadData.ValidActionsReused);
 
             //_param.TextInfoCallback(LogLevel.Verbose, $"new state node created, nodeIdx: {cachedState.Idx}, network v: {v}, player: {playerTurn}, moves: {_selectedActions.Count}");
@@ -408,7 +420,11 @@ namespace AlphaSharp
         private CachedState GetOrCreateLockedCachedState(byte[] state, out bool wasCreated)
         {
             bool lockTaken = false;
+
+            var sw = Stopwatch.StartNew();
             _mctsSpinLock.Enter(ref lockTaken);
+            long ticks = sw.Elapsed.Ticks;
+            Interlocked.Add(ref TicksBlockedGetOrCreateNode, ticks);
 
             string key = Convert.ToBase64String(state);
             if (_cachedStateLookup.TryGetValue(key, out int idx))

@@ -13,10 +13,13 @@ namespace TixyGameCmd
                 SelfPlaySimulationIterations = 500,
             };
 
-            var game = new Tixy(5, 5);
+            const int W = 5;
+            const int H = 5;
+
+            var game = new Tixy(W, H);
             var skynet = new TixySkynet(game, new TixyParameters());
 
-            string modelPath = "c:\\temp\\zerosharp\\tixy\\tixy-best.skynet";
+            string modelPath = $"c:\\temp\\zerosharp\\tixy {W}x{H}\\tixy-best.skynet";
             Console.WriteLine($"Loading model at {modelPath}...");
 
             skynet.LoadModel(modelPath);
@@ -24,11 +27,15 @@ namespace TixyGameCmd
             var mcts = new Mcts(game, skynet, args);
 
             var tixyPlayer = new MctsPlayer("", false, game, mcts);
+            var greedy = new TixyGreedyPlayer(game);
             var humanPlayer = new TixyHumanPlayer(game);
 
-            var fight = new OneVsOne(game, humanPlayer, tixyPlayer);
-            var res = fight.Run();
-            Console.WriteLine($"Game over, result: {res}");
+            for (int i = 0; i < 100; i++)
+            {
+                var fight = new OneVsOne(game, greedy, tixyPlayer);
+                var res = fight.Run();
+                Console.WriteLine($"Game over, result: {res}");
+            }
             Console.ReadLine();
         }
 

@@ -167,7 +167,6 @@ namespace AlphaSharp
             int moves = 0;
 
             var startTime = DateTime.UtcNow;
-            long startTicks = Mcts.TicksWaited;
 
             bool isSleepCycle = _param.SelfPlaySleepCycleChance > Random.Shared.NextDouble();
 
@@ -209,13 +208,22 @@ namespace AlphaSharp
             lock (_lock)
             {
                 var runTime = DateTime.UtcNow - startTime;
-                long ticksWaited = Mcts.TicksWaited - startTicks;
-                double msWaited = ticksWaited / 10000.0;
-                double msWaitedPerThread = msWaited / _param.MaxWorkerThreads;
-                double waitRatio = msWaitedPerThread / runTime.TotalMilliseconds;
+
+                double GetRatio(long ticks, double ms)
+                {
+                    double msWaited = ticks/ 10000.0;
+                    double msWaitedPerThread = msWaited / _param.MaxWorkerThreads;
+                    double waitRatio = msWaitedPerThread / runTime.TotalMilliseconds;
+                    return waitRatio;
+                }
 
                 episodesCompleted++;
-                string info = $"mcts cached states: {mcts.NumberOfCachedStates}, thread block: {waitRatio * 100:0.00}% {(isSleepCycle ? "(sleep cycle)" : string.Empty)}";
+
+                string blockTotal = $"{GetRatio(Mcts.TicksBlockedAccessNode + Mcts.TicksBlockedGetOrCreateNode, runTime.TotalMilliseconds) * 100:0.00}";
+                string ratioInference = $"{GetRatio(Mcts.TicksInference, runTime.TotalMilliseconds) * 100:0.00}";
+
+                string waits = $"thread lock wait: {blockTotal}%, inference: {ratioInference}%";
+                string info = $"states visited: {mcts.NumberOfCachedStates}, {waits},  {(isSleepCycle ? "(sleep cycle)" : string.Empty)}";
                 _param.ProgressCallback(param.Progress.Update(episodesCompleted), info);
             }
 
