@@ -6,74 +6,68 @@ namespace FakeGame
 {
     public class FakeGame : IGame
     {
-        public int W => 4;
-        public int H => 1;
+        public int W => 10;
+        public int H => 3;
 
         public string Name => "FakeGame";
-        public int ActionCount => 1;
-        public int StateSize => W * H;
+        public int ActionCount => 4;
+        public int StateSize => 2;
+
+        private GameOver.Status _gameResult = GameOver.Status.GameIsNotOver;
 
         public void GetStartingState(byte[] dstState)
         {
-            var s = new byte[] { 1, 0, 0, 2 };
-            Array.Copy(s, dstState, s.Length);
+            dstState[0] = 0;
+            dstState[1] = (byte)(W - 1);
         }
 
         public GameOver.Status GetGameEnded(byte[] state, int movesMade, bool isSimulation)
-        {
-            if (state.Sum(x => x) == 1)
-                return GameOver.Status.Player1Won;
-            else if (state.Sum(x => x) == 2)
-                return GameOver.Status.Player2Won;
-            else
-                return GameOver.Status.GameIsNotOver;
-        }
+            => _gameResult;
 
         public void GetValidActions(byte[] state, byte[] dstValidActions)
         {
+            // N, E, S, W
+            dstValidActions[0] = 1;
+            dstValidActions[1] = state[0] < W - 1 ? (byte)1 : (byte)0;
+            dstValidActions[2] = 1;
+            dstValidActions[3] = state[0] > 0 ? (byte)1 : (byte)0;
+
             Array.Clear(dstValidActions);
             dstValidActions[0] = 1;
         }
 
         public void ExecutePlayerAction(byte[] state, int action)
         {
-            if (action != 0)
-                throw new ArgumentException($"Invalid action: {action}");
-
-            int pos = 0;
-            for (int i = 0; i < W; i++)
-            {
-                if (state[i] == 1)
-                {
-                    pos = i;
-                    state[i] = 0;
-                    break;
-                }
-                state[i] = 0;
-            }
-
-            state[pos + 1] = 1;
+            if (action == 0 || action == 2)
+                _gameResult = GameOver.Status.Player2Won;
+            else if (action == 1)
+                state[0]++;
+            else if (action == 3)
+                state[0]--;
         }
 
         public void FlipStateToNextPlayer(byte[] state)
         {
-            Array.Reverse(state);
-            for (int i = 0; i < state.Length; ++i)
-            {
-                if (state[i] == 1)
-                    state[i] = 2;
-                else if (state[i] == 2)
-                    state[i] = 1;
-            }
+            byte tmp = state[0];
+            state[0] = state[1];
+            state[1] = tmp;
         }
 
         public void PrintState(byte[] state, Action<string> print)
         {
             var sb = new StringBuilder();
-            for (int i = 0; i < state.Length; ++i)
+            for (int y = 0; y < H; ++y)
             {
-                sb.Append(state[i]);
-                sb.Append(' ');
+                for (int x = 0; x < W; ++x)
+                {
+                    int idx = y * W + x;
+                    if (x == state[0] && y == 1)
+                        sb.Append('1');
+                    else if (x == state[1] && y == 1)
+                        sb.Append('2');
+                    else
+                        sb.Append(state[idx] == 255 ? '*' : ' ');
+                }
             }
             print(sb.ToString());
         }

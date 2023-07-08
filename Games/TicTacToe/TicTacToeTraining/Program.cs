@@ -1,5 +1,6 @@
 ﻿using AlphaSharp;
 using TicTacToeGame;
+using TixyGame;
 using TorchSharp;
 
 namespace TicTacToeTraining
@@ -13,27 +14,35 @@ namespace TicTacToeTraining
                 // global
                 ResumeFromCheckpoint = true,
                 Iterations = 1000,
-                MaxWorkerThreads = 1, // diminishing returns, 4 threads seems optimal'ish on home pc with 12/24 cores
+                MaxWorkerThreads = 4, // diminishing returns, 4 threads seems optimal'ish on home pc with 12/24 cores
                 OutputFolder = "c:\\temp\\zerosharp\\TicTacToe",
-                SelfPlaySimulationIterations = 100,
-                TemperatureThresholdMoves = 4,
-                SelfPlayEpisodes = 40,
-
-                EvaluationRounds = 10,
-            };
-
-            var TicTacToeParam = new TicTacToeParameters
-            {
-                TrainingEpochs = 10,
-                TrainingBatchSize = 16,
-                TrainingLearningRate = 0.001f,
+                SelfPlaySimulationIterations = 50,
+                TemperatureThresholdMoves = 10,
+                EvalSimulationIterations = 1,
+                SelfPlayEpisodes = 50,
+                EvaluationRounds = 50,
             };
 
             // setting threads to 1 seems to be rather important. more than 1 *always* slows down torch in my testing.
             torch.set_num_threads(1);
 
             var game = new TicTacToe();
-            var skynetCreator = () => new TicTacToeSkynet(game, TicTacToeParam);
+
+            var param = new GenericSkynetParam
+            {
+                NumberOfPieces = 2,
+                TrainingMaxWorkerThreads = 4,
+                TrainingEpochs = 50,
+            };
+
+            var pieceToLayer = new Dictionary<byte, int>
+            {
+                [1] = 0,
+                [2] = 1,
+                [255] = 2
+            };
+
+            var skynetCreator = () => new GenericSkynet(game, param, pieceToLayer);
             var trainer = new AlphaSharpTrainer(game, skynetCreator, alphaParam);
             trainer.Run();
         }

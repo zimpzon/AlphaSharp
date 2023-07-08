@@ -4,6 +4,8 @@ namespace TicTacToeGame
 {
     public class TicTacToeHumanPlayer : IPlayer
     {
+        public string Name => "Human";
+
         private readonly IGame _game;
 
         public TicTacToeHumanPlayer(IGame game)
@@ -13,7 +15,6 @@ namespace TicTacToeGame
 
         public int PickAction(byte[] state, int _)
         {
-            _game.PrintState(state, Console.WriteLine);
             Console.WriteLine();
 
             byte[] validActions = new byte[_game.ActionCount];

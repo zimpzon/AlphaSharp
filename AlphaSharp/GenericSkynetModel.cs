@@ -1,14 +1,12 @@
 ﻿using AlphaSharp.Interfaces;
+using System;
 using TorchSharp;
 using TorchSharp.Modules;
 
 namespace TixyGame
 {
-    public class TixySkynetModelOld5x5 : torch.nn.Module<torch.Tensor, (torch.Tensor, torch.Tensor)>
+    public class GenericSkynetModel : torch.nn.Module<torch.Tensor, (torch.Tensor, torch.Tensor)>
     {
-        private readonly IGame _game;
-        private readonly int _numInputChannels;
-
         private readonly Linear _fc1;
         private readonly BatchNorm1d _batch1;
         private readonly Dropout _dropout1;
@@ -37,11 +35,8 @@ namespace TixyGame
             SetDevice(deviceType);
         }
 
-        public TixySkynetModelOld5x5(IGame game, int numInputChannels, bool forceCpu = false) : base("tixy")
+        public GenericSkynetModel(IGame game, int oneHotSize, bool forceCpu = false) : base("tixy")
         {
-            _game = game;
-            _numInputChannels = numInputChannels;
-
             if (forceCpu)
                 SetDevice(DeviceType.CPU);
             else
@@ -49,22 +44,25 @@ namespace TixyGame
 
             Console.WriteLine($"--- using torch device: {Device}");
 
-            _fc1 = torch.nn.Linear(numInputChannels * _game.W * _game.H, 1024);
-            _batch1 = torch.nn.BatchNorm1d(1024);
+            int fc1Size = oneHotSize * 5;
+            int fc2Size = fc1Size / 2;
+
+            _fc1 = torch.nn.Linear(oneHotSize, fc1Size);
+            _batch1 = torch.nn.BatchNorm1d(fc1Size);
             _dropout1 = torch.nn.Dropout(0.3);
             _fc1.to(Device);
             _batch1.to(Device);
             _dropout1.to(Device);
 
-            _fc2 = torch.nn.Linear(1024, 512);
-            _batch2 = torch.nn.BatchNorm1d(512);
+            _fc2 = torch.nn.Linear(fc1Size, fc2Size);
+            _batch2 = torch.nn.BatchNorm1d(fc2Size);
             _dropout2 = torch.nn.Dropout(0.3);
             _fc2.to(Device);
             _batch2.to(Device);
             _dropout2.to(Device);
 
-            _fc_probs = torch.nn.Linear(512, game.ActionCount);
-            _fc_v = torch.nn.Linear(512, 1);
+            _fc_probs = torch.nn.Linear(fc2Size, game.ActionCount);
+            _fc_v = torch.nn.Linear(fc2Size, 1);
 
             _logSoftmax = torch.nn.LogSoftmax(1);
             _tanh = torch.nn.Tanh();
@@ -79,7 +77,6 @@ namespace TixyGame
 
         public override (torch.Tensor, torch.Tensor) forward(torch.Tensor x)
         {
-            // Move input tensor to the same device as the model
             x = x.to(Device);
 
             x = _fc1.forward(x);

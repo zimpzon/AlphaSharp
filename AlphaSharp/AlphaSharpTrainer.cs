@@ -110,6 +110,7 @@ namespace AlphaSharp
                     var episodesTrainingData = consumer.Run();
 
                     var newSamples = episodesTrainingData.SelectMany(e => e).ToList();
+                    if (_param.DeduplicateTrainingData)
                     newSamples = DeduplicateTrainingData(newSamples);
 
                     bool bestModelExists = File.Exists(Path.Combine(_param.OutputFolder, _filenameBestSkynet));

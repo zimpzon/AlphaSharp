@@ -10,16 +10,8 @@ namespace TixyGameCmd
         {
             // DEEPMIND TWEAKS: https://lczero.org/blog/2018/12/alphazero-paper-and-lc0-v0191/
 
-            // reintroduce greedy!! (optional)
-
-            // discard parts of tree no longer needed. should allow much deeper search.
-
             // TRAINING ALGO: when game is won, track back a number of states (random around half of avg count?) and start from there, NOT picking the same action again.
             // Forwards and backwards meets at the middle'ish? Better endgame? I Assume endgame can be weak due to not always reaching it?
-
-            // sleep cycle: decay randomness?
-
-            // batch inference: fixed batch buffers, no matter if filled or not.
 
             const int W = 5;
             const int H = 5;
@@ -29,30 +21,32 @@ namespace TixyGameCmd
                 // global
                 ResumeFromCheckpoint = true,
                 Iterations = 1000,
-                MaxWorkerThreads = 8,
+                MaxWorkerThreads = 6,
                 MaxTrainingExamples = 50_000,
                 OutputFolder = $"c:\\temp\\zerosharp\\Tixy {W}x{H}",
-                TemperatureThresholdMoves = 20,
-                SelfPlaySimulationIterations = 500,
-                EvalSimulationIterations = 100,
+                TemperatureThresholdMoves = 100,
+                SelfPlaySimulationIterations = 100,
+                EvalSimulationIterations = 50,
                 DirichletNoiseShape = 1.0f,
                 DirichletNoiseScale = 1.0f,
                 MaxLogLevel = LogLevel.Info,
-                Cpuct = 1.5f, // AlphaZero uses ~10/game branching factor
+                Cpuct = 4.0f, // AlphaZero uses ~10/game branching factor
 
                 // self-play
-                SelfPlayEpisodes = 200,
-                SelfPlaySleepCycleChance = 0.2f,
-                SelfPlaySleepNoiseChance = 0.25f,
+                SelfPlayEpisodes = 30,
+                SelfPlaySleepCycleChance = 0.25f,
+                SelfPlaySleepNoiseChance = 0.15f,
+                DeduplicateTrainingData = false,
 
                 // evaluation
-                EvaluationRounds = 50,
+                EvaluationRounds = 30,
             };
 
             var tixyParam = new TixyParameters
             {
-                TrainingEpochs = 15,
-                TrainingBatchSize = 32,
+                TrainingEpochs = 10,
+                TrainingBatchSize = 64,
+                TrainingBatchesPerEpoch = 1000,
                 TrainingLearningRate = 0.001f,
                 TrainingMaxWorkerThreads = 8,
             };

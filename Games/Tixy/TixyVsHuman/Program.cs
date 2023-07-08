@@ -32,7 +32,7 @@ namespace TixyGameCmd
 
             for (int i = 0; i < 100; i++)
             {
-                var fight = new OneVsOne(game, greedy, tixyPlayer);
+                var fight = new OneVsOne(game, humanPlayer, tixyPlayer);
                 var res = fight.Run();
                 Console.WriteLine($"Game over, result: {res}");
             }

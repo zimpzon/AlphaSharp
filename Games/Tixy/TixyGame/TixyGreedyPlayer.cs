@@ -4,6 +4,8 @@ namespace TixyGame
 {
     public class TixyGreedyPlayer : IPlayer
     {
+        public string Name => "TixyGreedy";
+
         private readonly IGame _game;
 
         public TixyGreedyPlayer(IGame game)

@@ -1,4 +1,5 @@
 ﻿using AlphaSharp;
+using TixyGame;
 
 namespace FakeGame
 {
@@ -19,6 +20,22 @@ namespace FakeGame
             };
 
             var game = new FakeGame();
+
+            var param = new GenericSkynetParam
+            {
+                NumberOfPieces = 2,
+                TrainingMaxWorkerThreads = 1
+            };
+            var pieceToLayer = new Dictionary<byte, int>
+
+            {
+                [1] = 0,
+                [2] = 1,
+                [255] = 2
+            };
+
+
+            var skynetCreator = () => new GenericSkynet(game, param, pieceToLayer);
 
             var trainer = new AlphaSharpTrainer(game, () => new FakeGameSkynet(game), args);
             try

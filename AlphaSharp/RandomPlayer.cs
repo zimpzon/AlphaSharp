@@ -4,6 +4,8 @@ namespace AlphaSharp
 {
     public class RandomPlayer : IPlayer
     {
+        public string Name => "Random";
+
         private readonly IGame _game;
 
         public RandomPlayer(IGame game)

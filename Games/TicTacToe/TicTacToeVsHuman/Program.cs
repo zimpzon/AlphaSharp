@@ -1,5 +1,6 @@
 ﻿using AlphaSharp;
 using TicTacToeGame;
+using TixyGame;
 
 namespace TicTacToeVsHuman
 {
@@ -13,10 +14,24 @@ namespace TicTacToeVsHuman
                 SelfPlaySimulationIterations = 200,
                 MaxLogLevel = LogLevel.Info,
                 DirichletNoiseScale = 0,
+                EvalSimulationIterations = 1,
             };
 
             var game = new TicTacToe();
-            var skynet = new TicTacToeSkynet(game, new TicTacToeParameters());
+
+            var param = new GenericSkynetParam
+            {
+                NumberOfPieces = 2,
+                TrainingMaxWorkerThreads = 1
+            };
+
+            var pieceToLayer = new Dictionary<byte, int>
+            {
+                [1] = 0,
+                [2] = 1,
+            };
+
+            var skynet = new GenericSkynet(game, param, pieceToLayer);
 
             string modelPath = "c:\\temp\\zerosharp\\TicTacToe\\tic-tac-toe-best.skynet";
             Console.WriteLine($"Loading model at {modelPath}...");
@@ -27,10 +42,9 @@ namespace TicTacToeVsHuman
             var ticTacToePlayer = new MctsPlayer("ai", false, game, mcts);
             var humanPlayer = new TicTacToeHumanPlayer(game);
 
-            var fight = new OneVsOne(game, ticTacToePlayer, humanPlayer);
+            var fight = new OneVsOne(game, ticTacToePlayer, humanPlayer, verbose: true);
             var res = fight.Run();
-            Console.WriteLine($"Game over, result: {res}\n");
-            game.PrintState(fight.State, Console.WriteLine);
+            Console.WriteLine($"\n----- Game over, result: {res} ------\n");
         }
 
         static void Main(string[] _)

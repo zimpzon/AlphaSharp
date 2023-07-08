@@ -9,12 +9,14 @@ namespace AlphaSharp
         private readonly IPlayer _player1;
         private readonly IPlayer _player2;
         public byte[] State { get; private set; }
+        private readonly bool _verbose;
 
-        public OneVsOne(IGame game, IPlayer player1, IPlayer player2)
+        public OneVsOne(IGame game, IPlayer player1, IPlayer player2, bool verbose = false)
         {
             _game = game;
             _player1 = player1;
             _player2 = player2;
+            _verbose = verbose;
         }
 
         public GameOver.Status Run()
@@ -43,21 +45,25 @@ namespace AlphaSharp
 
                 //Console.WriteLine($"before move ({playerTurn}) :");
                 //if (playerTurn == -1)
-                //    _game.FlipStateToNextPlayer(state);
-                //_game.PrintState(state, Console.WriteLine);
+                //    _game.FlipStateToNextPlayer(State);
+                //_game.PrintState(State, Console.WriteLine);
                 //if (playerTurn == -1)
-                //    _game.FlipStateToNextPlayer(state);
-                //_game.PrintDisplayTextForAction(selectedAction, Console.WriteLine);
+                //    _game.FlipStateToNextPlayer(State);
 
                 _game.ExecutePlayerAction(State, selectedAction);
 
-                //if (playerTurn == -1)
-                //    _game.FlipStateToNextPlayer(state);
+                if (_verbose)
+                {
+                    Console.WriteLine($"\n{currentPlayer.Name} move: {selectedAction + 1}\n");
 
-                //Console.WriteLine($"after move ({playerTurn}) :");
-                //_game.PrintState(state, Console.WriteLine);
-                //if (playerTurn == -1)
-                //    _game.FlipStateToNextPlayer(state);
+                    if (playerTurn == -1)
+                        _game.FlipStateToNextPlayer(State);
+
+                    _game.PrintState(State, Console.WriteLine);
+
+                    if (playerTurn == -1)
+                        _game.FlipStateToNextPlayer(State);
+                }
 
                 moves++;
 

@@ -11,7 +11,7 @@ namespace TixyGame
         private readonly int _oneHotEncodedInputSize;
         private readonly bool _forceCpu;
 
-        private readonly TixySkynetModelConvCuda _model;
+        private readonly TixySkynetModelOld5x5 _model;
         private readonly TixyParameters _param;
 
         public TixySkynet(IGame game, TixyParameters param)
@@ -20,7 +20,7 @@ namespace TixyGame
             _param = param;
 
             _oneHotEncodedInputSize = _game.W * _game.H * TixyPieces.NumberOfPieces;
-            _model = new TixySkynetModelConvCuda(_game, numInputChannels: TixyPieces.NumberOfPieces, forceCpu: false);
+            _model = new TixySkynetModelOld5x5(_game, numInputChannels: TixyPieces.NumberOfPieces, forceCpu: false);
         }
 
         public void LoadModel(string modelPath)
@@ -77,13 +77,16 @@ namespace TixyGame
                 using var disposeScope = torch.NewDisposeScope();
                 _model.train();
 
-                int batchCount = trainingData.Count / _param.TrainingBatchSize;
+                AlphaUtil.Shuffle(trainingData);
+
+                int batchCount = Math.Min(trainingData.Count / _param.TrainingBatchSize, _param.TrainingBatchesPerEpoch);
 
                 float batchLossV = 0;
                 float batchLossProbs = 0;
 
                 for (int b = 0; b < batchCount; ++b)
                 {
+                    // reduce overfitting by not training on all data every epoch, but instead randomly selecting a subset
                     var batchIndices = Enumerable.Range(b * _param.TrainingBatchSize, _param.TrainingBatchSize).ToList();
                     var batch = batchIndices.Select(i => trainingData[i]);
 
@@ -123,15 +126,6 @@ namespace TixyGame
         public void Suggest(byte[] state, float[] dstActionsProbs, out float v)
         {
             _model.eval();
-            // list of states and list of dstActionProbs. one of each for each waiting thread.
-
-            // input : states becomes a tensor of shape (numWaitingThreads/batchsize, _oneHotEncodedInputSize)
-            // output: dstActionProbs becomes a tensor of shape (numWaitingThreads/batchsize, _game.ActionCount)
-            // can thread supply a buffer for reuse well. TRY! without.
-            // could we do something smart with threads that wait for batch completion? if work-stealing we need
-            // to leave the "trail" behind so any thread can take over. when a thread is about to exit it looks
-            // for work to steal, but only once or we might get a loop. might need two batch queues, one for piling
-            // up and one for stealing after batchs is processed.
 
             using var disposeScope = torch.NewDisposeScope();
             using var _ = torch.no_grad();

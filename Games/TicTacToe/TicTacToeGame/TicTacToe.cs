@@ -43,6 +43,9 @@ namespace TicTacToeGame
         public void ExecutePlayerAction(byte[] state, int action)
         {
             // Game is always played from the perspective of X.
+            if (state[action] != 0)
+                throw new ArgumentException($"Invalid action, cell {action + 1} is already occopied");
+            
             state[action] = PieceX;
         }
 

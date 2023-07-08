@@ -5,6 +5,8 @@ namespace TixyGame
 {
     public partial class TixyHumanPlayer : IPlayer
     {
+        public string Name => "Human";
+
         private readonly IGame _game;
         private readonly Dictionary<string, int> colMapping = new ()
         {

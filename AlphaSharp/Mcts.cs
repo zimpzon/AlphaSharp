@@ -117,7 +117,7 @@ namespace AlphaSharp
         public float[] GetActionPolicyForSelfPlay(byte[] state, int playerTurn, bool isSleepCycle, float temperature)
             => GetActionPolicyInternal(state, playerTurn, isSelfPlay: true, isSleepCycle, temperature);
 
-        private float[] GetActionPolicyInternal(byte[] state, int playerTurn, bool isSelfPlay, bool isSleepCycle, float temperature = 0.0f)
+        private float[] GetActionPolicyInternal(byte[] state, int playerTurn, bool isSelfPlay, bool isSleepCycle, float temperature = 1.0f)
         {
             _isSleepCycle = isSleepCycle;
 
@@ -147,25 +147,16 @@ namespace AlphaSharp
 
             var policy = new float[cachedState.Actions.Length];
 
-            if (isSelfPlay)
+            var threadData = GetThreadDataForCurrentThread();
+            for (int i = 0; i < threadData.ActionsVisitCountReused.Length; i++)
             {
-                var threadData = GetThreadDataForCurrentThread();
-                for (int i = 0; i < threadData.ActionsVisitCountReused.Length; i++)
-                {
-                    policy[i] = cachedState.Actions[i].VisitCount;
-                }
-
-                Util.Softmax(policy, temperature);
-
-                return policy;
+                // Use Q if no visitcounts - if we didn't traverse tree we only have Q values
+                policy[i] = cachedState.Actions[i].VisitCount != 0 ? cachedState.Actions[i].VisitCount : cachedState.Actions[i].ActionProbability + 0.0001f;
             }
-            else
-            {
-                int selectedAction = ActionUtil.PickActionByHighestVisitCount(cachedState.Actions);
-                policy[selectedAction] = 1.0f;
 
-                return policy;
-            }
+            Util.Softmax(policy, temperature);
+
+            return policy;
         }
 
         private ThreadData GetThreadDataForCurrentThread()
