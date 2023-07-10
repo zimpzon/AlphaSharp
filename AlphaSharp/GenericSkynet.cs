@@ -85,7 +85,14 @@ namespace TixyGame
 
                 AlphaUtil.Shuffle(trainingData);
 
+                int batchSize = _param.TrainingBatchSize;
                 int batchCount = Math.Min(trainingData.Count / _param.TrainingBatchSize, _param.TrainingBatchesPerEpoch);
+
+                if (batchCount == 0)
+                {
+                    batchCount = 1;
+                    batchSize = trainingData.Count;
+                }
 
                 float batchLossV = 0;
                 float batchLossProbs = 0;
@@ -93,15 +100,15 @@ namespace TixyGame
                 for (int b = 0; b < batchCount; ++b)
                 {
                     // reduce overfitting by not training on all data every epoch, but instead randomly selecting a subset
-                    var batchIndices = Enumerable.Range(b * _param.TrainingBatchSize, _param.TrainingBatchSize).ToList();
+                    var batchIndices = Enumerable.Range(b * batchSize, batchSize).ToList();
                     var batch = batchIndices.Select(i => trainingData[i]);
 
                     var oneHotArray = batch.Select(td => OneHotEncode(td.State)).ToArray();
                     var desiredProbsArray = batch.Select(td => td.ActionProbs).ToArray();
                     var desiredVsArray = batch.Select(td => td.ValueForPlayer1).ToArray();
 
-                    var oneHotBatchTensor = torch.stack(oneHotArray.Select(a => torch.from_array(a))).reshape(_param.TrainingBatchSize, -1);
-                    var desiredProbsBatchTensor = torch.stack(desiredProbsArray.Select(p => torch.from_array(p))).reshape(_param.TrainingBatchSize, -1).to(_model.Device);
+                    var oneHotBatchTensor = torch.stack(oneHotArray.Select(a => torch.from_array(a))).reshape(batchSize, -1);
+                    var desiredProbsBatchTensor = torch.stack(desiredProbsArray.Select(p => torch.from_array(p))).reshape(batchSize, -1).to(_model.Device);
                     var desiredVsBatchTensor = torch.from_array(desiredVsArray).to(_model.Device);
 
                     var (logProbs, vt) = _model.forward(oneHotBatchTensor);

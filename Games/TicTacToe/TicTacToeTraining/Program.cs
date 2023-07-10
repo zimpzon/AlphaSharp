@@ -19,7 +19,7 @@ namespace TicTacToeTraining
                 SelfPlaySimulationIterations = 50,
                 TemperatureThresholdMoves = 10,
                 EvalSimulationIterations = 1,
-                SelfPlayEpisodes = 50,
+                SelfPlayEpisodes = 1,
                 EvaluationRounds = 50,
             };
 
@@ -32,7 +32,7 @@ namespace TicTacToeTraining
             {
                 NumberOfPieces = 2,
                 TrainingMaxWorkerThreads = 4,
-                TrainingEpochs = 50,
+                TrainingEpochs = 10000,
             };
 
             var pieceToLayer = new Dictionary<byte, int>
