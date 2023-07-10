@@ -16,11 +16,12 @@ namespace TicTacToeTraining
                 Iterations = 1000,
                 MaxWorkerThreads = 4, // diminishing returns, 4 threads seems optimal'ish on home pc with 12/24 cores
                 OutputFolder = "c:\\temp\\zerosharp\\TicTacToe",
-                SelfPlaySimulationIterations = 50,
+                SelfPlaySimulationIterations = 100,
                 TemperatureThresholdMoves = 10,
-                EvalSimulationIterations = 1,
-                SelfPlayEpisodes = 1,
+                EvalSimulationIterations = 20,
+                SelfPlayEpisodes = 50,
                 EvaluationRounds = 50,
+                SelfPlaySleepCycleChance = 0,
             };
 
             // setting threads to 1 seems to be rather important. more than 1 *always* slows down torch in my testing.
@@ -32,14 +33,13 @@ namespace TicTacToeTraining
             {
                 NumberOfPieces = 2,
                 TrainingMaxWorkerThreads = 4,
-                TrainingEpochs = 10000,
+                TrainingEpochs = 20,
             };
 
             var pieceToLayer = new Dictionary<byte, int>
             {
                 [1] = 0,
                 [2] = 1,
-                [255] = 2
             };
 
             var skynetCreator = () => new GenericSkynet(game, param, pieceToLayer);

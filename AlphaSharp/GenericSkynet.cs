@@ -62,8 +62,7 @@ namespace TixyGame
 
         private static torch.Tensor LossProbs(torch.Tensor targets, torch.Tensor outputs)
         {
-            // add a tiny amount to targets to avoid multiplying by zero
-            return -((targets + 0.00001f) * outputs).sum() / targets.shape[0];
+            return -(targets * outputs).sum() / targets.shape[0];
         }
 
         private static torch.Tensor LossV(torch.Tensor targets, torch.Tensor outputs)

@@ -110,8 +110,6 @@ namespace AlphaSharp
                     var episodesTrainingData = consumer.Run();
 
                     var newSamples = episodesTrainingData.SelectMany(e => e).ToList();
-                    if (_param.DeduplicateTrainingData)
-                    newSamples = DeduplicateTrainingData(newSamples);
 
                     bool bestModelExists = File.Exists(Path.Combine(_param.OutputFolder, _filenameBestSkynet));
                     int samplesToDiscard = !bestModelExists || _trainingSamples.Count == 0 ? 0 : newSamples.Count / 4;
@@ -204,7 +202,10 @@ namespace AlphaSharp
             value *= currentPlayer;
 
             for (int i = 0; i < trainingData.Count; i++)
-                trainingData[i].ValueForPlayer1 *= value;
+            {
+                var td = trainingData[i];
+                td.ValueForPlayer1 *= value;
+            }
 
             lock (_lock)
             {
@@ -229,44 +230,6 @@ namespace AlphaSharp
             }
 
             return trainingData;
-        }
-
-        private List<TrainingData> DeduplicateTrainingData(List<TrainingData> trainingData)
-        {
-            var lookup = new Dictionary<string, List<TrainingData>>();
-            foreach(var d in trainingData)
-            {
-                string key = Convert.ToBase64String(d.State);
-                if (!lookup.ContainsKey(key))
-                    lookup[key] = new List<TrainingData>();
-
-                lookup[key].Add(d);
-            }
-
-            int totalRemoved = 0;
-            var newList = new List<TrainingData>();
-            foreach(var pair in lookup)
-            {
-                if (pair.Value.Count == 1)
-                {
-                    newList.Add(pair.Value[0]);
-                    continue;
-                }
-
-                // This state has duplicates
-                float sumValue = 0;
-                foreach(var d in pair.Value)
-                    sumValue += d.ValueForPlayer1;
-
-                float avg = sumValue / pair.Value.Count;
-                newList.Add(new TrainingData(pair.Value[0].State, pair.Value[0].ActionProbs, avg));
-
-                totalRemoved += pair.Value.Count - 1;
-            }
-
-            _param.TextInfoCallback(LogLevel.Info, $"state deduplication removed {totalRemoved} states");
-
-            return newList;
         }
 
         long winNew = 0;
@@ -313,8 +276,8 @@ namespace AlphaSharp
             }
             else if (_param.EvaluationPlayers == EvaluationStyle.AlternatingModels)
             {
-                player1 = param.Round % 2 == 0 ? mctsPlayerNew : mctsPlayerOld;
-                player2 = param.Round % 2 == 0 ? mctsPlayerOld : mctsPlayerNew;
+                player1 = param.Round >= _param.EvaluationRounds / 2 ? mctsPlayerNew : mctsPlayerOld;
+                player2 = param.Round >= _param.EvaluationRounds / 2 ? mctsPlayerOld : mctsPlayerNew;
             }
 
             if (Interlocked.Read(ref stoppedEarly) > 0)
@@ -352,8 +315,9 @@ namespace AlphaSharp
             lock (_lock)
             {
                 evalRoundsCompleted++;
-
-                string additionalInfo = $"Round done ({resultStr}), new model: {winNew}, old model: {winOld}, draw: {draw}";
+                string additionalInfo = player1 == mctsPlayerNew ?
+                    $"Round done ({resultStr}), NEW model: {winNew}, old model: {winOld}, draw: {draw}" :
+                    $"Round done ({resultStr}), OLD model: {winOld}, new model: {winNew}, draw: {draw}";
                 _param.ProgressCallback(param.Progress.Update(evalRoundsCompleted), additionalInfo);
             }
 
