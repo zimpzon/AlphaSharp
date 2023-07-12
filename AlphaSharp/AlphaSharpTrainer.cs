@@ -112,7 +112,7 @@ namespace AlphaSharp
                     var newSamples = episodesTrainingData.SelectMany(e => e).ToList();
 
                     bool bestModelExists = File.Exists(Path.Combine(_param.OutputFolder, _filenameBestSkynet));
-                    int samplesToDiscard = !bestModelExists || _trainingSamples.Count == 0 ? 0 : newSamples.Count / 4;
+                    int samplesToDiscard = 0;// !bestModelExists || _trainingSamples.Count == 0 ? 0 : newSamples.Count / 4;
 
                     _param.TextInfoCallback(LogLevel.Info, $"Self-play added {newSamples.Count} new samples of training data, discarding {samplesToDiscard} oldest samples");
 
@@ -166,7 +166,6 @@ namespace AlphaSharp
             int moves = 0;
 
             var startTime = DateTime.UtcNow;
-
             bool isSleepCycle = _param.SelfPlaySleepCycleChance > Random.Shared.NextDouble();
 
             while (true)
@@ -179,12 +178,11 @@ namespace AlphaSharp
                 Util.FilterProbsByValidActions(probs, validActions);
                 Util.Normalize(probs);
 
-                trainingData.Add(new TrainingData(state, probs, currentPlayer));
-
                 int selectedAction = Util.WeightedChoice(rnd, probs);
+                trainingData.Add(new TrainingData(state, probs, currentPlayer, selectedAction));
+
                 _game.ExecutePlayerAction(state, selectedAction);
                 moves++;
-
 
                 gameResult = _game.GetGameEnded(state, moves, isSimulation: false);
                 if (gameResult != GameOver.Status.GameIsNotOver)
@@ -198,7 +196,6 @@ namespace AlphaSharp
 
             // moves are always done by player1 so invert result if current player is actually player2
             float value = GameOver.ValueForPlayer1(gameResult);
-
             value *= currentPlayer;
 
             for (int i = 0; i < trainingData.Count; i++)
@@ -225,7 +222,7 @@ namespace AlphaSharp
                 string ratioInference = $"{GetRatio(Mcts.TicksInference, runTime.TotalMilliseconds) * 100:0.00}";
 
                 string waits = $"thread lock wait: {blockTotal}%, inference: {ratioInference}%";
-                string info = $"states visited: {mcts.NumberOfCachedStates}, {waits},  {(isSleepCycle ? "(sleep cycle)" : string.Empty)}";
+                string info = $"states visited: {mcts.NumberOfCachedStates}, {waits} {(isSleepCycle ? "(dream cycle)" : string.Empty)}";
                 _param.ProgressCallback(param.Progress.Update(episodesCompleted), info);
             }
 
@@ -283,7 +280,7 @@ namespace AlphaSharp
             if (Interlocked.Read(ref stoppedEarly) > 0)
                 return NotUsed;
 
-            var oneVsOne = new OneVsOne(_game, player1, player2);
+            var oneVsOne = new OneVsOne(_game, player1, player2, verbose: false);
             var gameResult = oneVsOne.Run();
 
             if (Interlocked.Read(ref stoppedEarly) > 0)

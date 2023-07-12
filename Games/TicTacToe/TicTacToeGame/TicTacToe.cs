@@ -61,11 +61,6 @@ namespace TicTacToeGame
 
         public GameOver.Status GetGameEnded(byte[] state, int movesMade, bool isSimulation)
         {
-            // could be optimized to return draw when it is clear no winner can be found
-            int cellsFree = state.Count(b => b == 0);
-            if (cellsFree == 0)
-                return GameOver.Status.Draw;
-
             for (int l = 0; l < WinningLines.Count; l++)
             {
                 var line = WinningLines[l];
@@ -74,6 +69,11 @@ namespace TicTacToeGame
                 if (lineHasThreeInARow)
                     return state[line[0]] == PieceX ? GameOver.Status.Player1Won : GameOver.Status.Player2Won;
             }
+
+            // could be optimized to return draw when it is clear no winner can be found
+            int cellsFree = state.Count(b => b == 0);
+            if (cellsFree == 0)
+                return GameOver.Status.Draw;
 
             return GameOver.Status.GameIsNotOver;
         }

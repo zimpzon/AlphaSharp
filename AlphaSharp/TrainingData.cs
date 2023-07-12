@@ -7,13 +7,14 @@ namespace AlphaSharp
         public byte[] State { get; set; }
         public float[] ActionProbs { get; set; }
         public float ValueForPlayer1 { get; set; }
+        public int SelectedAction { get; set; }
 
         public override string ToString()
             => $"ValueForCurrentPlayer: {ValueForPlayer1}";
 
         public TrainingData() { }
 
-        public TrainingData(byte[] state, float[] actionProbs, float player1Score)
+        public TrainingData(byte[] state, float[] actionProbs, float player1Score, int selectedAction)
         {
             State = new byte[state.Length];
             Array.Copy(state, State, state.Length);
@@ -22,6 +23,7 @@ namespace AlphaSharp
             Array.Copy(actionProbs, ActionProbs, actionProbs.Length);
 
             ValueForPlayer1 = player1Score;
+            SelectedAction = selectedAction;
         }
     }
 }

@@ -100,6 +100,12 @@ namespace AlphaSharp
                 probs[i] *= validActions[i];
         }
 
+        public static void Add(float[] values, float value)
+        {
+            for (int i = 0; i < values.Length; i++)
+                values[i] += value;
+        }
+
         public static int CountNonZero<T>(T[] arr) where T : INumber<T>
             => arr.Count(v => !T.IsZero(v));
 

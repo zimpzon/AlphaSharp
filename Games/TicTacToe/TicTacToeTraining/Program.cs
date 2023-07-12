@@ -14,14 +14,18 @@ namespace TicTacToeTraining
                 // global
                 ResumeFromCheckpoint = true,
                 Iterations = 1000,
-                MaxWorkerThreads = 4, // diminishing returns, 4 threads seems optimal'ish on home pc with 12/24 cores
+                MaxWorkerThreads = 1, // diminishing returns, 4 threads seems optimal'ish on home pc with 12/24 cores
                 OutputFolder = "c:\\temp\\zerosharp\\TicTacToe",
-                SelfPlaySimulationIterations = 100,
+                SelfPlaySimulationIterations = 50,
                 TemperatureThresholdMoves = 10,
-                EvalSimulationIterations = 20,
-                SelfPlayEpisodes = 50,
-                EvaluationRounds = 50,
-                SelfPlaySleepCycleChance = 0,
+                EvalSimulationIterations = 50,
+                SelfPlayEpisodes = 30,
+                EvaluationRounds = 30,
+                SelfPlaySleepCycleChance = 0.3f,
+                SelfPlaySleepNoiseChance = 0.5f,
+                Cpuct = 1.0f,
+                DirichletNoiseScale = 0.0f,
+                DirichletNoiseShape = 1.0f,
             };
 
             // setting threads to 1 seems to be rather important. more than 1 *always* slows down torch in my testing.
@@ -33,7 +37,7 @@ namespace TicTacToeTraining
             {
                 NumberOfPieces = 2,
                 TrainingMaxWorkerThreads = 4,
-                TrainingEpochs = 20,
+                TrainingEpochs = 10,
             };
 
             var pieceToLayer = new Dictionary<byte, int>

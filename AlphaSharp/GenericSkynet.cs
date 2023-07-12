@@ -72,6 +72,19 @@ namespace TixyGame
 
         public void Train(List<TrainingData> trainingData, TrainingProgressCallback progressCallback)
         {
+            var z = trainingData.Where(td => td.State.Select(b => (int)b).Sum() == 0);
+            var groups = z.GroupBy(td => td.SelectedAction, l => l);
+            foreach (var g in groups)
+            {
+                Console.WriteLine($"action: {g.Key} ({g.Count()})");
+            }
+
+            for (int i = 0; i < trainingData.Count; i++)
+            {
+                var td = trainingData[i];
+                var n = td.State.Select(b => (int)b).ToList();
+            }
+
             var optimizer = torch.optim.Adam(_model.parameters(), lr: _param.TrainingLearningRate);
 
             torch.set_num_threads(_param.TrainingMaxWorkerThreads);

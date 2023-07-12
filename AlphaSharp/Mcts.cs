@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using AlphaSharp.Interfaces;
+using static AlphaSharp.Mcts;
 using Math = System.Math;
 
 namespace AlphaSharp
@@ -150,7 +151,7 @@ namespace AlphaSharp
             var threadData = GetThreadDataForCurrentThread();
             for (int i = 0; i < threadData.ActionsVisitCountReused.Length; i++)
             {
-                // Use Q if no visitcounts - if we didn't traverse tree we only have Q values
+                // Use prob if no visitcounts - if we didn't traverse tree we only have prob values
                 policy[i] = cachedState.Actions[i].VisitCount != 0 ? cachedState.Actions[i].VisitCount : cachedState.Actions[i].ActionProbability + 0.0001f;
             }
 
@@ -223,7 +224,7 @@ namespace AlphaSharp
                 //Console.WriteLine($"after move ({playerTurn}) :");
                 //_game.PrintState(_currentState, Console.WriteLine);
 
-                if (IsGameOver(cachedState, isSimulation, threadData, out float gameOverV))
+                if (IsGameOver(isSimulation, threadData, out float gameOverV))
                 {
                     cachedState.Unlock();
                     BacktrackAndUpdate(threadData.SelectedActions, gameOverV, currentPlayer: playerTurn);
@@ -239,7 +240,7 @@ namespace AlphaSharp
             }
         }
 
-        private bool IsGameOver(CachedState cachedState, bool isSimulation, ThreadData threadData, out float v)
+        private bool IsGameOver(bool isSimulation, ThreadData threadData, out float v)
         {
             var gameOverStatus = _game.GetGameEnded(threadData.CurrentState, threadData.SelectedActions.Count, isSimulation);
             if (gameOverStatus == GameOver.Status.GameIsNotOver)
@@ -256,15 +257,17 @@ namespace AlphaSharp
                 return true;
             }
 
-            cachedState.GameOver = gameOverStatus;
-            cachedState.VisitCount++;
+            var winState = GetOrCreateLockedCachedState(threadData.CurrentState, out bool _);
+            winState.GameOver = gameOverStatus;
+            winState.VisitCount++;
 
             // moves are always made as player1. the latest added actions
             // belongs to current player, no matter if this is pl1 or pl2.
             // so we want score from p1 perspective. It cannot just be 1 since
             // in some games the player might be able to make a move that
             // loses the game.
-            v = GameOver.ValueForPlayer1(cachedState.GameOver);
+            v = GameOver.ValueForPlayer1(winState.GameOver);
+            winState.Unlock();
             return true;
         }
 
@@ -294,17 +297,20 @@ namespace AlphaSharp
                 ref Action action = ref cachedState.Actions[i];
                 if (action.IsValidMove != 0)
                 {
-                    float noiseScale = _isSleepCycle ? Math.Max(1.0f, _param.DirichletNoiseScale) : _param.DirichletNoiseScale;
-                    float noiseValue = threadData.NoiseReused[i] * (_isSleepCycle ? 100 : 1);
+                    float noiseScale = _param.DirichletNoiseScale;
+                    float noiseValue = threadData.NoiseReused[i];
 
                     float actionProbability = addNoise ? action.ActionProbability + noiseValue * noiseScale : action.ActionProbability;
 
+                    // TODO: should we do anything about Q = 0 when action has not been visited?
+                    // https://github.com/suragnair/alpha-zero-general/discussions/72
+                   
                     float u = action.Q + _param.Cpuct * actionProbability * (float)Math.Sqrt(cachedState.VisitCount) / (1.0f + action.VisitCount);
 
                     //float u = action.Q + actionProbability * cachedState.VisitCount / (action.VisitCount + 1) * _param.Cpuct / (float)Math.Sqrt(action.VisitCount + 1);
                     //_param.TextInfoCallback(LogLevel.Verbose, $"considering action: {i}, nodeIdx: {cachedState.Idx}, visitcount: {action.VisitCount}, q: {action.Q}, ucb: {u}, prob: {action.ActionProbability}, player: {player}, moves: {_selectedActions.Count}, noise: {action.ActionProbability} -> {_noiseReused[i]} = {actionProbability}");
 
-                    u -= action.VirtualLoss * 0.5f;
+                    u -= action.VirtualLoss;
                     if (u > bestUpperConfidence)
                     {
                         bestUpperConfidence = u;
@@ -337,6 +343,9 @@ namespace AlphaSharp
 
             long ticks = sw.Elapsed.Ticks;
             Interlocked.Add(ref TicksInference, ticks);
+
+            // don't allow 0 probs, it might cause 0 valid actions in worst case
+            Util.Add(threadData.ActionProbsReused, 0.00001f);
 
             _game.GetValidActions(threadData.CurrentState, threadData.ValidActionsReused);
             Util.FilterProbsByValidActions(threadData.ActionProbsReused, threadData.ValidActionsReused);
@@ -376,7 +385,6 @@ namespace AlphaSharp
                 int a = selectedActions[i].ActionIdx;
                 ref var action = ref node.Actions[a];
 
-                action.VisitCount++;
                 action.VirtualLoss--;
 
                 if (action.VirtualLoss < 0)
@@ -386,6 +394,7 @@ namespace AlphaSharp
 
                 //float oldQ = action.Q;
                 action.Q = (action.VisitCount * action.Q + v) / (action.VisitCount + 1);
+                action.VisitCount++;
 
                 //_param.TextInfoCallback(LogLevel.Verbose, $"updating nodeIdx {node.Idx}, actionIdx: {a}, v: {v}, oldQ: {oldQ}, newQ: {action.Q}, action visitCount: {action.VisitCount}, action taken by player: {selectedActions[i].Player}");
 

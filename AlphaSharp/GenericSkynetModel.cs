@@ -44,7 +44,7 @@ namespace TixyGame
 
             Console.WriteLine($"--- using torch device: {Device}");
 
-            int fc1Size = oneHotSize * 5;
+            int fc1Size = oneHotSize * 50;
             int fc2Size = fc1Size / 2;
 
             _fc1 = torch.nn.Linear(oneHotSize, fc1Size);

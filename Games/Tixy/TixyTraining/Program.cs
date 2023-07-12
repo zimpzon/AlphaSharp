@@ -27,7 +27,7 @@ namespace TixyGameCmd
                 TemperatureThresholdMoves = 100,
                 SelfPlaySimulationIterations = 100,
                 EvalSimulationIterations = 50,
-                DirichletNoiseShape = 1.0f,
+                DirichletNoiseShape = 0.05f,
                 DirichletNoiseScale = 1.0f,
                 MaxLogLevel = LogLevel.Info,
                 Cpuct = 4.0f, // AlphaZero uses ~10/game branching factor
@@ -36,7 +36,6 @@ namespace TixyGameCmd
                 SelfPlayEpisodes = 30,
                 SelfPlaySleepCycleChance = 0.25f,
                 SelfPlaySleepNoiseChance = 0.15f,
-                DeduplicateTrainingData = false,
 
                 // evaluation
                 EvaluationRounds = 30,
