@@ -155,7 +155,7 @@ namespace AlphaSharp
                 policy[i] = cachedState.Actions[i].VisitCount != 0 ? cachedState.Actions[i].VisitCount : cachedState.Actions[i].ActionProbability + 0.0001f;
             }
 
-            Util.Softmax(policy, temperature);
+            Util.Normalize(policy);
 
             return policy;
         }
@@ -343,9 +343,6 @@ namespace AlphaSharp
 
             long ticks = sw.Elapsed.Ticks;
             Interlocked.Add(ref TicksInference, ticks);
-
-            // don't allow 0 probs, it might cause 0 valid actions in worst case
-            Util.Add(threadData.ActionProbsReused, 0.00001f);
 
             _game.GetValidActions(threadData.CurrentState, threadData.ValidActionsReused);
             Util.FilterProbsByValidActions(threadData.ActionProbsReused, threadData.ValidActionsReused);

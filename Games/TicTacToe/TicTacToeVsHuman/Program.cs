@@ -14,7 +14,7 @@ namespace TicTacToeVsHuman
                 SelfPlaySimulationIterations = 200,
                 MaxLogLevel = LogLevel.Info,
                 DirichletNoiseScale = 0,
-                EvalSimulationIterations = 10,
+                EvalSimulationIterations = 3,
             };
 
             var game = new TicTacToe();
