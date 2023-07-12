@@ -46,6 +46,8 @@ namespace AlphaSharp
         /// Self-play parameters.
         /// </summary>
         public int SelfPlayEpisodes { get; set; } = 20;
+        public bool DeduplicateTrainingData { get; set; } = true;
+        public float SampleDiscardPct { get; set; } = 0.0f;
 
         /// <summary>
         /// New model evaluation parameters.

@@ -9,8 +9,7 @@ namespace TixyGameCmd
         {
             var args = new AlphaParameters
             {
-                // evaluation
-                SelfPlaySimulationIterations = 500,
+                EvalSimulationIterations = 100
             };
 
             const int W = 5;

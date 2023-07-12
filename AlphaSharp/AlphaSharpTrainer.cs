@@ -110,9 +110,11 @@ namespace AlphaSharp
                     var episodesTrainingData = consumer.Run();
 
                     var newSamples = episodesTrainingData.SelectMany(e => e).ToList();
+                    if (_param.DeduplicateTrainingData)
+                        newSamples = DeduplicateTrainingData(newSamples);
 
                     bool bestModelExists = File.Exists(Path.Combine(_param.OutputFolder, _filenameBestSkynet));
-                    int samplesToDiscard = 0;// !bestModelExists || _trainingSamples.Count == 0 ? 0 : newSamples.Count / 4;
+                    int samplesToDiscard = !bestModelExists || _trainingSamples.Count == 0 ? 0 : (int)(newSamples.Count * _param.SampleDiscardPct);
 
                     _param.TextInfoCallback(LogLevel.Info, $"Self-play added {newSamples.Count} new samples of training data, discarding {samplesToDiscard} oldest samples");
 
@@ -140,7 +142,20 @@ namespace AlphaSharp
                 string msg = $"Comparing new model to old model in {_param.EvaluationRounds} rounds using {_param.MaxWorkerThreads} worker thread{(_param.MaxWorkerThreads == 1 ? "" : "s")}";
                 _param.TextInfoCallback(LogLevel.Info, msg);
 
-                EvaluateNewModel();
+                if (_param.EvaluationRounds > 0)
+                {
+                    EvaluateNewModel();
+                }
+                else
+                {
+                    _param.TextInfoCallback(LogLevel.Info, "");
+
+                    string bestModelPath = Path.Combine(_param.OutputFolder, _filenameBestSkynet);
+                    _param.TextInfoCallback(LogLevel.Info, $"--- evaluation rounds = 0, always accepting new model. Saving as {bestModelPath} ---");
+                    _skynet.SaveModel(bestModelPath);
+
+                    _param.TextInfoCallback(LogLevel.Info, "");
+                }
             }
         }
 
@@ -417,6 +432,60 @@ namespace AlphaSharp
 
             var callback = new TrainingProgressCallback(ProgressCallback);
             _skynet.Train(trainingData, callback);
+        }
+
+        private List<TrainingData> DeduplicateTrainingData(List<TrainingData> trainingData)
+        {
+            var lookup = new Dictionary<string, List<TrainingData>>();
+
+            foreach (var d in trainingData)
+            {
+                string key = Convert.ToBase64String(d.State);
+
+                if (!lookup.ContainsKey(key))
+                {
+                    lookup[key] = new List<TrainingData>();
+                }
+
+                lookup[key].Add(d);
+            }
+
+            int totalRemoved = 0;
+            var newList = new List<TrainingData>();
+
+            var propSum = new float[_game.ActionCount];
+
+            foreach (var pair in lookup)
+            {
+                if (pair.Value.Count == 1)
+                {
+                    newList.Add(pair.Value[0]);
+                    continue;
+                }
+
+                // This state has duplicates
+                float sumValue = 0;
+                Array.Clear(propSum, 0, pair.Value.Count);
+
+                foreach (var d in pair.Value)
+                {
+                    for (int i = 0; i < _game.ActionCount; i++)
+                        propSum[i] += d.ActionProbs[i];
+
+                    sumValue += d.ValueForPlayer1;
+                }
+
+                Util.Normalize(propSum);
+
+                float avg = sumValue / pair.Value.Count;
+                newList.Add(new TrainingData(pair.Value[0].State, propSum, avg, selectedAction: -1));
+
+                totalRemoved += pair.Value.Count - 1;
+            }
+
+            _param.TextInfoCallback(LogLevel.Info, $"State deduplication removed {totalRemoved} states");
+
+            return newList;
         }
     }
 }

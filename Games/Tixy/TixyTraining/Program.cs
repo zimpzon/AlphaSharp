@@ -19,34 +19,36 @@ namespace TixyGameCmd
             var alphaParam = new AlphaParameters
             {
                 // global
-                ResumeFromCheckpoint = true,
                 Iterations = 1000,
+                ResumeFromCheckpoint = true,
+                MaxLogLevel = LogLevel.Info,
                 MaxWorkerThreads = 6,
                 MaxTrainingExamples = 50_000,
                 OutputFolder = $"c:\\temp\\zerosharp\\Tixy {W}x{H}",
+
                 TemperatureThresholdMoves = 100,
-                SelfPlaySimulationIterations = 100,
-                EvalSimulationIterations = 50,
-                DirichletNoiseShape = 0.05f,
-                DirichletNoiseScale = 1.0f,
-                MaxLogLevel = LogLevel.Info,
-                Cpuct = 4.0f, // AlphaZero uses ~10/game branching factor
+
+                Cpuct = 2.0f, // AlphaZero uses ~10/game branching factor
 
                 // self-play
-                SelfPlayEpisodes = 30,
+                SelfPlayEpisodes = 200,
+                SelfPlaySimulationIterations = 80,
                 SelfPlaySleepCycleChance = 0.25f,
-                SelfPlaySleepNoiseChance = 0.15f,
+                SelfPlaySleepNoiseChance = 0.25f,
+                DirichletNoiseShape = 0.05f,
+                DirichletNoiseScale = 100.0f, // noise values are very small and we want more or less total random
 
                 // evaluation
                 EvaluationRounds = 30,
+                EvalSimulationIterations = 100,
             };
 
             var tixyParam = new TixyParameters
             {
                 TrainingEpochs = 10,
-                TrainingBatchSize = 64,
+                TrainingBatchSize = 32,
                 TrainingBatchesPerEpoch = 1000,
-                TrainingLearningRate = 0.001f,
+                TrainingLearningRate = 0.01f,
                 TrainingMaxWorkerThreads = 8,
             };
 

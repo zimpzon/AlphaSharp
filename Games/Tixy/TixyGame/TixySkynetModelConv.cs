@@ -15,11 +15,11 @@ namespace TixyGame
         private readonly Conv2d _conv2d2;
         private readonly BatchNorm2d _batchNorm2d2;
 
-        private readonly Conv2d _conv2d3;
-        private readonly BatchNorm2d _batchNorm2d3;
+        //private readonly Conv2d _conv2d3;
+        //private readonly BatchNorm2d _batchNorm2d3;
 
-        private readonly Conv2d _conv2d4;
-        private readonly BatchNorm2d _batchNorm2d4;
+        //private readonly Conv2d _conv2d4;
+        //private readonly BatchNorm2d _batchNorm2d4;
 
         private readonly IGame _game;
         private readonly int _numInputChannels;
@@ -50,7 +50,7 @@ namespace TixyGame
             SetDevice(deviceType);
         }
 
-        const int NumChannels = 16;
+        const int NumChannels = 64;
 
         public TixySkynetModelConv(IGame game, int numInputChannels, bool forceCpu = false) : base("tixy")
         {
@@ -83,15 +83,15 @@ namespace TixyGame
             _conv2d2 = _conv2d2.to(Device);
             _batchNorm2d2 = _batchNorm2d2.to(Device);
 
-            _conv2d3 = torch.nn.Conv2d(NumChannels, NumChannels, kernelSize, stride: 1, padding, dilation: 1, PaddingModes.Zeros, bias: false);
-            _batchNorm2d3 = torch.nn.BatchNorm2d(NumChannels);
-            _conv2d3 = _conv2d3.to(Device);
-            _batchNorm2d3 = _batchNorm2d3.to(Device);
+            //_conv2d3 = torch.nn.Conv2d(NumChannels, NumChannels, kernelSize, stride: 1, padding, dilation: 1, PaddingModes.Zeros, bias: false);
+            //_batchNorm2d3 = torch.nn.BatchNorm2d(NumChannels);
+            //_conv2d3 = _conv2d3.to(Device);
+            //_batchNorm2d3 = _batchNorm2d3.to(Device);
 
-            _conv2d4 = torch.nn.Conv2d(NumChannels, NumChannels, kernelSize, stride: 1, padding, dilation: 1, PaddingModes.Zeros, bias: false);
-            _batchNorm2d4 = torch.nn.BatchNorm2d(NumChannels);
-            _conv2d4 = _conv2d4.to(Device);
-            _batchNorm2d4 = _batchNorm2d4.to(Device);
+            //_conv2d4 = torch.nn.Conv2d(NumChannels, NumChannels, kernelSize, stride: 1, padding, dilation: 1, PaddingModes.Zeros, bias: false);
+            //_batchNorm2d4 = torch.nn.BatchNorm2d(NumChannels);
+            //_conv2d4 = _conv2d4.to(Device);
+            //_batchNorm2d4 = _batchNorm2d4.to(Device);
 
             _fcEnd1 = torch.nn.Linear(NumChannels * game.W * game.H, 1024);
             _batchEnd1 = torch.nn.BatchNorm1d(1024);
@@ -143,15 +143,15 @@ namespace TixyGame
             x = torch.nn.functional.relu(x);
 
             // res block 2
-            residual = x;
-            _conv2d3.forward(x);
-            _batchNorm2d3.forward(x);
-            x = torch.nn.functional.relu(x);
+            //residual = x;
+            //_conv2d3.forward(x);
+            //_batchNorm2d3.forward(x);
+            //x = torch.nn.functional.relu(x);
 
-            _conv2d4.forward(x);
-            _batchNorm2d4.forward(x);
-            x += residual;
-            x = torch.nn.functional.relu(x);
+            //_conv2d4.forward(x);
+            //_batchNorm2d4.forward(x);
+            //x += residual;
+            //x = torch.nn.functional.relu(x);
 
             x = x.view(-1, NumChannels * _game.W * _game.H);
 

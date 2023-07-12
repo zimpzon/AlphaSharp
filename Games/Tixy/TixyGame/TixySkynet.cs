@@ -11,7 +11,7 @@ namespace TixyGame
         private readonly int _oneHotEncodedInputSize;
         private readonly bool _forceCpu;
 
-        private readonly TixySkynetModelOld5x5 _model;
+        private readonly TixySkynetModelConv _model;
         private readonly TixyParameters _param;
 
         public TixySkynet(IGame game, TixyParameters param)
@@ -20,7 +20,7 @@ namespace TixyGame
             _param = param;
 
             _oneHotEncodedInputSize = _game.W * _game.H * TixyPieces.NumberOfPieces;
-            _model = new TixySkynetModelOld5x5(_game, numInputChannels: TixyPieces.NumberOfPieces, forceCpu: false);
+            _model = new TixySkynetModelConv(_game, numInputChannels: TixyPieces.NumberOfPieces, forceCpu: false);
         }
 
         public void LoadModel(string modelPath)

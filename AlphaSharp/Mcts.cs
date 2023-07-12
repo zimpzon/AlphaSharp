@@ -283,7 +283,7 @@ namespace AlphaSharp
 
             float rnd = (float)Random.Shared.NextDouble();
 
-            bool addNoise = (isFirstMove && isSimulation) || (_isSleepCycle && _param.SelfPlaySleepNoiseChance > rnd);
+            bool addNoise = _isSleepCycle && _param.SelfPlaySleepNoiseChance > rnd;
             if (addNoise)
             {
                 Noise.CreateDirichlet(threadData.NoiseReused, _param.DirichletNoiseShape);
