@@ -5,7 +5,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using AlphaSharp.Interfaces;
-using static AlphaSharp.Mcts;
 using Math = System.Math;
 
 namespace AlphaSharp
@@ -115,10 +114,10 @@ namespace AlphaSharp
         public float[] GetActionPolicy(byte[] state, int playerTurn)
             => GetActionPolicyInternal(state, playerTurn, isSelfPlay: false, isSleepCycle: false);
 
-        public float[] GetActionPolicyForSelfPlay(byte[] state, int playerTurn, bool isSleepCycle, float temperature)
-            => GetActionPolicyInternal(state, playerTurn, isSelfPlay: true, isSleepCycle, temperature);
+        public float[] GetActionPolicyForSelfPlay(byte[] state, int playerTurn, bool isSleepCycle)
+            => GetActionPolicyInternal(state, playerTurn, isSelfPlay: true, isSleepCycle);
 
-        private float[] GetActionPolicyInternal(byte[] state, int playerTurn, bool isSelfPlay, bool isSleepCycle, float temperature = 1.0f)
+        private float[] GetActionPolicyInternal(byte[] state, int playerTurn, bool isSelfPlay, bool isSleepCycle)
         {
             _isSleepCycle = isSleepCycle;
 
@@ -131,14 +130,9 @@ namespace AlphaSharp
             _threadDic.Clear();
 
             int iterations = isSelfPlay ? _param.SelfPlaySimulationIterations : _param.EvalSimulationIterations;
-            if (isSleepCycle)
-                iterations *= 2;
-
             var workList = Enumerable.Range(0, iterations).ToList();
             var threadedSimulation = new ThreadedWorker<int, int>(ExploreThreadMain, workList, isSelfPlay ? _param.MaxWorkerThreads : Math.Max(1,  _param.MaxWorkerThreads / 2));
             threadedSimulation.Run();
-
-            //_param.TextInfoCallback(LogLevel.Info, $"mcts has {_cachedStateLookup.Count} cached states");
 
             var cachedState = GetOrCreateLockedCachedState(state, out bool wasCreated);
             cachedState.Unlock();
@@ -283,7 +277,7 @@ namespace AlphaSharp
 
             float rnd = (float)Random.Shared.NextDouble();
 
-            bool addNoise = _isSleepCycle && _param.SelfPlaySleepNoiseChance > rnd;
+            bool addNoise = _isSleepCycle && (_param.SelfPlaySleepNoiseChance > rnd || isFirstMove);
             if (addNoise)
             {
                 Noise.CreateDirichlet(threadData.NoiseReused, _param.DirichletNoiseShape);

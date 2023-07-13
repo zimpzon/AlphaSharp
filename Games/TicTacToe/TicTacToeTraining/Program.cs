@@ -12,7 +12,7 @@ namespace TicTacToeTraining
             var alphaParam = new AlphaParameters
             {
                 // global
-                ResumeFromCheckpoint = true,
+                ResumeFromCheckpoint = false,
                 Iterations = 1000,
                 MaxWorkerThreads = 1, // diminishing returns, 4 threads seems optimal'ish on home pc with 12/24 cores
                 OutputFolder = "c:\\temp\\zerosharp\\TicTacToe",
@@ -21,10 +21,10 @@ namespace TicTacToeTraining
                 EvalSimulationIterations = 1,
                 SelfPlayEpisodes = 50,
                 EvaluationRounds = 30,
-                SelfPlaySleepCycleChance = 0.3f,
-                SelfPlaySleepNoiseChance = 0.5f,
-                Cpuct = 1.0f,
-                DirichletNoiseScale = 0.0f,
+                SelfPlaySleepCycleChance = 0.5f,
+                SelfPlaySleepNoiseChance = 0.1f,
+                Cpuct = 4.0f,
+                DirichletNoiseScale = 10.0f,
                 DirichletNoiseShape = 1.0f,
             };
 
@@ -40,13 +40,7 @@ namespace TicTacToeTraining
                 TrainingEpochs = 10,
             };
 
-            var pieceToLayer = new Dictionary<byte, int>
-            {
-                [1] = 0,
-                [2] = 1,
-            };
-
-            var skynetCreator = () => new GenericSkynet(game, param, pieceToLayer);
+            var skynetCreator = () => new TicTacToeSkynet(game, param);
             var trainer = new AlphaSharpTrainer(game, skynetCreator, alphaParam);
             trainer.Run();
         }

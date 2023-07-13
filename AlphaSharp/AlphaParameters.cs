@@ -1,5 +1,4 @@
-﻿using AlphaSharp.Interfaces;
-using System;
+﻿using System;
 
 namespace AlphaSharp
 {
@@ -36,11 +35,12 @@ namespace AlphaSharp
         public int SelfPlaySimulationIterations { get; set; } = 100;
         public int EvalSimulationIterations { get; set; } = 100;
         public float Cpuct { get; set; } = 1;
-        public float TemperatureThresholdMoves { get; set; } = 10;
+        public float TemperatureThresholdMoves { get; set; } = 20;
         public float SelfPlaySleepCycleChance { get; set; } = 0.3f;
         public float SelfPlaySleepNoiseChance { get; set; } = 0.25f;
         public float DirichletNoiseShape { get; set; } = 1.0f;
         public float DirichletNoiseScale { get; set; } = 1.0f;
+        public float RandomOutOfNowherePct { get; set; } = 0.99f;
 
         /// <summary>
         /// Self-play parameters.

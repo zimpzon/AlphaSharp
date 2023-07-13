@@ -110,6 +110,16 @@ namespace AlphaSharp
                     var episodesTrainingData = consumer.Run();
 
                     var newSamples = episodesTrainingData.SelectMany(e => e).ToList();
+
+                    // print action selections for root state
+                    Console.WriteLine($"Action selections for root state:");
+                    var rootStates = newSamples.Where(td => td.State.Select(b => (int)b).Sum() == 0);
+                    var actionGroups = rootStates.GroupBy(td => td.SelectedAction, l => l);
+                    foreach (var g in actionGroups)
+                    {
+                        Console.WriteLine($"  action: {g.Key}, taken: {g.Count()}");
+                    }
+
                     if (_param.DeduplicateTrainingData)
                         newSamples = DeduplicateTrainingData(newSamples);
 
@@ -187,11 +197,25 @@ namespace AlphaSharp
             {
                 _game.GetValidActions(state, validActions);
 
-                float temperature = moves > _param.TemperatureThresholdMoves ? 0.1f : 1.0f;
-                var probs = mcts.GetActionPolicyForSelfPlay(state, currentPlayer, isSleepCycle, temperature);
+                var probs = mcts.GetActionPolicyForSelfPlay(state, currentPlayer, isSleepCycle);
+
+                bool randomOutOfNowhere = rnd.NextDouble() > _param.RandomOutOfNowherePct;
+                if (randomOutOfNowhere)
+                {
+                    for (int i = 0; i < probs.Length; i++)
+                    {
+                        probs[i] = (float)rnd.NextDouble();
+                    }
+                    Util.Normalize(probs);
+                }
 
                 Util.FilterProbsByValidActions(probs, validActions);
-                Util.Normalize(probs);
+
+                bool pickBestMoves = moves > _param.TemperatureThresholdMoves;
+                if (pickBestMoves)
+                    Util.Softmax(probs, 0.1f);
+                else
+                    Util.Normalize(probs);
 
                 int selectedAction = Util.WeightedChoice(rnd, probs);
                 trainingData.Add(new TrainingData(state, probs, currentPlayer, selectedAction));
@@ -223,7 +247,7 @@ namespace AlphaSharp
             {
                 var runTime = DateTime.UtcNow - startTime;
 
-                double GetRatio(long ticks, double ms)
+                double GetRatio(long ticks)
                 {
                     double msWaited = ticks/ 10000.0;
                     double msWaitedPerThread = msWaited / _param.MaxWorkerThreads;
@@ -233,11 +257,11 @@ namespace AlphaSharp
 
                 episodesCompleted++;
 
-                string blockTotal = $"{GetRatio(Mcts.TicksBlockedAccessNode + Mcts.TicksBlockedGetOrCreateNode, runTime.TotalMilliseconds) * 100:0.00}";
-                string ratioInference = $"{GetRatio(Mcts.TicksInference, runTime.TotalMilliseconds) * 100:0.00}";
+                string blockTotal = $"{GetRatio(Mcts.TicksBlockedAccessNode + Mcts.TicksBlockedGetOrCreateNode) * 100:0.00}";
+                string ratioInference = $"{GetRatio(Mcts.TicksInference) * 100:0.00}";
 
                 string waits = $"thread lock wait: {blockTotal}%, inference: {ratioInference}%";
-                string info = $"states visited: {mcts.NumberOfCachedStates}, {waits} {(isSleepCycle ? "(dream cycle)" : string.Empty)}";
+                string info = $"states visited: {mcts.NumberOfCachedStates}, result: {value}, {waits} {(isSleepCycle ? "(dream cycle)" : string.Empty)}";
                 _param.ProgressCallback(param.Progress.Update(episodesCompleted), info);
             }
 

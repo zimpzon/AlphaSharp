@@ -26,7 +26,7 @@ namespace TixyGameCmd
                 MaxTrainingExamples = 50_000,
                 OutputFolder = $"c:\\temp\\zerosharp\\Tixy {W}x{H}",
 
-                TemperatureThresholdMoves = 100,
+                TemperatureThresholdMoves = 20,
 
                 Cpuct = 2.0f, // AlphaZero uses ~10/game branching factor
 
