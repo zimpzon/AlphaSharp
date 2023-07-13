@@ -31,8 +31,8 @@ namespace TixyGameCmd
                 Cpuct = 2.0f, // AlphaZero uses ~10/game branching factor
 
                 // self-play
-                SelfPlayEpisodes = 200,
-                SelfPlaySimulationIterations = 80,
+                SelfPlayEpisodes = 50,
+                SelfPlaySimulationIterations = 8,
                 SelfPlaySleepCycleChance = 0.25f,
                 SelfPlaySleepNoiseChance = 0.25f,
                 DirichletNoiseShape = 0.05f,

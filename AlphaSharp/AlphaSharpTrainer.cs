@@ -465,7 +465,7 @@ namespace AlphaSharp
 
                 // This state has duplicates
                 float sumValue = 0;
-                Array.Clear(propSum, 0, pair.Value.Count);
+                Array.Clear(propSum, 0, propSum.Length);
 
                 foreach (var d in pair.Value)
                 {
