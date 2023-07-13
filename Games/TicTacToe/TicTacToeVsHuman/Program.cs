@@ -25,13 +25,7 @@ namespace TicTacToeVsHuman
                 TrainingMaxWorkerThreads = 1
             };
 
-            var pieceToLayer = new Dictionary<byte, int>
-            {
-                [1] = 0,
-                [2] = 1,
-            };
-
-            var skynet = new GenericSkynet(game, param, pieceToLayer);
+            var skynet = new TicTacToeSkynet(game, param);
 
             string modelPath = "c:\\temp\\zerosharp\\TicTacToe\\tic-tac-toe-best.skynet";
             Console.WriteLine($"Loading model at {modelPath}...");
