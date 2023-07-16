@@ -9,7 +9,7 @@ namespace TixyGameCmd
         {
             var args = new AlphaParameters
             {
-                EvalSimulationIterations = 100
+                EvalSimulationIterations = 500,
             };
 
             const int W = 5;

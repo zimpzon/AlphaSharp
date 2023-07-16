@@ -13,6 +13,8 @@ namespace TixyGameCmd
             // TRAINING ALGO: when game is won, track back a number of states (random around half of avg count?) and start from there, NOT picking the same action again.
             // Forwards and backwards meets at the middle'ish? Better endgame? I Assume endgame can be weak due to not always reaching it?
 
+            // HMM, could we speed up a fresh start by generating a large number of random games without using the network?
+            // Would be very, very fast and still hold lots of information.
             const int W = 5;
             const int H = 5;
 
@@ -22,33 +24,36 @@ namespace TixyGameCmd
                 Iterations = 1000,
                 ResumeFromCheckpoint = true,
                 MaxLogLevel = LogLevel.Info,
-                MaxWorkerThreads = 6,
-                MaxTrainingExamples = 50_000,
+                MaxWorkerThreads = 4,
+                MaxTrainingExamples = 100_000,
                 OutputFolder = $"c:\\temp\\zerosharp\\Tixy {W}x{H}",
 
-                TemperatureThresholdMoves = 20,
+                TemperatureThresholdMoves = 30,
+                DeduplicateTrainingData = true,
 
-                Cpuct = 2.0f, // AlphaZero uses ~10/game branching factor
+                CpuctSelfPlay = 2.5f,
+                CpuctEvaluation = 2.5f,
 
                 // self-play
-                SelfPlayEpisodes = 50,
-                SelfPlaySimulationIterations = 8,
+                SelfPlayEpisodes = 100,
+                SelfPlaySimulationIterations = 50,
                 SelfPlaySleepCycleChance = 0.25f,
-                SelfPlaySleepNoiseChance = 0.25f,
+                SelfPlaySleepNoiseChance = 0.05f,
                 DirichletNoiseShape = 0.05f,
                 DirichletNoiseScale = 100.0f, // noise values are very small and we want more or less total random
+                RandomOutOfNowherePct = 0.99f,
 
                 // evaluation
                 EvaluationRounds = 30,
-                EvalSimulationIterations = 100,
+                EvalSimulationIterations = 50,
             };
 
             var tixyParam = new TixyParameters
             {
                 TrainingEpochs = 10,
                 TrainingBatchSize = 32,
-                TrainingBatchesPerEpoch = 1000,
-                TrainingLearningRate = 0.01f,
+                TrainingBatchesPerEpoch = 10_000,
+                TrainingLearningRate = 0.001f,
                 TrainingMaxWorkerThreads = 8,
             };
 

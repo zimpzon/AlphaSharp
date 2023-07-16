@@ -23,7 +23,7 @@ namespace TicTacToeTraining
                 EvaluationRounds = 30,
                 SelfPlaySleepCycleChance = 0.5f,
                 SelfPlaySleepNoiseChance = 0.1f,
-                Cpuct = 4.0f,
+                CpuctSelfPlay = 4.0f,
                 DirichletNoiseScale = 10.0f,
                 DirichletNoiseShape = 1.0f,
             };

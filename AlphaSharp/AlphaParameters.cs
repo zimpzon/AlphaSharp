@@ -34,7 +34,8 @@ namespace AlphaSharp
         /// </summary>
         public int SelfPlaySimulationIterations { get; set; } = 100;
         public int EvalSimulationIterations { get; set; } = 100;
-        public float Cpuct { get; set; } = 1;
+        public float CpuctSelfPlay { get; set; } = 1;
+        public float CpuctEvaluation { get; set; } = 1;
         public float TemperatureThresholdMoves { get; set; } = 20;
         public float SelfPlaySleepCycleChance { get; set; } = 0.3f;
         public float SelfPlaySleepNoiseChance { get; set; } = 0.25f;

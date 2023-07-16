@@ -50,7 +50,7 @@ namespace TixyGame
             SetDevice(deviceType);
         }
 
-        const int NumChannels = 64;
+        const int NumChannels = 128;
 
         public TixySkynetModelConv(IGame game, int numInputChannels, bool forceCpu = false) : base("tixy")
         {
@@ -93,18 +93,21 @@ namespace TixyGame
             //_conv2d4 = _conv2d4.to(Device);
             //_batchNorm2d4 = _batchNorm2d4.to(Device);
 
-            _fcEnd1 = torch.nn.Linear(NumChannels * game.W * game.H, 1024);
-            _batchEnd1 = torch.nn.BatchNorm1d(1024);
+            const int fc1 = 1024;
+            const int fc2 = 512;
+
+            _fcEnd1 = torch.nn.Linear(NumChannels * game.W * game.H, fc1);
+            _batchEnd1 = torch.nn.BatchNorm1d(fc1);
             _fcEnd1 = _fcEnd1.to(Device);
             _batchEnd1 = _batchEnd1.to(Device);
 
-            _fcEnd2 = torch.nn.Linear(1024, 512);
-            _batchEnd2 = torch.nn.BatchNorm1d(512);
+            _fcEnd2 = torch.nn.Linear(fc1, fc2);
+            _batchEnd2 = torch.nn.BatchNorm1d(fc2);
             _fcEnd2 = _fcEnd2.to(Device);
             _batchEnd2 = _batchEnd2.to(Device);
 
-            _fc_probs = torch.nn.Linear(512, game.ActionCount);
-            _fc_v = torch.nn.Linear(512, 1);
+            _fc_probs = torch.nn.Linear(fc2, game.ActionCount);
+            _fc_v = torch.nn.Linear(fc2, 1);
 
             _logSoftmax = torch.nn.LogSoftmax(1);
             _tanh = torch.nn.Tanh();
@@ -126,32 +129,19 @@ namespace TixyGame
             x = x.view(x.shape[0], _numInputChannels, _game.W, _game.H);
 
             x = _conv2dEntry.forward(x);
+            x = torch.nn.functional.relu(x);
             x = _batchNorm2dEntry.forward(x);
-            x = torch.nn.functional.relu(x);
 
-            // res block: residual*, conv, conv, residual+
-
-            // res block 1
             var residual = x;
-            _conv2d1.forward(x);
-            _batchNorm2d1.forward(x);
-            x = torch.nn.functional.relu(x);
 
-            _conv2d2.forward(x);
-            _batchNorm2d2.forward(x);
+            x = _conv2d1.forward(x);
+            x = torch.nn.functional.relu(x);
+            x = _batchNorm2d1.forward(x);
+
+            x = _conv2d2.forward(x);
             x += residual;
             x = torch.nn.functional.relu(x);
-
-            // res block 2
-            //residual = x;
-            //_conv2d3.forward(x);
-            //_batchNorm2d3.forward(x);
-            //x = torch.nn.functional.relu(x);
-
-            //_conv2d4.forward(x);
-            //_batchNorm2d4.forward(x);
-            //x += residual;
-            //x = torch.nn.functional.relu(x);
+            x = _batchNorm2d2.forward(x);
 
             x = x.view(-1, NumChannels * _game.W * _game.H);
 

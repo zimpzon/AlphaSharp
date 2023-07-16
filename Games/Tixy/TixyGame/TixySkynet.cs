@@ -11,7 +11,7 @@ namespace TixyGame
         private readonly int _oneHotEncodedInputSize;
         private readonly bool _forceCpu;
 
-        private readonly TixySkynetModelConv _model;
+        private readonly TixySkynetModelFc _model;
         private readonly TixyParameters _param;
 
         public TixySkynet(IGame game, TixyParameters param)
@@ -20,7 +20,7 @@ namespace TixyGame
             _param = param;
 
             _oneHotEncodedInputSize = _game.W * _game.H * TixyPieces.NumberOfPieces;
-            _model = new TixySkynetModelConv(_game, numInputChannels: TixyPieces.NumberOfPieces, forceCpu: false);
+            _model = new TixySkynetModelFc(_game, numInputChannels: TixyPieces.NumberOfPieces, forceCpu: false);
         }
 
         public void LoadModel(string modelPath)
@@ -56,8 +56,7 @@ namespace TixyGame
 
         private static torch.Tensor LossProbs(torch.Tensor targets, torch.Tensor outputs)
         {
-            // add a tiny amount to targets to avoid multiplying by zero
-            return -((targets + 0.00001f) * outputs).sum() / targets.shape[0];
+            return -(targets * outputs).sum() / targets.shape[0];
         }
 
         private static torch.Tensor LossV(torch.Tensor targets, torch.Tensor outputs)
@@ -86,7 +85,6 @@ namespace TixyGame
 
                 for (int b = 0; b < batchCount; ++b)
                 {
-                    // reduce overfitting by not training on all data every epoch, but instead randomly selecting a subset
                     var batchIndices = Enumerable.Range(b * _param.TrainingBatchSize, _param.TrainingBatchSize).ToList();
                     var batch = batchIndices.Select(i => trainingData[i]);
 

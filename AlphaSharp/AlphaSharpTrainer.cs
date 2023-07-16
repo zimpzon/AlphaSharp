@@ -111,9 +111,10 @@ namespace AlphaSharp
 
                     var newSamples = episodesTrainingData.SelectMany(e => e).ToList();
 
-                    // print action selections for root state
-                    Console.WriteLine($"Action selections for root state:");
-                    var rootStates = newSamples.Where(td => td.State.Select(b => (int)b).Sum() == 0);
+                    Console.WriteLine($"Action selections for starting state:");
+                    var startingState = new byte[_game.StateSize];
+                    _game.GetStartingState(startingState);
+                    var rootStates = newSamples.Where(td => Enumerable.SequenceEqual(td.State, startingState));
                     var actionGroups = rootStates.GroupBy(td => td.SelectedAction, l => l);
                     foreach (var g in actionGroups)
                     {
@@ -209,13 +210,13 @@ namespace AlphaSharp
                     Util.Normalize(probs);
                 }
 
-                Util.FilterProbsByValidActions(probs, validActions);
-
                 bool pickBestMoves = moves > _param.TemperatureThresholdMoves;
                 if (pickBestMoves)
                     Util.Softmax(probs, 0.1f);
-                else
-                    Util.Normalize(probs);
+
+                Util.FilterProbsByValidActions(probs, validActions);
+
+                Util.Normalize(probs);
 
                 int selectedAction = Util.WeightedChoice(rnd, probs);
                 trainingData.Add(new TrainingData(state, probs, currentPlayer, selectedAction));
@@ -243,8 +244,8 @@ namespace AlphaSharp
                 td.ValueForPlayer1 *= value;
             }
 
-            lock (_lock)
-            {
+            //lock (_lock)
+            //{
                 var runTime = DateTime.UtcNow - startTime;
 
                 double GetRatio(long ticks)
@@ -263,7 +264,7 @@ namespace AlphaSharp
                 string waits = $"thread lock wait: {blockTotal}%, inference: {ratioInference}%";
                 string info = $"states visited: {mcts.NumberOfCachedStates}, result: {value}, {waits} {(isSleepCycle ? "(dream cycle)" : string.Empty)}";
                 _param.ProgressCallback(param.Progress.Update(episodesCompleted), info);
-            }
+            //}
 
             return trainingData;
         }

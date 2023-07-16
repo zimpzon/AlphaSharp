@@ -16,7 +16,7 @@ namespace AlphaSharp
             public float Q { get; set; }
             public int VisitCount { get; set; }
             public byte IsValidMove { get; set; }
-            public byte VirtualLoss { get; set; }
+            public int VirtualLoss;
             public float ActionProbability { get; set; }
 
             public override readonly string ToString()
@@ -84,6 +84,8 @@ namespace AlphaSharp
             public readonly byte[] ValidActionsReused; // per thread
             public readonly List<SelectedAction> SelectedActions = new(); // per thread
             public readonly byte[] CurrentState; // per thread
+            public int VirtualLossNodeIdx;
+            public int VirtualLossAction;
         }
 
         private readonly IGame _game;
@@ -123,19 +125,22 @@ namespace AlphaSharp
 
             int ExploreThreadMain(int _)
             {
-                ExploreGameTree(state, isSimulation: isSelfPlay, playerTurn);
+                ExploreGameTree(state, isSelfPlay, playerTurn);
                 return 0;
             }
 
             _threadDic.Clear();
 
-            int iterations = isSelfPlay ? _param.SelfPlaySimulationIterations : _param.EvalSimulationIterations;
+            int iterations = isSelfPlay ? (_param.SelfPlaySimulationIterations / _param.MaxWorkerThreads) : (_param.EvalSimulationIterations / _param.MaxWorkerThreads);
             var workList = Enumerable.Range(0, iterations).ToList();
             var threadedSimulation = new ThreadedWorker<int, int>(ExploreThreadMain, workList, isSelfPlay ? _param.MaxWorkerThreads : Math.Max(1,  _param.MaxWorkerThreads / 2));
             threadedSimulation.Run();
 
             var cachedState = GetOrCreateLockedCachedState(state, out bool wasCreated);
             cachedState.Unlock();
+
+            //int ss = _cachedStates.Where(cs => cs != null).SelectMany(aa => aa.Actions).Sum(a => a.VirtualLoss);
+            //Console.WriteLine($"VirtualLoss: {ss}");
 
             if (wasCreated)
                 throw new ArgumentException("BUG: after exploring this state should have been cached");
@@ -165,17 +170,13 @@ namespace AlphaSharp
             return threadData;
         }
 
-        private void ExploreGameTree(byte[] startingState, bool isSimulation, int playerTurn)
+        private void ExploreGameTree(byte[] startingState, bool isSelfPlay, int playerTurn)
         {
             var threadData = GetThreadDataForCurrentThread();
-
-            Array.Copy(startingState, threadData.CurrentState, threadData.CurrentState.Length);
+            threadData.VirtualLossAction = -1;
+            threadData.VirtualLossNodeIdx = -1;
             threadData.SelectedActions.Clear();
-
-            //Console.WriteLine($"starting simulation from root as player {playerTurn} ({Environment.CurrentManagedThreadId})");
-
-            //lock (_mctsLock)
-            //    _param.TextInfoCallback(LogLevel.Verbose, $"--- starting simulation from root as player {playerTurn} ({simNo + 1}/{simCount}) ---");
+            Array.Copy(startingState, threadData.CurrentState, threadData.CurrentState.Length);
 
             while (true)
             {
@@ -183,17 +184,7 @@ namespace AlphaSharp
 
                 bool revisitedGameOver = cachedState.GameOver != GameOver.Status.GameIsNotOver;
                 if (revisitedGameOver)
-                {
-                    cachedState.VisitCount++;
-
-                    // This may repeat many times at the end of a simulation loop since the remaining simulations will just exploit this known winning state over and over.
-                    //_param.TextInfoCallback(LogLevel.Verbose, $"revisiting a cached game over: {cachedState.GameOver}, nodeIdx: {cachedState.Idx}, player: {playerTurn}, moves: {_selectedActions.Count}");
-
-                    // the latest move made was by the opponent, so they should receive a negative reward for moving
-                    cachedState.Unlock();
-                    BacktrackAndUpdate(threadData.SelectedActions, -1, currentPlayer: playerTurn);
-                    break;
-                }
+                    throw new InvalidOperationException("BUG? should not revisit game over state");
 
                 if (wasCreated)
                 {
@@ -205,38 +196,60 @@ namespace AlphaSharp
                     break;
                 }
 
-                int selectedAction = RevisitNode(cachedState, isSimulation, threadData);
+                RemoveVirtualLoss(threadData);
 
-                //Console.WriteLine($"before move ({playerTurn}) :");
-                //_game.PrintState(_currentState, Console.WriteLine);
+                int selectedAction = RevisitNode(cachedState, isSelfPlay, threadData);
 
                 if (selectedAction != NoValidAction)
                 {
+                    AddVirtualLoss(threadData, cachedState, selectedAction);
                     _game.ExecutePlayerAction(threadData.CurrentState, selectedAction);
                 }
 
-                //Console.WriteLine($"after move ({playerTurn}) :");
-                //_game.PrintState(_currentState, Console.WriteLine);
-
-                if (IsGameOver(isSimulation, threadData, out float gameOverV))
+                if (IsGameOver(isSelfPlay, threadData, out float gameOverV))
                 {
-                    cachedState.Unlock();
+                    ReleaseNode(cachedState);
                     BacktrackAndUpdate(threadData.SelectedActions, gameOverV, currentPlayer: playerTurn);
                     break;
                 }
 
-                cachedState.Unlock();
+                ReleaseNode(cachedState);
 
                 _game.FlipStateToNextPlayer(threadData.CurrentState);
 
                 playerTurn = -playerTurn;
-                //_param.TextInfoCallback(LogLevel.Verbose, $"player switched from {-playerTurn} to {playerTurn}, nodeIdx: {cachedState.Idx}, player: {playerTurn}, moves: {_selectedActions.Count}");
             }
         }
 
-        private bool IsGameOver(bool isSimulation, ThreadData threadData, out float v)
+        private void AddVirtualLoss(ThreadData threadData, CachedState cachedState, int actionIdx)
         {
-            var gameOverStatus = _game.GetGameEnded(threadData.CurrentState, threadData.SelectedActions.Count, isSimulation);
+            ref Action action = ref cachedState.Actions[actionIdx];
+
+            Interlocked.Increment(ref action.VirtualLoss);
+            threadData.VirtualLossAction = actionIdx;
+            threadData.VirtualLossNodeIdx = cachedState.Idx;
+        }
+
+        private void RemoveVirtualLoss(ThreadData threadData)
+        {
+            if (threadData.VirtualLossAction != -1)
+            {
+                ref Action actionWithLoss = ref _cachedStates[threadData.VirtualLossNodeIdx].Actions[threadData.VirtualLossAction];
+                Interlocked.Decrement(ref actionWithLoss.VirtualLoss);
+
+                threadData.VirtualLossAction = -1;
+                threadData.VirtualLossNodeIdx = -1;
+            }
+        }
+
+        private void ReleaseNode(CachedState cachedState)
+        {
+            cachedState.Unlock();
+        }
+
+        private bool IsGameOver(bool isSelfPlay, ThreadData threadData, out float v)
+        {
+            var gameOverStatus = _game.GetGameEnded(threadData.CurrentState, threadData.SelectedActions.Count, isSelfPlay);
             if (gameOverStatus == GameOver.Status.GameIsNotOver)
             {
                 v = 0;
@@ -265,7 +278,7 @@ namespace AlphaSharp
             return true;
         }
 
-        private int RevisitNode(CachedState cachedState, bool isSimulation, ThreadData threadData)
+        private int RevisitNode(CachedState cachedState, bool isSelfPlay, ThreadData threadData)
         {
             //_param.TextInfoCallback(LogLevel.Verbose, $"revisiting a cached state with visitCount {cachedState.VisitCount}, nodeIdx: {cachedState.Idx}, player: {player}, moves: {_selectedActions.Count}");
 
@@ -286,6 +299,8 @@ namespace AlphaSharp
             // Increase state visit count before calculating U, this way actionProbability will be dominant until there is at least one action visitcount
             cachedState.VisitCount++;
 
+            float cpuct = isSelfPlay ? _param.CpuctSelfPlay : _param.CpuctEvaluation;
+
             for (int i = 0; i < cachedState.Actions.Length; i++)
             {
                 ref Action action = ref cachedState.Actions[i];
@@ -295,14 +310,7 @@ namespace AlphaSharp
                     float noiseValue = threadData.NoiseReused[i];
 
                     float actionProbability = addNoise ? action.ActionProbability + noiseValue * noiseScale : action.ActionProbability;
-
-                    // TODO: should we do anything about Q = 0 when action has not been visited?
-                    // https://github.com/suragnair/alpha-zero-general/discussions/72
-                   
-                    float u = action.Q + _param.Cpuct * actionProbability * (float)Math.Sqrt(cachedState.VisitCount) / (1.0f + action.VisitCount);
-
-                    //float u = action.Q + actionProbability * cachedState.VisitCount / (action.VisitCount + 1) * _param.Cpuct / (float)Math.Sqrt(action.VisitCount + 1);
-                    //_param.TextInfoCallback(LogLevel.Verbose, $"considering action: {i}, nodeIdx: {cachedState.Idx}, visitcount: {action.VisitCount}, q: {action.Q}, ucb: {u}, prob: {action.ActionProbability}, player: {player}, moves: {_selectedActions.Count}, noise: {action.ActionProbability} -> {_noiseReused[i]} = {actionProbability}");
+                    float u = action.Q + cpuct * actionProbability * (float)Math.Sqrt(cachedState.VisitCount) / (1.0f + action.VisitCount);
 
                     u -= action.VirtualLoss;
                     if (u > bestUpperConfidence)
@@ -314,23 +322,16 @@ namespace AlphaSharp
             }
 
             if (selectedAction != NoValidAction)
-            {
-                // an action was selected
                 threadData.SelectedActions.Add(new SelectedAction { NodeIdx = cachedState.Idx, ActionIdx = selectedAction });
-
-                ref Action action = ref cachedState.Actions[selectedAction];
-                action.VirtualLoss++;
-
-                //_param.TextInfoCallback(LogLevel.Verbose, $"action selected: {selectedAction}, nodeIdx: {cachedState.Idx}, confidence: {bestUpperConfidence}, player: {player}, moves: {_selectedActions.Count}");
-            }
 
             return selectedAction;
         }
 
+        object _lock = new ();
+
         private float ExpandState(CachedState cachedState, ThreadData threadData)
         {
             // get and save suggestions from Skynet, then backtrack to root using suggested v
-
             var sw = Stopwatch.StartNew();
 
             _skynet.Suggest(threadData.CurrentState, threadData.ActionProbsReused, out float v);
@@ -360,7 +361,6 @@ namespace AlphaSharp
             }
 
             cachedState.VisitCount = 1;
-
             return v;
         }
 
@@ -376,13 +376,6 @@ namespace AlphaSharp
                 int a = selectedActions[i].ActionIdx;
                 ref var action = ref node.Actions[a];
 
-                action.VirtualLoss--;
-
-                if (action.VirtualLoss < 0)
-                {
-                    throw new Exception("Virtual loss should never be negative");
-                }
-
                 //float oldQ = action.Q;
                 action.Q = (action.VisitCount * action.Q + v) / (action.VisitCount + 1);
                 action.VisitCount++;
@@ -394,6 +387,9 @@ namespace AlphaSharp
 
                 node.Unlock();
             }
+
+            var threadData = GetThreadDataForCurrentThread();
+            RemoveVirtualLoss(threadData);
         }
 
         private CachedState GetLockedCachedStateByIndex(int idx)
