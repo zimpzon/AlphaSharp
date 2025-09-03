@@ -24,7 +24,7 @@ namespace TixyGameCmd
                 Iterations = 1000,
                 ResumeFromCheckpoint = true,
                 MaxLogLevel = LogLevel.MoreInfo,         // Show loss information during training
-                MaxWorkerThreads = 4,
+                MaxWorkerThreads = 1,
                 MaxTrainingExamples = 100_000,
                 OutputFolder = $"c:\\temp\\zerosharp\\Tixy {W}x{H}",
 
@@ -38,8 +38,8 @@ namespace TixyGameCmd
                 // self-play
                 SelfPlayEpisodes = 150,                  // Increased from 100 - more training data
                 SelfPlaySimulationIterations = 200,     // Increased from 50 - critical for complex game
-                SelfPlaySleepCycleChance = 0.25f,
-                SelfPlaySleepNoiseChance = 0.05f,
+                SelfPlaySleepCycleChance = 0.0f,
+                SelfPlaySleepNoiseChance = 0.0f,
                 DirichletNoiseShape = 0.3f,              // Increased from 0.05 - more reasonable
                 DirichletNoiseScale = 0.25f,             // Reduced from 100.0! - was causing too much randomness
                 RandomOutOfNowherePct = 0.99f,
