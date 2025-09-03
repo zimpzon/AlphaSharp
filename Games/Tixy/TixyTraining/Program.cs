@@ -23,37 +23,38 @@ namespace TixyGameCmd
                 // global
                 Iterations = 1000,
                 ResumeFromCheckpoint = true,
-                MaxLogLevel = LogLevel.Info,
+                MaxLogLevel = LogLevel.MoreInfo,         // Show loss information during training
                 MaxWorkerThreads = 4,
                 MaxTrainingExamples = 100_000,
                 OutputFolder = $"c:\\temp\\zerosharp\\Tixy {W}x{H}",
 
-                TemperatureThresholdMoves = 30,
+                TemperatureThresholdMoves = 15,          // Reduced from 30 - Tixy games ~30-50 moves
                 DeduplicateTrainingData = true,
+                DrawOptimalEvaluation = false,           // Standard win-based evaluation (Tixy is not draw-optimal)
 
-                CpuctSelfPlay = 2.5f,
-                CpuctEvaluation = 2.5f,
+                CpuctSelfPlay = 1.5f,                    // Reduced from 2.5 - better exploration/exploitation balance
+                CpuctEvaluation = 1.5f,                  // Reduced from 2.5 - better evaluation
 
                 // self-play
-                SelfPlayEpisodes = 100,
-                SelfPlaySimulationIterations = 50,
+                SelfPlayEpisodes = 150,                  // Increased from 100 - more training data
+                SelfPlaySimulationIterations = 200,     // Increased from 50 - critical for complex game
                 SelfPlaySleepCycleChance = 0.25f,
                 SelfPlaySleepNoiseChance = 0.05f,
-                DirichletNoiseShape = 0.05f,
-                DirichletNoiseScale = 100.0f, // noise values are very small and we want more or less total random
+                DirichletNoiseShape = 0.3f,              // Increased from 0.05 - more reasonable
+                DirichletNoiseScale = 0.25f,             // Reduced from 100.0! - was causing too much randomness
                 RandomOutOfNowherePct = 0.99f,
 
                 // evaluation
-                EvaluationRounds = 30,
-                EvalSimulationIterations = 50,
+                EvaluationRounds = 40,                   // Increased from 30 - more reliable evaluation
+                EvalSimulationIterations = 150,         // Increased from 50 - better evaluation quality
             };
 
             var tixyParam = new TixyParameters
             {
-                TrainingEpochs = 10,
-                TrainingBatchSize = 32,
-                TrainingBatchesPerEpoch = 10_000,
-                TrainingLearningRate = 0.001f,
+                TrainingEpochs = 15,                     // Increased from 10 - more training per iteration
+                TrainingBatchSize = 64,                  // Increased from 32 - better gradient estimates
+                TrainingBatchesPerEpoch = 1000,          // Reduced from 10,000 - was excessive, caused overfitting
+                TrainingLearningRate = 0.003f,           // Increased from 0.001 - faster learning for complex game
                 TrainingMaxWorkerThreads = 8,
             };
 

@@ -16,15 +16,17 @@ namespace TicTacToeTraining
                 Iterations = 1000,
                 MaxWorkerThreads = 1, // diminishing returns, 4 threads seems optimal'ish on home pc with 12/24 cores
                 OutputFolder = "c:\\temp\\zerosharp\\TicTacToe",
-                SelfPlaySimulationIterations = 10,
-                TemperatureThresholdMoves = 10,
-                EvalSimulationIterations = 5,
-                SelfPlayEpisodes = 50,
+                MaxLogLevel = LogLevel.MoreInfo,     // Show loss information during training
+                SelfPlaySimulationIterations = 400,  // Increased from 10 - critical for learning
+                TemperatureThresholdMoves = 4,       // Reduced from 10 - TicTacToe games are short (5-9 moves)
+                EvalSimulationIterations = 200,      // Increased from 5 - better evaluation
+                SelfPlayEpisodes = 300,              // Increased from 50 - more training data
                 EvaluationRounds = 30,
+                DrawOptimalEvaluation = true,       // Use draw-optimal evaluation for TicTacToe (draws are optimal play)
                 SelfPlaySleepCycleChance = 0.5f,
                 SelfPlaySleepNoiseChance = 0.1f,
-                CpuctSelfPlay = 4.0f,
-                DirichletNoiseScale = 10.0f,
+                CpuctSelfPlay = 1.0f,                // Reduced from 4.0 - less exploration, more exploitation
+                DirichletNoiseScale = 0.3f,          // Reduced from 10.0 - less noise for simple game
                 DirichletNoiseShape = 1.0f,
             };
 
@@ -37,7 +39,9 @@ namespace TicTacToeTraining
             {
                 NumberOfPieces = 2,
                 TrainingMaxWorkerThreads = 4,
-                TrainingEpochs = 10,
+                TrainingEpochs = 20,              // Increased from 10 - more training per iteration
+                TrainingBatchSize = 64,          // Increased from default 32 - better gradient estimates
+                TrainingLearningRate = 0.01f,    // Increased from 0.001 - faster learning for simple game
             };
 
             var skynetCreator = () => new TicTacToeSkynet(game, param);

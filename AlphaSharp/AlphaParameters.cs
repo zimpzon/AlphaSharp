@@ -55,5 +55,6 @@ namespace AlphaSharp
         /// </summary>
         public int EvaluationRounds { get; set; } = 20;
         public EvaluationStyle EvaluationPlayers { get; set; } = EvaluationStyle.AlternatingModels;
+        public bool DrawOptimalEvaluation { get; set; } = false; // Special evaluation for games where draws are optimal play
     }
 }

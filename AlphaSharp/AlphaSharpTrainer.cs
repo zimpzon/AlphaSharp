@@ -389,7 +389,17 @@ namespace AlphaSharp
             consumer.Run();
             string score = $"new: {winNew}, old: {winOld}, draw: {draw}";
 
-            bool newIsBetter = winNew > winOld;
+            bool newIsBetter;
+            if (_param.DrawOptimalEvaluation)
+            {
+                // For games where draws represent optimal play, maximize draws and minimize losses
+                newIsBetter = EvaluateDrawOptimalModel(winNew, winOld, draw);
+            }
+            else
+            {
+                // Standard evaluation: new model is better if it wins more
+                newIsBetter = winNew > winOld;
+            }
             if (newIsBetter)
             {
                 _param.TextInfoCallback(LogLevel.Info, "");
@@ -430,6 +440,66 @@ namespace AlphaSharp
         }
 
         public delegate void TrainingProgressCallback(int currentValue, int numberOfValues, string additionalInfo = null);
+
+        /// <summary>
+        /// Evaluation for games where draws are considered optimal play (e.g., TicTacToe, Chess endgames)
+        /// </summary>
+        private bool EvaluateDrawOptimalModel(long winNew, long winOld, long draws)
+        {
+            long totalRounds = winNew + winOld + draws;
+            
+            // Calculate rates - CORRECTED: winNew = new model wins, winOld = old model wins
+            double drawRate = (double)draws / totalRounds;
+            double newModelLossRate = (double)winOld / totalRounds;  // winOld = old model wins = new model losses
+            double oldModelLossRate = (double)winNew / totalRounds;  // winNew = new model wins = old model losses
+            
+            // Dynamic scoring based on overall game quality:
+            // - Early training (low draw rate): Wins and draws weighted equally (models are weak)
+            // - Advanced training (high draw rate): Draws weighted more (models are strong, draws = optimal play)
+            
+            double drawWeight = drawRate > 0.6 ? 1.5 : 1.0;  // Prefer draws when both models are strong
+            
+            // Score: (wins * 1.0) + (draws * drawWeight) for each model
+            double newModelScore = (winNew * 1.0) + (draws * drawWeight);  // winNew = new model wins
+            double oldModelScore = (winOld * 1.0) + (draws * drawWeight);  // winOld = old model wins
+            
+            _param.TextInfoCallback(LogLevel.Info, "");
+            _param.TextInfoCallback(LogLevel.Info, "=== Draw-Optimal Game Evaluation Analysis ===");
+            _param.TextInfoCallback(LogLevel.Info, $"Total rounds: {totalRounds}");
+            _param.TextInfoCallback(LogLevel.Info, $"Draws: {draws} ({drawRate:P1}) - Draw weight: {drawWeight:F1}x");
+            _param.TextInfoCallback(LogLevel.Info, $"New model: {winNew} wins, {winOld} losses (Loss rate: {newModelLossRate:P1})");
+            _param.TextInfoCallback(LogLevel.Info, $"Old model: {winOld} wins, {winNew} losses (Loss rate: {oldModelLossRate:P1})");
+            _param.TextInfoCallback(LogLevel.Info, $"New model score: {newModelScore:F1} (wins: {winNew}, draws: {draws}×{drawWeight:F1})");
+            _param.TextInfoCallback(LogLevel.Info, $"Old model score: {oldModelScore:F1} (wins: {winOld}, draws: {draws}×{drawWeight:F1})");
+            
+            bool newIsBetter = newModelScore > oldModelScore;
+            
+            // Special cases and explanations
+            if (drawRate > 0.8)
+            {
+                _param.TextInfoCallback(LogLevel.Info, $"Excellent! High draw rate ({drawRate:P1}) with 1.5x draw weighting - near-perfect play!");
+            }
+            else if (drawRate < 0.3)
+            {
+                _param.TextInfoCallback(LogLevel.Info, $"Low draw rate ({drawRate:P1}) with 1.0x draw weighting - models still learning");
+            }
+            else if (drawRate >= 0.6)
+            {
+                _param.TextInfoCallback(LogLevel.Info, $"Good draw rate ({drawRate:P1}) - switched to 1.5x draw weighting (advanced play)");
+            }
+            
+            if (Math.Abs(newModelScore - oldModelScore) < 1.0)
+            {
+                _param.TextInfoCallback(LogLevel.Info, $"Models are very close in performance - keeping new model for continued exploration");
+                newIsBetter = true; // Favor new model when very close to encourage exploration
+            }
+            
+            string verdict = newIsBetter ? "NEW model is better" : "OLD model is better";
+            _param.TextInfoCallback(LogLevel.Info, $"Verdict: {verdict}");
+            _param.TextInfoCallback(LogLevel.Info, "========================================");
+            
+            return newIsBetter;
+        }
 
         private void Train(List<TrainingData> trainingData)
         {

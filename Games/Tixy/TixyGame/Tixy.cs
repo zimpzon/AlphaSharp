@@ -43,16 +43,16 @@ namespace TixyGame
         {
             ClearPieces(dstState);
 
-            //Set(dstState, 0, 0, TixyPieces.P2.X);
-            //Set(dstState, 1, 0, TixyPieces.P2.Y);
-            Set(dstState, 2, 0, TixyPieces.P2.T);
+            Set(dstState, 0, 0, TixyPieces.P2.X);
+            Set(dstState, 1, 0, TixyPieces.P2.Y);
+            Set(dstState, 2, 0, TixyPieces.P2.I);
             Set(dstState, 3, 0, TixyPieces.P2.I);
             Set(dstState, 4, 0, TixyPieces.P2.T);
             //Set(dstState, 5, 0, TixyPieces.P2.Y);
             //Set(dstState, 6, 0, TixyPieces.P2.X);
 
-            //Set(dstState, 0, H - 1, TixyPieces.P1.X);
-            //Set(dstState, 1, H - 1, TixyPieces.P1.Y);
+            Set(dstState, 0, H - 1, TixyPieces.P1.X);
+            Set(dstState, 1, H - 1, TixyPieces.P1.Y);
             Set(dstState, 2, H - 1, TixyPieces.P1.T);
             Set(dstState, 3, H - 1, TixyPieces.P1.I);
             Set(dstState, 4, H - 1, TixyPieces.P1.T);

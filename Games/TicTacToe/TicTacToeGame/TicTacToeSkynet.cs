@@ -2,6 +2,7 @@
 using AlphaSharp.Interfaces;
 using TorchSharp;
 using static AlphaSharp.AlphaSharpTrainer;
+using TicTacToeGame;
 
 namespace TixyGame
 {
@@ -11,7 +12,7 @@ namespace TixyGame
         private readonly int _oneHotEncodedInputSize;
         private readonly bool _forceCpu = false;
 
-        private readonly GenericSkynetModel _model;
+        private readonly TicTacToeSkynetModel _model;
         private readonly GenericSkynetParam _param;
 
         private readonly IReadOnlyDictionary<byte, int> _pieceToLayerLut;
@@ -22,7 +23,7 @@ namespace TixyGame
             _param = param;
             _pieceToLayerLut = new Dictionary<byte, int> { [1] = 0, [2] = 1, };
             _oneHotEncodedInputSize = _game.W * _game.H * _param.NumberOfPieces;
-            _model = new GenericSkynetModel(_game, _oneHotEncodedInputSize, forceCpu: false);
+            _model = new TicTacToeSkynetModel(_game, _oneHotEncodedInputSize, forceCpu: false);
         }
 
         public void LoadModel(string modelPath)
@@ -68,11 +69,8 @@ namespace TixyGame
 
         public void Train(List<TrainingData> trainingData, TrainingProgressCallback progressCallback)
         {
-            for (int i = 0; i < trainingData.Count; i++)
-            {
-                var td = trainingData[i];
-                td.ValueForPlayer1 = (td.ValueForPlayer1 + 1) * 0.5f;
-            }
+            // No value normalization needed - training data values should already be in [-1, 1] range
+            // Removed incorrect normalization: td.ValueForPlayer1 = (td.ValueForPlayer1 + 1) * 0.5f;
 
             var optimizer = torch.optim.Adam(_model.parameters(), lr: _param.TrainingLearningRate);
 
@@ -149,7 +147,7 @@ namespace TixyGame
             var (logProbs, vt) = _model.forward(oneHotTensor);
 
             v = vt.ToSingle();
-            v = v * 2 - 1;
+            // Value is already in [-1, 1] range from tanh activation, no conversion needed
 
             var probs = torch.exp(logProbs);
 
